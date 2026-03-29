@@ -1,36 +1,71 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## UniMondo
 
-## Getting Started
+Modern student-focused education consultancy platform for Europe admissions.
+
+### Features
+
+- Homepage with hero, trust badges, and current openings preview
+- Destinations explorer grouped by region
+- Filterable current openings with direct apply links
+- 5-step application wizard with drag-and-drop document uploads
+- Basic AI screening tags:
+	- Eligible
+	- Review Needed
+	- Not Eligible
+- Admin dashboard to review applications and update status
+- Supabase-ready persistence and secure file storage (with in-memory fallback for local dev)
+
+### Run Locally
 
 First, run the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Environment Variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Create a `.env.local` file with the following variables.
 
-## Learn More
+```env
+SUPABASE_URL=
+SUPABASE_SERVICE_ROLE_KEY=
+SUPABASE_STORAGE_BUCKET=application-documents
+EMAIL_WEBHOOK_URL=
+```
 
-To learn more about Next.js, take a look at the following resources:
+If Supabase variables are not provided, the app falls back to an in-memory store for local testing.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Supabase Schema (Recommended)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```sql
+create table if not exists applications (
+	id bigint generated always as identity primary key,
+	tracking_id text unique not null,
+	submitted_at timestamptz not null,
+	screening_tag text not null,
+	review_status text not null,
+	payload jsonb not null,
+	documents jsonb not null default '[]'::jsonb
+);
+```
 
-## Deploy on Vercel
+Create a public or private storage bucket named `application-documents`.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Routes
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `/`
+- `/destinations`
+- `/current-openings`
+- `/apply`
+- `/about`
+- `/contact`
+- `/admin`
+
+### API Endpoints
+
+- `POST /api/applications` submit application and files
+- `GET /api/applications` list applications (`?status=` optional)
+- `PATCH /api/applications/:trackingId/status` update review status
