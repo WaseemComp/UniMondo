@@ -1,9 +1,106 @@
+import Link from "next/link";
+import { Globe, Mail, MapPin, Phone } from "lucide-react";
+
+const LINKS = {
+  explore: [
+    { href: "/current-openings", label: "Programs" },
+    { href: "/destinations", label: "Countries" },
+    { href: "/current-openings", label: "Openings" },
+    { href: "/apply", label: "Apply" },
+  ],
+  company: [
+    { href: "/about", label: "About" },
+    { href: "/blog", label: "Blog" },
+    { href: "/contact", label: "Contact" },
+    { href: "/admin", label: "Admin" },
+  ],
+};
+
 export function SiteFooter() {
   return (
-    <footer className="mt-16 border-t border-zinc-200 bg-white/80">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 py-8 text-sm text-zinc-600 sm:px-6 lg:px-8 md:flex-row md:items-center md:justify-between">
-        <p>Copyright {new Date().getFullYear()} UniMondo. All rights reserved.</p>
-        <p>Study in Europe with confidence and clear guidance.</p>
+    <footer className="border-t border-white/10 bg-[#050d1a] text-slate-400">
+      <div className="mx-auto grid max-w-7xl gap-12 px-4 py-14 sm:grid-cols-2 sm:px-6 lg:grid-cols-4 lg:px-8">
+        <div className="sm:col-span-2 lg:col-span-1">
+          <p className="font-[family-name:var(--font-heading)] text-xl font-semibold text-white">
+            <span className="text-amber-400">Uni</span>Mondo
+          </p>
+          <p className="mt-3 max-w-xs text-sm leading-relaxed">
+            Student-focused education consultancy for Europe admissions — from shortlisting to visa-ready departure.
+          </p>
+          <div className="mt-5 flex gap-3">
+            <a
+              href="https://www.linkedin.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-full border border-white/15 p-2 text-slate-300 transition hover:border-amber-500/50 hover:text-amber-300"
+              aria-label="UniMondo on LinkedIn"
+            >
+              <Globe className="h-5 w-5" />
+            </a>
+            <a
+              href="mailto:hello@unimondo.example"
+              className="rounded-full border border-white/15 p-2 text-slate-300 transition hover:border-amber-500/50 hover:text-amber-300"
+              aria-label="Email"
+            >
+              <Mail className="h-5 w-5" />
+            </a>
+          </div>
+        </div>
+
+        <div>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-amber-500/90">Explore</h3>
+          <ul className="mt-4 space-y-2 text-sm">
+            {LINKS.explore.map((l) => (
+              <li key={l.href + l.label}>
+                <Link href={l.href} className="hover:text-white">
+                  {l.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-amber-500/90">Company</h3>
+          <ul className="mt-4 space-y-2 text-sm">
+            {LINKS.company.map((l) => (
+              <li key={l.href + l.label}>
+                <Link href={l.href} className="hover:text-white">
+                  {l.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-amber-500/90">Contact</h3>
+          <ul className="mt-4 space-y-3 text-sm">
+            <li className="flex gap-2">
+              <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-amber-500/80" aria-hidden />
+              <span>Europe admissions desk · Remote-first counseling</span>
+            </li>
+            <li className="flex gap-2">
+              <Phone className="mt-0.5 h-4 w-4 shrink-0 text-amber-500/80" aria-hidden />
+              <a href="tel:+0000000000" className="hover:text-white">
+                Schedule a call
+              </a>
+            </li>
+            <li className="flex gap-2">
+              <Mail className="mt-0.5 h-4 w-4 shrink-0 text-amber-500/80" aria-hidden />
+              <a href="mailto:hello@unimondo.example" className="hover:text-white">
+                hello@unimondo.example
+              </a>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div className="border-t border-white/10">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-4 py-6 text-xs sm:flex-row sm:px-6 lg:px-8">
+          <p>© {new Date().getFullYear()} UniMondo. All rights reserved.</p>
+          <p className="text-slate-500">Study in Europe with clarity, care, and momentum.</p>
+        </div>
       </div>
     </footer>
   );

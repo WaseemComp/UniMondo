@@ -127,7 +127,7 @@
       radial-gradient(circle at 100% 0%, rgba(251, 191, 36, 0.09), transparent 30%);
   }
   html {
-    @apply font-sans;
+    @apply scroll-smooth font-sans;
   }
 
   h1,

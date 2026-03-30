@@ -29,9 +29,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${manrope.variable} ${playfairDisplay.variable} h-full antialiased`}>
-      <body className="min-h-full bg-zinc-50 text-zinc-900">
+      <body className="min-h-full bg-slate-50 text-slate-900">
         <div className="relative flex min-h-full flex-col">
-          <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-72 bg-[radial-gradient(circle_at_10%_10%,rgba(16,185,129,0.12),transparent_38%),radial-gradient(circle_at_80%_0%,rgba(251,191,36,0.14),transparent_34%)]" />
           <SiteHeader />
           <div className="flex-1">{children}</div>
           <SiteFooter />
