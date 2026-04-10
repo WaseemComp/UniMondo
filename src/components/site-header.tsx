@@ -47,6 +47,16 @@ export function SiteHeader() {
               {item.label}
             </Link>
           ))}
+          <span className="mx-1 h-4 w-px bg-white/15" aria-hidden />
+          <Link
+            href="/admin/login"
+            className={cn(
+              "rounded-full px-3 py-2 text-xs font-medium transition",
+              pathname.startsWith("/admin") ? "text-amber-300" : "text-slate-500 hover:bg-white/5 hover:text-amber-300/90",
+            )}
+          >
+            Staff sign in
+          </Link>
         </nav>
 
         <div className="hidden items-center gap-2 sm:flex">
@@ -108,6 +118,13 @@ export function SiteHeader() {
                 className="rounded-full bg-amber-500 px-4 py-3 text-center text-sm font-semibold text-[#0a1628]"
               >
                 Start Application
+              </Link>
+              <Link
+                href="/admin/login"
+                onClick={() => setOpen(false)}
+                className="mt-3 border-t border-white/10 pt-3 text-center text-sm font-medium text-slate-500 hover:text-amber-300/90"
+              >
+                Staff sign in
               </Link>
             </nav>
           </motion.div>

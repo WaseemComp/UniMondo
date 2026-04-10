@@ -1,15 +1,21 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createBrowserClient } from "@supabase/ssr";
 import { getSupabasePublicEnv } from "./env";
 
-let client: SupabaseClient | null = null;
+type BrowserClient = ReturnType<typeof createBrowserClient>;
 
-/** Browser singleton for future client-side queries / auth. */
-export function getSupabaseBrowserClient(): SupabaseClient | null {
+let client: BrowserClient | null = null;
+
+/**
+ * Browser Supabase client with cookie-based session (matches @supabase/ssr middleware + server).
+ * Do not use the plain @supabase/supabase-js createClient here — it defaults to localStorage,
+ * so middleware never sees the session and /admin routes redirect back to login.
+ */
+export function getSupabaseBrowserClient(): BrowserClient | null {
   if (typeof window === "undefined") return null;
   const env = getSupabasePublicEnv();
   if (!env) return null;
   if (!client) {
-    client = createClient(env.url, env.anonKey);
+    client = createBrowserClient(env.url, env.anonKey);
   }
   return client;
 }

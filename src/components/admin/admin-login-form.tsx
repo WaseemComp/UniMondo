@@ -1,11 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 export function AdminLoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get("next") || "/admin/dashboard";
 
@@ -29,8 +28,8 @@ export function AdminLoginForm() {
       setError(signError.message);
       return;
     }
-    router.push(next);
-    router.refresh();
+    // Full navigation so middleware always receives the new auth cookies (SSR pattern).
+    window.location.assign(next.startsWith("/") ? next : `/${next}`);
   }
 
   return (

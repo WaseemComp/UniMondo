@@ -137,6 +137,39 @@ Homepage copy and multi-item news ticker remain under `/admin/content/*` for bac
 2. Keep `SUPABASE_SERVICE_ROLE_KEY` only on the server (e.g. Vercel environment variables).
 3. Prefer `ADMIN_EMAILS` + strong passwords for Auth users; use `admin_profiles` for RLS-aligned DB access from authenticated clients if you add non–service-role writes later.
 
+## Production: Vercel & Supabase (cannot be done from this repo alone)
+
+The hosting provider and Supabase project are **your** accounts. This codebase cannot push secrets to Vercel or toggle the Supabase UI for you. Do the following once per environment (e.g. **Production** on [Vercel](https://vercel.com/dashboard) and your [Supabase project](https://supabase.com/dashboard)).
+
+### 1. Set environment variables on the server (Vercel)
+
+1. Open **Vercel** → your UniMondo project → **Settings** → **Environment Variables**.
+2. Add (at minimum):
+   - `NEXT_PUBLIC_SUPABASE_URL` — same as in Supabase → Project Settings → API.
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` — **anon** public key (not the service role).
+   - `SUPABASE_SERVICE_ROLE_KEY` — **service_role** secret (server-only; enable for Production, and Preview if you test CMS there).
+   - `ADMIN_EMAILS` — e.g. `adminone@unimondo.com` (comma-separated if multiple).
+3. **Save**, then trigger a **new deployment** (Deployments → … → Redeploy, or push a commit). Env vars are applied on build/runtime after redeploy.
+
+### 2. Realtime replication (Supabase)
+
+Migrations already run `ALTER PUBLICATION supabase_realtime ADD TABLE …` for `programs`, `countries`, `site_settings`, and `blogs`. If live updates still do not fire in the browser:
+
+1. In **Supabase Dashboard** → **Database** → **Publications** (or **Replication**, depending on dashboard version), open **`supabase_realtime`**.
+2. Ensure these tables are enabled for realtime: `programs`, `countries`, `site_settings`, `blogs`.
+
+**Verify in SQL** (Supabase → **SQL Editor**):
+
+```sql
+select schemaname, tablename
+from pg_publication_tables
+where pubname = 'supabase_realtime'
+  and tablename in ('programs', 'countries', 'site_settings', 'blogs')
+order by tablename;
+```
+
+You should see four rows after migrations (or after enabling them in the UI).
+
 ## Checklist after deploy
 
 1. Run all migrations on the production database.
