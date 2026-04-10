@@ -5,14 +5,13 @@ const LINKS = {
   explore: [
     { href: "/current-openings", label: "Programs" },
     { href: "/destinations", label: "Countries" },
-    { href: "/current-openings", label: "Openings" },
     { href: "/apply", label: "Apply" },
   ],
   company: [
     { href: "/about", label: "About" },
     { href: "/blog", label: "Blog" },
     { href: "/contact", label: "Contact" },
-    { href: "/admin", label: "Admin" },
+    { href: "/admin/login", label: "Staff sign in" },
   ],
 };
 
@@ -100,6 +99,18 @@ export function SiteFooter() {
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-4 py-6 text-xs sm:flex-row sm:px-6 lg:px-8">
           <p>© {new Date().getFullYear()} UniMondo. All rights reserved.</p>
           <p className="text-slate-500">Study in Europe with clarity, care, and momentum.</p>
+        </div>
+        <div className="mx-auto max-w-7xl border-t border-white/5 px-4 py-4 text-center text-[11px] text-slate-600 sm:px-6 lg:px-8">
+          <p>
+            <Link href="/admin/login" className="text-slate-500 underline-offset-2 hover:text-amber-400/90 hover:underline">
+              Staff sign-in
+            </Link>{" "}
+            is for UniMondo team only — not for student applications. Use{" "}
+            <Link href="/apply" className="text-slate-500 underline-offset-2 hover:text-amber-400/90 hover:underline">
+              Apply
+            </Link>{" "}
+            to start a program application.
+          </p>
         </div>
       </div>
     </footer>

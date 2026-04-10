@@ -12,10 +12,16 @@ const NAV = [
   { href: "/current-openings", label: "Programs" },
   { href: "/destinations", label: "Countries" },
   { href: "/about", label: "About" },
-  { href: "/current-openings", label: "Current Openings" },
   { href: "/blog", label: "Blog" },
   { href: "/contact", label: "Contact" },
 ] as const;
+
+function isNavActive(pathname: string, href: string) {
+  if (href === "/current-openings") {
+    return pathname === "/current-openings" || pathname === "/programs";
+  }
+  return pathname === href;
+}
 
 export function SiteHeader() {
   const pathname = usePathname();
@@ -35,7 +41,7 @@ export function SiteHeader() {
               href={item.href}
               className={cn(
                 "rounded-full px-3 py-2 text-sm font-medium transition",
-                pathname === item.href ? "bg-white/10 text-amber-300" : "text-slate-300 hover:bg-white/5 hover:text-white",
+                isNavActive(pathname, item.href) ? "bg-white/10 text-amber-300" : "text-slate-300 hover:bg-white/5 hover:text-white",
               )}
             >
               {item.label}

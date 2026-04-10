@@ -36,7 +36,24 @@ const SLIDES = [
 
 const INTERVAL_MS = 6500;
 
-export function HeroCarousel() {
+export type HeroCopy = {
+  title: string;
+  subtitle: string;
+  ctaExplore: string;
+  ctaApply: string;
+};
+
+export function HeroCarousel({
+  copy = {
+    title: "Your Future Knows No Borders",
+    subtitle:
+      "Personalized admissions guidance, visa expertise, and full student support — from first call to campus arrival.",
+    ctaExplore: "Explore Programs",
+    ctaApply: "Begin Your Application",
+  },
+}: {
+  copy?: HeroCopy;
+}) {
   const [index, setIndex] = useState(0);
 
   const next = useCallback(() => setIndex((i) => (i + 1) % SLIDES.length), []);
@@ -89,19 +106,16 @@ export function HeroCarousel() {
               UniMondo · Study in Europe
             </p>
             <h1 className="mt-4 font-[family-name:var(--font-heading)] text-4xl font-semibold leading-[1.1] tracking-tight text-white sm:text-5xl md:text-6xl lg:text-7xl">
-              Your Future Knows No Borders
+              {copy.title}
             </h1>
-            <p className="mt-5 max-w-xl text-lg leading-relaxed text-slate-200/95 sm:text-xl">
-              Personalized admissions guidance, visa expertise, and full student support — from first call to campus
-              arrival.
-            </p>
+            <p className="mt-5 max-w-xl text-lg leading-relaxed text-slate-200/95 sm:text-xl">{copy.subtitle}</p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
               <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                 <Link
                   href="/current-openings"
                   className="inline-flex w-full items-center justify-center rounded-full bg-amber-500 px-8 py-3.5 text-sm font-semibold text-[#0a1628] shadow-lg shadow-amber-500/25 transition hover:bg-amber-400 sm:w-auto"
                 >
-                  Explore Programs
+                  {copy.ctaExplore}
                 </Link>
               </motion.div>
               <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
@@ -109,7 +123,7 @@ export function HeroCarousel() {
                   href="/apply"
                   className="inline-flex w-full items-center justify-center rounded-full border border-white/25 bg-white/10 px-8 py-3.5 text-sm font-semibold text-white backdrop-blur-md transition hover:bg-white/15 sm:w-auto"
                 >
-                  Begin Your Application
+                  {copy.ctaApply}
                 </Link>
               </motion.div>
             </div>

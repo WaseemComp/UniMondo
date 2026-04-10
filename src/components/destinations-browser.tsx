@@ -1,22 +1,32 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { countryDetails, regionGroups } from "@/lib/unimondo-data";
+import { useEffect, useMemo, useState } from "react";
+import type { CountryDetail } from "@/lib/unimondo-data";
+import { regionGroups } from "@/lib/unimondo-data";
 
-export function DestinationsBrowser({ initialCountry }: { initialCountry?: string }) {
+type Props = {
+  initialCountry?: string;
+  countries: CountryDetail[];
+};
+
+export function DestinationsBrowser({ initialCountry, countries }: Props) {
   const initial = useMemo(() => {
-    const match = countryDetails.find((country) => country.country === initialCountry);
-    return match?.country || "Italy";
-  }, [initialCountry]);
+    const match = countries.find((country) => country.country === initialCountry);
+    return match?.country || countries[0]?.country || "Italy";
+  }, [initialCountry, countries]);
 
   const [activeCountry, setActiveCountry] = useState(initial);
+
+  useEffect(() => {
+    setActiveCountry(initial);
+  }, [initial]);
 
   return (
     <div className="space-y-8">
       <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
         <h2 className="mb-4 text-lg font-semibold text-zinc-900">Countries</h2>
         <div className="flex flex-wrap gap-2">
-          {countryDetails.map((country) => (
+          {countries.map((country) => (
             <button
               key={country.country}
               type="button"
@@ -39,7 +49,7 @@ export function DestinationsBrowser({ initialCountry }: { initialCountry?: strin
           <section key={group} className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
             <h3 className="mb-3 text-sm font-semibold tracking-wide text-zinc-500 uppercase">{group}</h3>
             <div className="flex flex-wrap gap-2">
-              {countryDetails
+              {countries
                 .filter((country) => country.regionGroup === group)
                 .map((country) => (
                   <button
@@ -60,7 +70,7 @@ export function DestinationsBrowser({ initialCountry }: { initialCountry?: strin
         ))}
       </div>
 
-      {countryDetails
+      {countries
         .filter((country) => country.country === activeCountry)
         .map((country) => (
           <article key={country.country} className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">

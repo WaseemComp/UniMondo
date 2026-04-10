@@ -4,11 +4,14 @@ import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { ArrowRight, Calendar, MapPin } from "lucide-react";
-import { openings } from "@/lib/unimondo-data";
+import type { Opening } from "@/lib/unimondo-data";
 
-const FEATURED = openings.slice(0, 4);
+type Props = {
+  openings: Opening[];
+};
 
-export function FeaturedPrograms() {
+export function FeaturedPrograms({ openings }: Props) {
+  const featured = openings.slice(0, 4);
   return (
     <section className="relative bg-[#0a1628] py-20 sm:py-28">
       <div className="pointer-events-none absolute inset-0 opacity-40">
@@ -43,7 +46,7 @@ export function FeaturedPrograms() {
         </div>
 
         <div className="mt-12 grid gap-5 md:grid-cols-2">
-          {FEATURED.map((o, i) => (
+          {featured.map((o, i) => (
             <motion.article
               key={o.id}
               initial={{ opacity: 0, y: 24 }}

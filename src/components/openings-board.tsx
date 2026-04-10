@@ -2,40 +2,52 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { openings } from "@/lib/unimondo-data";
+import type { Opening } from "@/lib/unimondo-data";
 
 type Intake = "All" | "Fall 2026" | "Spring 2027";
 
-export function OpeningsBoard() {
-  const [continent, setContinent] = useState<string>("All");
-  const [country, setCountry] = useState<string>("All");
-  const [region, setRegion] = useState<string>("All");
+type Props = {
+  openings: Opening[];
+};
+
+export function OpeningsBoard({ openings }: Props) {
   const [intake, setIntake] = useState<Intake>("All");
+  const [continent, setContinent] = useState<string>("All");
+  const [region, setRegion] = useState<string>("All");
+  const [country, setCountry] = useState<string>("All");
 
-  const continents = useMemo(() => ["All", ...new Set(openings.map((item) => item.continent))], []);
+  /** Narrow by intake first, then geography (continent → region → country). */
+  const byIntake = useMemo(() => {
+    if (intake === "All") return openings;
+    return openings.filter((item) => item.intake === intake);
+  }, [intake, openings]);
 
-  const countries = useMemo(() => {
-    const scoped = continent === "All" ? openings : openings.filter((item) => item.continent === continent);
-    return ["All", ...new Set(scoped.map((item) => item.country))];
-  }, [continent]);
+  const continents = useMemo(() => ["All", ...new Set(byIntake.map((item) => item.continent))], [byIntake]);
 
   const regions = useMemo(() => {
-    const scoped = openings.filter((item) => {
+    const scoped =
+      continent === "All" ? byIntake : byIntake.filter((item) => item.continent === continent);
+    return ["All", ...new Set(scoped.map((item) => item.region))];
+  }, [byIntake, continent]);
+
+  const countries = useMemo(() => {
+    const scoped = byIntake.filter((item) => {
       if (continent !== "All" && item.continent !== continent) return false;
+      if (region !== "All" && item.region !== region) return false;
+      return true;
+    });
+    return ["All", ...new Set(scoped.map((item) => item.country))];
+  }, [byIntake, continent, region]);
+
+  const filtered = useMemo(() => {
+    return openings.filter((item) => {
+      if (intake !== "All" && item.intake !== intake) return false;
+      if (continent !== "All" && item.continent !== continent) return false;
+      if (region !== "All" && item.region !== region) return false;
       if (country !== "All" && item.country !== country) return false;
       return true;
     });
-
-    return ["All", ...new Set(scoped.map((item) => item.region))];
-  }, [continent, country]);
-
-  const filtered = openings.filter((item) => {
-    if (continent !== "All" && item.continent !== continent) return false;
-    if (country !== "All" && item.country !== country) return false;
-    if (region !== "All" && item.region !== region) return false;
-    if (intake !== "All" && item.intake !== intake) return false;
-    return true;
-  });
+  }, [openings, intake, continent, region, country]);
 
   return (
     <div className="space-y-6">
@@ -43,13 +55,31 @@ export function OpeningsBoard() {
         <h2 className="mb-4 text-lg font-semibold text-zinc-900">Filter Openings</h2>
         <div className="grid gap-4 md:grid-cols-4">
           <label className="space-y-1 text-sm text-zinc-700">
+            <span className="font-medium">Intake</span>
+            <select
+              value={intake}
+              onChange={(event) => {
+                setIntake(event.target.value as Intake);
+                setContinent("All");
+                setRegion("All");
+                setCountry("All");
+              }}
+              className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2"
+            >
+              <option value="All">All</option>
+              <option value="Fall 2026">Fall 2026</option>
+              <option value="Spring 2027">Spring 2027</option>
+            </select>
+          </label>
+
+          <label className="space-y-1 text-sm text-zinc-700">
             <span className="font-medium">Continent</span>
             <select
               value={continent}
               onChange={(event) => {
                 setContinent(event.target.value);
-                setCountry("All");
                 setRegion("All");
+                setCountry("All");
               }}
               className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2"
             >
@@ -62,28 +92,13 @@ export function OpeningsBoard() {
           </label>
 
           <label className="space-y-1 text-sm text-zinc-700">
-            <span className="font-medium">Country</span>
-            <select
-              value={country}
-              onChange={(event) => {
-                setCountry(event.target.value);
-                setRegion("All");
-              }}
-              className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2"
-            >
-              {countries.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="space-y-1 text-sm text-zinc-700">
             <span className="font-medium">Region</span>
             <select
               value={region}
-              onChange={(event) => setRegion(event.target.value)}
+              onChange={(event) => {
+                setRegion(event.target.value);
+                setCountry("All");
+              }}
               className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2"
             >
               {regions.map((option) => (
@@ -95,15 +110,17 @@ export function OpeningsBoard() {
           </label>
 
           <label className="space-y-1 text-sm text-zinc-700">
-            <span className="font-medium">Intake</span>
+            <span className="font-medium">Country</span>
             <select
-              value={intake}
-              onChange={(event) => setIntake(event.target.value as Intake)}
+              value={country}
+              onChange={(event) => setCountry(event.target.value)}
               className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2"
             >
-              <option value="All">All</option>
-              <option value="Fall 2026">Fall 2026</option>
-              <option value="Spring 2027">Spring 2027</option>
+              {countries.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
             </select>
           </label>
         </div>
