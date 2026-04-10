@@ -134,6 +134,20 @@ export const countryDetails: CountryDetail[] = [
     livingCostApprox: "EUR 1,100 - 1,800/month",
     visaInfo: "Residence permit for higher education with funding documentation.",
   },
+  {
+    country: "Hungary",
+    regionGroup: "Central/Eastern Europe",
+    whyStudyThere:
+      "Strong STEM and medicine tracks, lively student cities, and competitive tuition with growing English-taught offerings.",
+    popularUniversities: [
+      "Eötvös Loránd University",
+      "Budapest University of Technology and Economics",
+      "Corvinus University of Budapest",
+    ],
+    livingCostApprox: "EUR 550 - 950/month",
+    visaInfo:
+      "National Type D student residence permit: admission letter, proof of funds, health insurance, and accommodation details.",
+  },
 ];
 
 export const regionGroups: RegionGroup[] = [

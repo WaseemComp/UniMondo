@@ -39,6 +39,7 @@ export function ApplyWizard() {
       "Austria",
       "Belgium",
       "Denmark",
+      "Hungary",
     ],
     []
   );
