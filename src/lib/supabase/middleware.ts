@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { isAdminEmail } from "@/lib/auth/admin";
+import { isAdminUser } from "@/lib/auth/admin";
 
 export async function updateSessionAndGuardAdmin(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -29,7 +29,7 @@ export async function updateSessionAndGuardAdmin(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
   if (path.startsWith("/admin") && path !== "/admin/login" && path !== "/admin/login/") {
-    if (!user || !isAdminEmail(user.email)) {
+    if (!user || !(await isAdminUser(user))) {
       const url = request.nextUrl.clone();
       url.pathname = "/admin/login";
       url.searchParams.set("next", path);
@@ -38,10 +38,10 @@ export async function updateSessionAndGuardAdmin(request: NextRequest) {
   }
 
   if (path === "/admin/login" || path === "/admin/login/") {
-    if (user && isAdminEmail(user.email)) {
+    if (user && (await isAdminUser(user))) {
       return NextResponse.redirect(new URL("/admin/dashboard", request.url));
     }
-    if (user && !isAdminEmail(user.email)) {
+    if (user && !(await isAdminUser(user))) {
       return NextResponse.redirect(new URL("/?error=not_admin", request.url));
     }
   }

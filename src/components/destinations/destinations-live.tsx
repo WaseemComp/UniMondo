@@ -67,7 +67,7 @@ export function DestinationsLive({ initialCountries, initialCountry }: Props) {
         .order("sort_order", { ascending: true });
 
       if (error || !data?.length) return;
-      setCountries(data.map((row) => mapRemoteRow(row as unknown as Record<string, unknown>)));
+      setCountries(data.map((row: Record<string, unknown>) => mapRemoteRow(row)));
     };
 
     const channel = supabase

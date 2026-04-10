@@ -9,7 +9,7 @@ This document describes the production-ready CMS built for UniMondo (Next.js 16 
 - **Who is an admin?**
   - Emails listed in `ADMIN_EMAILS` (comma-separated, case-insensitive), **or**
   - A row in `public.admin_profiles` linking `user_id` to `auth.users`.
-- **Route protection:** `src/middleware.ts` calls `updateSessionAndGuardAdmin` so every `/admin/*` path except `/admin/login` requires a signed-in user that passes `isAdminEmail()` (see `src/lib/auth/admin.ts`).
+- **Route protection:** `src/proxy.ts` (Next.js 16) calls `updateSessionAndGuardAdmin` in `src/lib/supabase/middleware.ts` for `/admin/*` (except `/admin/login`), using the same **`isAdminUser()`** rule as the panel layout (`ADMIN_EMAILS` **or** `admin_profiles`). The `(panel)` layout and `/admin` index also call `isAdminUser()` for defense in depth.
 - **Server actions:** `requireAdminUser()` verifies the session and `isAdminUser()` (env list **or** `admin_profiles`) before mutating data. Writes use the **service role** client (`SUPABASE_SERVICE_ROLE_KEY`) so operations succeed even if RLS write policies are not yet configured for a given user.
 
 ### Required environment variables
