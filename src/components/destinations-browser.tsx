@@ -74,9 +74,21 @@ export function DestinationsBrowser({ initialCountry, countries }: Props) {
         .filter((country) => country.country === activeCountry)
         .map((country) => (
           <article key={country.country} className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <h2 className="text-2xl font-bold text-zinc-900">Study in {country.country}</h2>
-              <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-zinc-900">
+                  {country.flagEmoji ? (
+                    <span className="mr-2" aria-hidden>
+                      {country.flagEmoji}
+                    </span>
+                  ) : null}
+                  Study in {country.country}
+                </h2>
+                {country.description ? (
+                  <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-600">{country.description}</p>
+                ) : null}
+              </div>
+              <span className="shrink-0 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
                 {country.regionGroup}
               </span>
             </div>

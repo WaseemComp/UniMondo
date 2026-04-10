@@ -4,14 +4,17 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { Opening } from "@/lib/unimondo-data";
 
-type Intake = "All" | "Fall 2026" | "Spring 2027";
-
 type Props = {
   openings: Opening[];
 };
 
 export function OpeningsBoard({ openings }: Props) {
-  const [intake, setIntake] = useState<Intake>("All");
+  const intakeOptions = useMemo(() => {
+    const values = [...new Set(openings.map((o) => o.intake).filter(Boolean))].sort();
+    return ["All", ...values];
+  }, [openings]);
+
+  const [intake, setIntake] = useState<string>("All");
   const [continent, setContinent] = useState<string>("All");
   const [region, setRegion] = useState<string>("All");
   const [country, setCountry] = useState<string>("All");
@@ -59,16 +62,18 @@ export function OpeningsBoard({ openings }: Props) {
             <select
               value={intake}
               onChange={(event) => {
-                setIntake(event.target.value as Intake);
+                setIntake(event.target.value);
                 setContinent("All");
                 setRegion("All");
                 setCountry("All");
               }}
               className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2"
             >
-              <option value="All">All</option>
-              <option value="Fall 2026">Fall 2026</option>
-              <option value="Spring 2027">Spring 2027</option>
+              {intakeOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option === "All" ? "All" : option}
+                </option>
+              ))}
             </select>
           </label>
 

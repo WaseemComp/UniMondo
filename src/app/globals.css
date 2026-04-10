@@ -139,3 +139,26 @@
     letter-spacing: -0.01em;
   }
 }
+
+@keyframes unimondo-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.unimondo-marquee-track {
+  display: flex;
+  width: max-content;
+  animation: unimondo-marquee 42s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .unimondo-marquee-track {
+    animation: none;
+    justify-content: center;
+    width: 100%;
+  }
+}

@@ -1,4 +1,4 @@
-import { DestinationsBrowser } from "@/components/destinations-browser";
+import { DestinationsLive } from "@/components/destinations/destinations-live";
 import { getCountryDetails } from "@/lib/data/countries";
 
 type Props = {
@@ -22,7 +22,7 @@ export default async function DestinationsPage({ searchParams }: Props) {
         </p>
       </section>
 
-      <DestinationsBrowser initialCountry={params.country} countries={countries} />
+      <DestinationsLive initialCountry={params.country} initialCountries={countries} />
     </main>
   );
 }

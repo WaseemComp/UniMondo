@@ -4,17 +4,30 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOutAdmin } from "@/app/admin/actions";
 import { cn } from "@/lib/utils";
-import { FileText, Globe, GraduationCap, Home, LayoutDashboard, LogOut, Map, Newspaper } from "lucide-react";
+import {
+  BookOpen,
+  FileText,
+  Globe,
+  GraduationCap,
+  Home,
+  LayoutDashboard,
+  LogOut,
+  Map,
+  Newspaper,
+  Settings,
+} from "lucide-react";
 
 const NAV = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/admin/programs", label: "Programs", icon: FileText },
+  { href: "/admin/countries", label: "Countries", icon: Globe },
+  { href: "/admin/blogs", label: "Blogs", icon: BookOpen },
+  { href: "/admin/settings", label: "Site settings", icon: Settings },
+  { section: "More" },
   { href: "/admin/applications", label: "Applications", icon: GraduationCap },
-  { section: "Content" },
+  { section: "Legacy content" },
   { href: "/admin/content/home", label: "Homepage", icon: Home },
-  { href: "/admin/content/ticker", label: "News ticker", icon: Newspaper },
-  { section: "Data" },
-  { href: "/admin/data/programs", label: "Programs", icon: FileText },
-  { href: "/admin/data/countries", label: "Countries", icon: Globe },
+  { href: "/admin/content/ticker", label: "News ticker (multi)", icon: Newspaper },
   { href: "/admin/data/regions", label: "Regions", icon: Map },
 ] as const;
 
@@ -22,14 +35,14 @@ export function AdminSidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="flex w-full flex-col border-r border-zinc-200 bg-white lg:min-h-screen lg:w-64">
+    <aside className="flex w-full flex-col border-r border-zinc-200 bg-white lg:min-h-screen lg:w-64 lg:shrink-0">
       <div className="border-b border-zinc-200 p-4">
         <Link href="/admin/dashboard" className="font-[family-name:var(--font-heading)] text-lg font-semibold text-[#0a1628]">
           <span className="text-amber-600">Uni</span>Mondo Admin
         </Link>
-        <p className="mt-1 text-xs text-zinc-500">Content & programs</p>
+        <p className="mt-1 text-xs text-zinc-500">CMS dashboard</p>
       </div>
-      <nav className="flex flex-1 flex-col gap-1 p-3">
+      <nav className="flex max-h-[calc(100vh-8rem)] flex-1 flex-col gap-1 overflow-y-auto p-3">
         {NAV.map((item, i) =>
           "section" in item ? (
             <p key={`s-${i}`} className="mt-3 px-2 text-xs font-semibold uppercase tracking-wide text-zinc-400 first:mt-0">

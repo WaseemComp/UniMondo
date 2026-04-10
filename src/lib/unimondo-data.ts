@@ -12,6 +12,9 @@ export interface CountryDetail {
   popularUniversities: string[];
   livingCostApprox: string;
   visaInfo: string;
+  slug?: string;
+  flagEmoji?: string;
+  description?: string;
 }
 
 export interface Opening {
@@ -19,12 +22,14 @@ export interface Opening {
   continent: string;
   country: string;
   region: string;
-  intake: "Fall 2026" | "Spring 2027";
+  intake: string;
   university: string;
   logoText: string;
   programName: string;
   deadline: string;
   tuitionRange: string;
+  logoUrl?: string | null;
+  description?: string;
 }
 
 export const countryDetails: CountryDetail[] = [

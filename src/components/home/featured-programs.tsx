@@ -66,9 +66,18 @@ export function FeaturedPrograms({ openings }: Props) {
                   </h3>
                   <p className="mt-1 text-sm text-slate-400">{o.university}</p>
                 </div>
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/10 text-sm font-bold text-amber-200">
-                  {o.logoText}
-                </div>
+                {o.logoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- CMS may point to arbitrary hosts
+                  <img
+                    src={o.logoUrl}
+                    alt=""
+                    className="h-12 w-12 shrink-0 rounded-xl border border-white/10 bg-white/5 object-cover"
+                  />
+                ) : (
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/10 text-sm font-bold text-amber-200">
+                    {o.logoText}
+                  </div>
+                )}
               </div>
               <div className="mt-4 flex flex-wrap gap-4 text-sm text-slate-400">
                 <span className="inline-flex items-center gap-1.5">
@@ -80,6 +89,9 @@ export function FeaturedPrograms({ openings }: Props) {
                   Deadline {o.deadline}
                 </span>
               </div>
+              {o.description ? (
+                <p className="mt-3 line-clamp-2 text-sm text-slate-400">{o.description}</p>
+              ) : null}
               <p className="mt-3 text-sm text-slate-500">Tuition: {o.tuitionRange}</p>
               <div className="mt-5 flex flex-wrap gap-3">
                 <Link

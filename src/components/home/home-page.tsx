@@ -1,7 +1,7 @@
 "use client";
 
 import type { Opening } from "@/lib/unimondo-data";
-import { FeaturedPrograms } from "./featured-programs";
+import { FeaturedProgramsLive } from "./featured-programs-live";
 import { HeroCarousel, type HeroCopy } from "./hero-carousel";
 import { HowItWorks } from "./how-it-works";
 import { JourneyCta } from "./journey-cta";
@@ -22,7 +22,7 @@ export function HomePage({ initialOpenings, heroCopy }: Props) {
       <HeroCarousel copy={heroCopy} />
       <WhyUniMondo />
       <PopularDestinations />
-      <FeaturedPrograms openings={initialOpenings} />
+      <FeaturedProgramsLive initialOpenings={initialOpenings} />
       <Testimonials />
       <HowItWorks />
       <WhyEurope />

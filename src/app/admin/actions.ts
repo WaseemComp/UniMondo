@@ -2,20 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { isAdminUser } from "@/lib/auth/admin";
+import { requireAdminUser } from "@/app/admin/require-admin";
 import { createSupabaseServiceClient } from "@/lib/supabase/admin";
 import { createSupabaseServerAuthClient } from "@/lib/supabase/server-auth";
-
-async function requireAdmin() {
-  const supabase = await createSupabaseServerAuthClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user || !(await isAdminUser(user))) {
-    throw new Error("Unauthorized");
-  }
-  return user;
-}
 
 export async function signOutAdmin() {
   const supabase = await createSupabaseServerAuthClient();
@@ -24,7 +13,7 @@ export async function signOutAdmin() {
 }
 
 export async function saveSiteContent(updates: { key: string; value: string }[]) {
-  await requireAdmin();
+  await requireAdminUser();
   const svc = createSupabaseServiceClient();
   if (!svc) throw new Error("SUPABASE_SERVICE_ROLE_KEY is not set on the server.");
 
@@ -56,7 +45,7 @@ export async function upsertTickerItem(input: {
   sortOrder: number;
   isPublished: boolean;
 }) {
-  await requireAdmin();
+  await requireAdminUser();
   const svc = createSupabaseServiceClient();
   if (!svc) throw new Error("SUPABASE_SERVICE_ROLE_KEY is not set on the server.");
 
@@ -79,7 +68,7 @@ export async function upsertTickerItem(input: {
 }
 
 export async function deleteTickerItem(id: string) {
-  await requireAdmin();
+  await requireAdminUser();
   const svc = createSupabaseServiceClient();
   if (!svc) throw new Error("SUPABASE_SERVICE_ROLE_KEY is not set on the server.");
   const { error } = await svc.from("news_ticker_items").delete().eq("id", id);
