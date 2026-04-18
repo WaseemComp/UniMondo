@@ -2,7 +2,14 @@
 
 import { useState } from "react";
 import useSWR from "swr";
+import { DOCUMENT_CATEGORY_LABELS, PROGRAM_LEVEL_LABELS } from "@/lib/apply/constants";
+import type { DocumentCategory } from "@/lib/apply/constants";
 import type { ApplicationRecord, ReviewStatus } from "@/types/application";
+
+function docCategoryLabel(category: string | undefined) {
+  if (!category) return "Document";
+  return DOCUMENT_CATEGORY_LABELS[category as DocumentCategory] ?? category.replace(/_/g, " ");
+}
 
 const reviewStatuses: ReviewStatus[] = ["Pending", "Approved", "Need More Info", "Rejected"];
 const fetcher = async (url: string) => {
@@ -54,51 +61,148 @@ export function AdminDashboard() {
         <p className="text-sm text-zinc-600">Loading applications...</p>
       ) : (
         <section className="grid gap-4">
-          {applications.map((application) => (
-            <article key={application.trackingId} className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs font-semibold tracking-wide text-zinc-500 uppercase">Tracking ID</p>
-                  <h3 className="text-lg font-semibold text-zinc-900">{application.trackingId}</h3>
-                  <p className="mt-1 text-sm text-zinc-700">{application.payload.personalInfo.fullName}</p>
-                  <p className="text-sm text-zinc-600">{application.payload.personalInfo.email}</p>
-                  {application.payload.packageSelection?.packageName ? (
-                    <p className="mt-2 text-sm text-zinc-700">
-                      <span className="font-semibold text-zinc-900">Package:</span>{" "}
-                      {application.payload.packageSelection.packageName}
-                      {application.payload.packageSelection.addonIds?.length ? (
-                        <span className="text-zinc-600">
-                          {" "}
-                          · {application.payload.packageSelection.addonIds.length} add-on(s)
-                        </span>
-                      ) : null}
-                    </p>
-                  ) : null}
-                </div>
-                <div className="space-y-1 text-sm">
-                  <p>
-                    <span className="font-semibold text-zinc-900">Screening:</span> {application.screeningTag}
-                  </p>
-                  <p>
-                    <span className="font-semibold text-zinc-900">Review:</span> {application.reviewStatus}
-                  </p>
-                </div>
-              </div>
+          {applications.map((application) => {
+            const prefs = application.payload.programPreferences;
+            const personal = application.payload.personalInfo;
+            const academic = application.payload.academicBackground;
+            const level = prefs.programLevel;
+            const levelLabel =
+              level && level in PROGRAM_LEVEL_LABELS ? PROGRAM_LEVEL_LABELS[level] : level ? level : "—";
 
-              <div className="mt-4 flex flex-wrap gap-2">
-                {(["Approved", "Need More Info", "Rejected"] as ReviewStatus[]).map((status) => (
-                  <button
-                    key={status}
-                    type="button"
-                    onClick={() => updateStatus(application.trackingId, status)}
-                    className="rounded-full border border-zinc-300 px-3 py-1.5 text-xs font-semibold text-zinc-700 hover:border-zinc-500"
-                  >
-                    Mark {status}
-                  </button>
-                ))}
-              </div>
-            </article>
-          ))}
+            return (
+              <article key={application.trackingId} className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold tracking-wide text-zinc-500 uppercase">Tracking ID</p>
+                    <h3 className="text-lg font-semibold text-zinc-900">{application.trackingId}</h3>
+                    <p className="mt-1 text-xs text-zinc-500">
+                      Submitted {new Date(application.submittedAt).toLocaleString()}
+                    </p>
+                    <p className="mt-1 text-sm text-zinc-700">{personal.fullName}</p>
+                    <p className="text-sm text-zinc-600">{personal.email}</p>
+                    <p className="mt-2 text-sm text-zinc-700">
+                      <span className="font-semibold text-zinc-900">Program level:</span> {levelLabel}
+                    </p>
+                    {application.payload.packageSelection?.packageName ? (
+                      <p className="mt-1 text-sm text-zinc-700">
+                        <span className="font-semibold text-zinc-900">Package:</span>{" "}
+                        {application.payload.packageSelection.packageName}
+                        {application.payload.packageSelection.addonIds?.length ? (
+                          <span className="text-zinc-600">
+                            {" "}
+                            · {application.payload.packageSelection.addonIds.length} add-on(s)
+                          </span>
+                        ) : null}
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="space-y-1 text-sm">
+                    <p>
+                      <span className="font-semibold text-zinc-900">Screening:</span> {application.screeningTag}
+                    </p>
+                    <p>
+                      <span className="font-semibold text-zinc-900">Review:</span> {application.reviewStatus}
+                    </p>
+                  </div>
+                </div>
+
+                <details className="mt-4 rounded-xl border border-zinc-100 bg-zinc-50/90 text-sm text-zinc-800">
+                  <summary className="cursor-pointer select-none px-4 py-3 font-semibold text-zinc-900">
+                    Full application details &amp; attachments
+                  </summary>
+                  <div className="space-y-4 border-t border-zinc-100 px-4 pb-4 pt-3">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Contact</p>
+                      <ul className="mt-1 list-inside list-disc space-y-0.5 text-zinc-700">
+                        <li>Phone: {personal.phone}</li>
+                        <li>Date of birth: {personal.dateOfBirth}</li>
+                        <li>Nationality: {personal.nationality}</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Academic</p>
+                      <ul className="mt-1 list-inside list-disc space-y-0.5 text-zinc-700">
+                        <li>Highest qualification: {academic.highestQualification}</li>
+                        <li>Institution: {academic.institutionName}</li>
+                        <li>
+                          Result (normalized to 4.0 scale for screening): {academic.gpa.toFixed(2)} / 4.0
+                        </li>
+                        <li>IELTS: {academic.ieltsScore}</li>
+                        <li>Graduation year: {academic.graduationYear || "—"}</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Study preferences</p>
+                      <ul className="mt-1 list-inside list-disc space-y-0.5 text-zinc-700">
+                        <li>Intake: {prefs.intake}</li>
+                        <li>Program level: {levelLabel}</li>
+                        <li>Preferred region: {prefs.preferredContinent}</li>
+                        <li>
+                          Destinations:{" "}
+                          {prefs.destinationChoices.map((d) => `#${d.rank} ${d.country}`).join(" · ") || "—"}
+                        </li>
+                        <li>Program / field: {prefs.programInterest}</li>
+                        {prefs.notes?.trim() ? <li>Notes: {prefs.notes}</li> : null}
+                      </ul>
+                    </div>
+                    {application.payload.sourceCountry || application.payload.sourceProgram ? (
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Apply source</p>
+                        <p className="mt-1 text-zinc-700">
+                          {application.payload.sourceCountry ? <>Country: {application.payload.sourceCountry} </> : null}
+                          {application.payload.sourceProgram ? <>· Program: {application.payload.sourceProgram}</> : null}
+                        </p>
+                      </div>
+                    ) : null}
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Uploaded documents</p>
+                      {application.documents.length === 0 ? (
+                        <p className="mt-1 text-zinc-600">No files attached.</p>
+                      ) : (
+                        <ul className="mt-2 space-y-2">
+                          {application.documents.map((doc, i) => (
+                            <li
+                              key={`${doc.url}-${i}`}
+                              className="flex flex-wrap items-start justify-between gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2"
+                            >
+                              <div>
+                                <p className="font-medium text-zinc-900">{doc.name}</p>
+                                <p className="text-xs text-zinc-500">
+                                  {docCategoryLabel(doc.category)}
+                                  {doc.description?.trim() ? ` · ${doc.description}` : ""}
+                                </p>
+                              </div>
+                              <a
+                                href={doc.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="shrink-0 rounded-full border border-zinc-300 bg-white px-3 py-1 text-xs font-semibold text-zinc-800 hover:border-zinc-500"
+                              >
+                                Open
+                              </a>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </div>
+                </details>
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {(["Approved", "Need More Info", "Rejected"] as ReviewStatus[]).map((status) => (
+                    <button
+                      key={status}
+                      type="button"
+                      onClick={() => updateStatus(application.trackingId, status)}
+                      className="rounded-full border border-zinc-300 px-3 py-1.5 text-xs font-semibold text-zinc-700 hover:border-zinc-500"
+                    >
+                      Mark {status}
+                    </button>
+                  ))}
+                </div>
+              </article>
+            );
+          })}
 
           {!applications.length && (
             <p className="rounded-xl border border-dashed border-zinc-300 bg-white p-6 text-center text-sm text-zinc-600">

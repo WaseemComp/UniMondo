@@ -9,6 +9,8 @@ import {
   DESTINATION_OPTIONS,
   DOCUMENT_CATEGORIES,
   DOCUMENT_CATEGORY_LABELS,
+  PROGRAM_LEVEL_LABELS,
+  PROGRAM_LEVEL_VALUES,
   type DocumentCategory,
 } from "@/lib/apply/constants";
 import { applicationFormSchema, type ApplicationFormValues } from "@/lib/apply/schema";
@@ -72,6 +74,7 @@ export function ApplyWizard({ packages, addOns }: Props) {
       },
       studyPreferences: {
         intake: "Fall 2026",
+        programLevel: "bachelors_undergraduate",
         preferredContinent: "Europe",
         destinations: [{ rank: 1, country: prefilledCountry }],
         programInterest: prefilledProgram,
@@ -459,6 +462,26 @@ export function ApplyWizard({ packages, addOns }: Props) {
                 </select>
               </label>
 
+              <div className="md:col-span-2">
+                <p className="text-sm font-medium text-zinc-900">Program level</p>
+                <p className="mt-1 text-xs text-zinc-500">
+                  Are you applying for a bachelors (undergraduate) or masters (post-graduate) program?
+                </p>
+                <div className="mt-3 flex flex-wrap gap-6 text-sm text-zinc-700">
+                  {PROGRAM_LEVEL_VALUES.map((level) => (
+                    <label key={level} className="flex cursor-pointer items-center gap-2">
+                      <input type="radio" value={level} {...register("studyPreferences.programLevel")} />
+                      {PROGRAM_LEVEL_LABELS[level]}
+                    </label>
+                  ))}
+                </div>
+                {formState.errors.studyPreferences?.programLevel?.message && (
+                  <p className="mt-2 text-sm text-red-600">
+                    {formState.errors.studyPreferences.programLevel.message}
+                  </p>
+                )}
+              </div>
+
               <Field
                 label="Preferred continent / region"
                 error={formState.errors.studyPreferences?.preferredContinent?.message}
@@ -720,7 +743,12 @@ export function ApplyWizard({ packages, addOns }: Props) {
                 {watched.studyPreferences.destinations.map((d) => `No.${d.rank} ${d.country}`).join(" · ") || "—"}
               </p>
               <p>
-                <span className="font-semibold">Program:</span> {watched.studyPreferences.programInterest || "—"}
+                <span className="font-semibold">Program level:</span>{" "}
+                {PROGRAM_LEVEL_LABELS[watched.studyPreferences.programLevel]}
+              </p>
+              <p>
+                <span className="font-semibold">Program / field of interest:</span>{" "}
+                {watched.studyPreferences.programInterest || "—"}
               </p>
               <p>
                 <span className="font-semibold">Support package:</span> {watched.packageSelection.packageName || "—"}

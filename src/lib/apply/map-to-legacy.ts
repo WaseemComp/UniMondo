@@ -34,6 +34,7 @@ export function buildPayloadSnapshot(
     },
     programPreferences: {
       intake: values.studyPreferences.intake,
+      programLevel: values.studyPreferences.programLevel,
       preferredContinent: values.studyPreferences.preferredContinent,
       destinationChoices: values.studyPreferences.destinations.map((d) => ({
         rank: d.rank as 1 | 2 | 3,

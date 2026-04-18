@@ -20,6 +20,8 @@ export interface AcademicBackground {
 
 export interface ProgramPreferences {
   intake: "Fall 2026" | "Spring 2027";
+  /** Undergraduate vs graduate program (added after earlier submissions). */
+  programLevel?: "bachelors_undergraduate" | "masters_postgraduate";
   preferredContinent: string;
   destinationChoices: Array<{ rank: 1 | 2 | 3; country: string }>;
   programInterest: string;

@@ -18,6 +18,14 @@ export const DOCUMENT_CATEGORY_LABELS: Record<DocumentCategory, string> = {
   photo: "Photo",
 };
 
+export const PROGRAM_LEVEL_VALUES = ["bachelors_undergraduate", "masters_postgraduate"] as const;
+export type ProgramLevelValue = (typeof PROGRAM_LEVEL_VALUES)[number];
+
+export const PROGRAM_LEVEL_LABELS: Record<ProgramLevelValue, string> = {
+  bachelors_undergraduate: "Bachelors / Undergraduate",
+  masters_postgraduate: "Masters / Post Graduate",
+};
+
 export const DESTINATION_OPTIONS = [
   "Italy",
   "Germany",

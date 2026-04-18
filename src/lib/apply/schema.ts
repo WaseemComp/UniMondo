@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { DOCUMENT_CATEGORIES } from "./constants";
+import { DOCUMENT_CATEGORIES, PROGRAM_LEVEL_VALUES } from "./constants";
 
 export const personalInfoSchema = z.object({
   fullName: z.string().min(2, "Full name is required"),
@@ -87,6 +87,7 @@ export const destinationRowSchema = z.object({
 export const studyPreferencesSchema = z
   .object({
     intake: z.enum(["Fall 2026", "Spring 2027"]),
+    programLevel: z.enum(PROGRAM_LEVEL_VALUES),
     preferredContinent: z.string().min(1, "Required"),
     destinations: z.array(destinationRowSchema).min(1, "Add at least one destination").max(3),
     programInterest: z.string().min(1, "Program interest is required"),
