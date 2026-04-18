@@ -22,7 +22,6 @@ export interface ProgramPreferences {
   intake: "Fall 2026" | "Spring 2027";
   preferredContinent: string;
   destinationChoices: Array<{ rank: 1 | 2 | 3; country: string }>;
-  manualDestination?: string;
   programInterest: string;
   notes?: string;
 }
@@ -32,6 +31,8 @@ export interface UploadedDocument {
   type: string;
   size: number;
   url: string;
+  category?: string;
+  description?: string;
 }
 
 export interface PackageSelection {
