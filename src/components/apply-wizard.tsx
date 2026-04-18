@@ -1,13 +1,16 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import type { StudyAddOnPublic, StudyPackagePublic } from "@/lib/cms/pricing-types";
 import type { ApplicationPayload } from "@/types/application";
 
 const stepLabels = [
   "Personal Info",
   "Academic Background",
   "Program Preferences",
+  "Support Package",
   "Document Upload",
   "Review & Submit",
 ];
@@ -18,7 +21,12 @@ type SubmissionState =
   | { status: "success"; trackingId: string; screeningTag: string }
   | { status: "error"; message: string };
 
-export function ApplyWizard() {
+type Props = {
+  packages: StudyPackagePublic[];
+  addOns: StudyAddOnPublic[];
+};
+
+export function ApplyWizard({ packages, addOns }: Props) {
   const searchParams = useSearchParams();
 
   const prefilledCountry = searchParams.get("country") || "Italy";
@@ -47,6 +55,7 @@ export function ApplyWizard() {
   const [step, setStep] = useState(1);
   const [files, setFiles] = useState<File[]>([]);
   const [submission, setSubmission] = useState<SubmissionState>({ status: "idle" });
+  const [packageStepError, setPackageStepError] = useState<string | null>(null);
 
   const [form, setForm] = useState<ApplicationPayload>({
     personalInfo: {
@@ -74,6 +83,12 @@ export function ApplyWizard() {
       manualDestination: "",
       programInterest: prefilledProgram,
       notes: "",
+    },
+    packageSelection: {
+      packageId: "",
+      packageSlug: "",
+      packageName: "",
+      addonIds: [],
     },
     sourceCountry: prefilledCountry,
     sourceProgram: prefilledProgram,
@@ -127,6 +142,35 @@ export function ApplyWizard() {
     }));
   };
 
+  const selectPackage = (pkg: StudyPackagePublic) => {
+    setPackageStepError(null);
+    setForm((prev) => ({
+      ...prev,
+      packageSelection: {
+        ...prev.packageSelection!,
+        packageId: pkg.id,
+        packageSlug: pkg.slug,
+        packageName: pkg.name,
+      },
+    }));
+  };
+
+  const toggleAddon = (id: string) => {
+    setForm((prev) => {
+      const cur = prev.packageSelection?.addonIds ?? [];
+      const next = cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id];
+      return {
+        ...prev,
+        packageSelection: {
+          packageId: prev.packageSelection?.packageId ?? "",
+          packageSlug: prev.packageSelection?.packageSlug ?? "",
+          packageName: prev.packageSelection?.packageName ?? "",
+          addonIds: next,
+        },
+      };
+    });
+  };
+
   const appendFiles = (incoming: FileList | null) => {
     if (!incoming) return;
     const next = Array.from(incoming);
@@ -137,7 +181,21 @@ export function ApplyWizard() {
     setFiles((prev) => prev.filter((_, fileIndex) => fileIndex !== index));
   };
 
-  const nextStep = () => setStep((prev) => Math.min(prev + 1, 5));
+  const nextStep = () => {
+    if (step === 4) {
+      if (!packages.length) {
+        setPackageStepError("Support packages are not available yet. Please contact UniMondo to continue.");
+        return;
+      }
+      if (!form.packageSelection?.packageId) {
+        setPackageStepError("Please select a support package to continue.");
+        return;
+      }
+      setPackageStepError(null);
+    }
+    setStep((prev) => Math.min(prev + 1, 6));
+  };
+
   const prevStep = () => setStep((prev) => Math.max(prev - 1, 1));
 
   const submitApplication = async () => {
@@ -177,6 +235,11 @@ export function ApplyWizard() {
     }
   };
 
+  const selectedAddonNames = useMemo(() => {
+    const ids = form.packageSelection?.addonIds ?? [];
+    return addOns.filter((a) => ids.includes(a.id)).map((a) => a.name);
+  }, [addOns, form.packageSelection?.addonIds]);
+
   if (submission.status === "success") {
     return (
       <section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-8 shadow-sm">
@@ -190,7 +253,7 @@ export function ApplyWizard() {
   return (
     <div className="space-y-6">
       <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-        <div className="grid gap-2 sm:grid-cols-5">
+        <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
           {stepLabels.map((label, index) => {
             const stepNumber = index + 1;
             const active = stepNumber === step;
@@ -199,7 +262,7 @@ export function ApplyWizard() {
             return (
               <div
                 key={label}
-                className={`rounded-lg border px-3 py-2 text-xs font-semibold ${
+                className={`rounded-lg border px-2 py-2 text-center text-[11px] font-semibold leading-tight sm:text-xs ${
                   active
                     ? "border-zinc-900 bg-zinc-900 text-white"
                     : completed
@@ -207,7 +270,8 @@ export function ApplyWizard() {
                       : "border-zinc-200 bg-zinc-50 text-zinc-600"
                 }`}
               >
-                Step {stepNumber}: {label}
+                <span className="block">Step {stepNumber}</span>
+                <span className="mt-0.5 block font-normal opacity-90">{label}</span>
               </div>
             );
           })}
@@ -321,6 +385,84 @@ export function ApplyWizard() {
         )}
 
         {step === 4 && (
+          <div className="space-y-6">
+            <p className="rounded-lg border border-amber-100 bg-amber-50/80 px-4 py-3 text-sm leading-relaxed text-amber-950">
+              Select a support package that suits your needs.{" "}
+              <strong className="font-semibold">Application submission is completely FREE.</strong> You can upgrade or
+              change it later. Prices are not shown here — see the{" "}
+              <Link href="/packages" className="font-medium text-amber-900 underline underline-offset-2">
+                Our packages
+              </Link>{" "}
+              page for details.
+            </p>
+
+            {!packages.length ? (
+              <p className="text-sm text-red-700">
+                Packages are not loaded. Please try again later or contact UniMondo.
+              </p>
+            ) : (
+              <fieldset className="space-y-3">
+                <legend className="text-sm font-semibold text-zinc-900">Main package</legend>
+                <div className="grid gap-3">
+                  {packages.map((pkg) => {
+                    const selected = form.packageSelection?.packageId === pkg.id;
+                    return (
+                      <label
+                        key={pkg.id}
+                        className={`flex cursor-pointer flex-col rounded-xl border-2 p-4 transition ${
+                          selected ? "border-amber-500 bg-amber-50/50" : "border-zinc-200 hover:border-zinc-300"
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <input
+                            type="radio"
+                            name="study-package"
+                            checked={selected}
+                            onChange={() => selectPackage(pkg)}
+                            className="mt-1"
+                          />
+                          <div>
+                            <span className="font-semibold text-zinc-900">{pkg.name}</span>
+                            <p className="mt-1 text-sm leading-relaxed text-zinc-600">{pkg.teaser}</p>
+                          </div>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              </fieldset>
+            )}
+
+            {addOns.length > 0 && (
+              <fieldset className="space-y-3">
+                <legend className="text-sm font-semibold text-zinc-900">Add-ons (optional)</legend>
+                <div className="space-y-2">
+                  {addOns.map((a) => {
+                    const checked = (form.packageSelection?.addonIds ?? []).includes(a.id);
+                    return (
+                      <label
+                        key={a.id}
+                        className="flex cursor-pointer items-start gap-3 rounded-xl border border-zinc-200 p-3 hover:bg-zinc-50"
+                      >
+                        <input type="checkbox" checked={checked} onChange={() => toggleAddon(a.id)} className="mt-1" />
+                        <div>
+                          <span className="font-medium text-zinc-900">{a.name}</span>
+                          <p className="mt-0.5 text-xs text-zinc-600 sm:text-sm">{a.description}</p>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              </fieldset>
+            )}
+
+            {packageStepError && (
+              <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{packageStepError}</p>
+            )}
+          </div>
+        )}
+
+        {step === 5 && (
           <div className="space-y-4">
             <label
               className="block rounded-2xl border-2 border-dashed border-zinc-300 bg-zinc-50 p-10 text-center text-sm text-zinc-600"
@@ -363,7 +505,7 @@ export function ApplyWizard() {
           </div>
         )}
 
-        {step === 5 && (
+        {step === 6 && (
           <div className="space-y-4 text-sm text-zinc-700">
             <p>
               <span className="font-semibold">Name:</span> {form.personalInfo.fullName || "-"}
@@ -380,6 +522,14 @@ export function ApplyWizard() {
             <p>
               <span className="font-semibold">Program:</span> {form.programPreferences.programInterest || "-"}
             </p>
+            <p>
+              <span className="font-semibold">Support package:</span> {form.packageSelection?.packageName || "-"}
+            </p>
+            {selectedAddonNames.length > 0 && (
+              <p>
+                <span className="font-semibold">Add-ons:</span> {selectedAddonNames.join(", ")}
+              </p>
+            )}
             <p>
               <span className="font-semibold">Files:</span> {files.length}
             </p>
@@ -400,7 +550,7 @@ export function ApplyWizard() {
             Back
           </button>
 
-          {step < 5 ? (
+          {step < 6 ? (
             <button
               type="button"
               onClick={nextStep}

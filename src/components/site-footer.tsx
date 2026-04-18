@@ -3,7 +3,8 @@ import { Globe, Mail, MapPin, Phone } from "lucide-react";
 
 const LINKS = {
   explore: [
-    { href: "/current-openings", label: "Programs" },
+    { href: "/current-openings", label: "Featured Universities" },
+    { href: "/packages", label: "Our Packages" },
     { href: "/destinations", label: "Countries" },
     { href: "/apply", label: "Apply" },
   ],

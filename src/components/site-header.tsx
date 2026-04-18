@@ -9,7 +9,8 @@ import { cn } from "@/lib/utils";
 
 const NAV = [
   { href: "/", label: "Home" },
-  { href: "/current-openings", label: "Programs" },
+  { href: "/current-openings", label: "Featured Universities" },
+  { href: "/packages", label: "Our Packages" },
   { href: "/destinations", label: "Countries" },
   { href: "/about", label: "About" },
   { href: "/blog", label: "Blog" },
@@ -17,10 +18,13 @@ const NAV = [
 ] as const;
 
 function isNavActive(pathname: string, href: string) {
+  if (href === "/") {
+    return pathname === "/";
+  }
   if (href === "/current-openings") {
     return pathname === "/current-openings" || pathname === "/programs";
   }
-  return pathname === href;
+  return pathname === href || pathname.startsWith(`${href}/`);
 }
 
 export function SiteHeader() {
@@ -40,7 +44,7 @@ export function SiteHeader() {
               key={`${item.href}-${item.label}`}
               href={item.href}
               className={cn(
-                "rounded-full px-3 py-2 text-sm font-medium transition",
+                "whitespace-nowrap rounded-full px-2.5 py-2 text-[13px] font-medium transition xl:px-3 xl:text-sm",
                 isNavActive(pathname, item.href) ? "bg-white/10 text-amber-300" : "text-slate-300 hover:bg-white/5 hover:text-white",
               )}
             >

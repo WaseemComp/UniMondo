@@ -48,7 +48,7 @@ export function HeroCarousel({
     title: "Your Future Knows No Borders",
     subtitle:
       "Personalized admissions guidance, visa expertise, and full student support — from first call to campus arrival.",
-    ctaExplore: "Explore Programs",
+    ctaExplore: "Featured Universities",
     ctaApply: "Begin Your Application",
   },
 }: {

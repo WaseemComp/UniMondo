@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import {
   BookOpen,
   FileText,
+  Gift,
   Globe,
   GraduationCap,
   Home,
@@ -22,6 +23,7 @@ const NAV = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/programs", label: "Programs", icon: FileText },
   { href: "/admin/featured-universities", label: "Featured universities", icon: Landmark },
+  { href: "/admin/packages", label: "Packages", icon: Gift },
   { href: "/admin/countries", label: "Countries", icon: Globe },
   { href: "/admin/blogs", label: "Blogs", icon: BookOpen },
   { href: "/admin/settings", label: "Site settings", icon: Settings },

@@ -34,10 +34,21 @@ export interface UploadedDocument {
   url: string;
 }
 
+export interface PackageSelection {
+  /** Selected main package id (UUID from `packages`). */
+  packageId: string;
+  packageSlug: string;
+  packageName: string;
+  /** Selected add-on ids (UUID from `add_ons`). */
+  addonIds: string[];
+}
+
 export interface ApplicationPayload {
   personalInfo: PersonalInfo;
   academicBackground: AcademicBackground;
   programPreferences: ProgramPreferences;
+  /** Step 4: support package + optional add-ons (stored in Supabase with application). */
+  packageSelection?: PackageSelection;
   sourceCountry?: string;
   sourceProgram?: string;
 }

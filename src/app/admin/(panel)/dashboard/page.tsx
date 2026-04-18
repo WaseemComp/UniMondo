@@ -1,30 +1,34 @@
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createSupabaseServiceClient } from "@/lib/supabase/admin";
-import { FileText, Globe, LayoutDashboard, Newspaper, Settings } from "lucide-react";
+import { FileText, Gift, Globe, LayoutDashboard, Newspaper, Settings } from "lucide-react";
 
 export default async function AdminDashboardPage() {
   const svc = createSupabaseServiceClient();
 
   let programCount = 0;
+  let packageCount = 0;
   let countryCount = 0;
   let blogCount = 0;
   let tickerActive = false;
   let loadError: string | null = null;
 
   if (svc) {
-    const [pRes, cRes, bRes, tRes] = await Promise.all([
+    const [pRes, pkgRes, cRes, bRes, tRes] = await Promise.all([
       svc.from("programs").select("id", { count: "exact", head: true }),
+      svc.from("packages").select("id", { count: "exact", head: true }),
       svc.from("countries").select("id", { count: "exact", head: true }),
       svc.from("blogs").select("id", { count: "exact", head: true }),
       svc.from("site_settings").select("ticker_active").eq("id", 1).maybeSingle(),
     ]);
 
     if (pRes.error && !pRes.error.message.includes("does not exist")) loadError = pRes.error.message;
+    if (pkgRes.error && !pkgRes.error.message.includes("does not exist") && !loadError) loadError = pkgRes.error.message;
     if (cRes.error && !cRes.error.message.includes("does not exist") && !loadError) loadError = cRes.error.message;
     if (bRes.error && !bRes.error.message.includes("does not exist") && !loadError) loadError = bRes.error.message;
 
     programCount = pRes.count ?? 0;
+    packageCount = pkgRes.error?.message.includes("does not exist") ? 0 : (pkgRes.count ?? 0);
     countryCount = cRes.count ?? 0;
     blogCount = bRes.count ?? 0;
     tickerActive = Boolean(tRes.data?.ticker_active);
@@ -32,6 +36,7 @@ export default async function AdminDashboardPage() {
 
   const cards = [
     { label: "Programs", value: programCount, href: "/admin/programs", icon: FileText },
+    { label: "Packages", value: packageCount, href: "/admin/packages", icon: Gift },
     { label: "Countries", value: countryCount, href: "/admin/countries", icon: Globe },
     { label: "Blog posts", value: blogCount, href: "/admin/blogs", icon: Newspaper },
  ] as const;
@@ -56,7 +61,7 @@ export default async function AdminDashboardPage() {
         <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{loadError}</p>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {cards.map((c) => (
           <Link key={c.href} href={c.href}>
             <Card className="h-full transition hover:border-amber-300 hover:shadow-md">

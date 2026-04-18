@@ -62,6 +62,18 @@ export function AdminDashboard() {
                   <h3 className="text-lg font-semibold text-zinc-900">{application.trackingId}</h3>
                   <p className="mt-1 text-sm text-zinc-700">{application.payload.personalInfo.fullName}</p>
                   <p className="text-sm text-zinc-600">{application.payload.personalInfo.email}</p>
+                  {application.payload.packageSelection?.packageName ? (
+                    <p className="mt-2 text-sm text-zinc-700">
+                      <span className="font-semibold text-zinc-900">Package:</span>{" "}
+                      {application.payload.packageSelection.packageName}
+                      {application.payload.packageSelection.addonIds?.length ? (
+                        <span className="text-zinc-600">
+                          {" "}
+                          · {application.payload.packageSelection.addonIds.length} add-on(s)
+                        </span>
+                      ) : null}
+                    </p>
+                  ) : null}
                 </div>
                 <div className="space-y-1 text-sm">
                   <p>

@@ -3,6 +3,7 @@
 import type { Opening } from "@/lib/unimondo-data";
 import { FeaturedProgramsLive } from "./featured-programs-live";
 import { HeroCarousel, type HeroCopy } from "./hero-carousel";
+import { HomeMarketingBanner } from "./home-marketing-banner";
 import { HowItWorks } from "./how-it-works";
 import { JourneyCta } from "./journey-cta";
 import { PopularDestinations } from "./popular-destinations";
@@ -20,6 +21,7 @@ export function HomePage({ initialOpenings, heroCopy }: Props) {
   return (
     <>
       <HeroCarousel copy={heroCopy} />
+      <HomeMarketingBanner />
       <WhyUniMondo />
       <PopularDestinations />
       <FeaturedProgramsLive initialOpenings={initialOpenings} />
