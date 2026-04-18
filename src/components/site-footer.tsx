@@ -1,22 +1,25 @@
 import Link from "next/link";
 import { Globe, Mail, MapPin, Phone } from "lucide-react";
+import { getContactFooterSummary } from "@/lib/data/contact-page";
 
 const LINKS = {
   explore: [
     { href: "/current-openings", label: "Featured Universities" },
-    { href: "/packages", label: "Our Packages" },
     { href: "/destinations", label: "Countries" },
+    { href: "/packages", label: "Our Packages" },
     { href: "/apply", label: "Apply" },
   ],
   company: [
     { href: "/about", label: "About" },
-    { href: "/blog", label: "Blog" },
     { href: "/contact", label: "Contact" },
+    { href: "/blog", label: "Blog" },
     { href: "/admin/login", label: "Staff sign in" },
   ],
 };
 
-export function SiteFooter() {
+export async function SiteFooter() {
+  const { headAddressShort, branchAddressShort, primaryPhone, emailHello, emailAdmissions } = await getContactFooterSummary();
+
   return (
     <footer className="border-t border-white/10 bg-[#050d1a] text-slate-400">
       <div className="mx-auto grid max-w-7xl gap-12 px-4 py-14 sm:grid-cols-2 sm:px-6 lg:grid-cols-4 lg:px-8">
@@ -38,7 +41,7 @@ export function SiteFooter() {
               <Globe className="h-5 w-5" />
             </a>
             <a
-              href="mailto:hello@unimondo.example"
+              href={`mailto:${emailHello}`}
               className="rounded-full border border-white/15 p-2 text-slate-300 transition hover:border-amber-500/50 hover:text-amber-300"
               aria-label="Email"
             >
@@ -76,21 +79,49 @@ export function SiteFooter() {
         <div>
           <h3 className="text-xs font-semibold uppercase tracking-wider text-amber-500/90">Contact</h3>
           <ul className="mt-4 space-y-3 text-sm">
-            <li className="flex gap-2">
-              <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-amber-500/80" aria-hidden />
-              <span>Europe admissions desk · Remote-first counseling</span>
-            </li>
+            {headAddressShort ? (
+              <li className="flex gap-2">
+                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-amber-500/80" aria-hidden />
+                <span>
+                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Head office</span>
+                  <span className="mt-0.5 block text-slate-300">{headAddressShort}</span>
+                </span>
+              </li>
+            ) : (
+              <li className="flex gap-2 text-slate-500">
+                <MapPin className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+                <span>Configure in Admin → Contact management</span>
+              </li>
+            )}
+            {branchAddressShort ? (
+              <li className="flex gap-2">
+                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-amber-500/80" aria-hidden />
+                <span>
+                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Branch</span>
+                  <span className="mt-0.5 block text-slate-300">{branchAddressShort}</span>
+                </span>
+              </li>
+            ) : null}
             <li className="flex gap-2">
               <Phone className="mt-0.5 h-4 w-4 shrink-0 text-amber-500/80" aria-hidden />
-              <a href="tel:+0000000000" className="hover:text-white">
-                Schedule a call
-              </a>
+              {primaryPhone ? (
+                <a href={`tel:${primaryPhone.replace(/\s+/g, "")}`} className="hover:text-white">
+                  {primaryPhone}
+                </a>
+              ) : (
+                <span className="text-slate-500">See contact page</span>
+              )}
             </li>
             <li className="flex gap-2">
               <Mail className="mt-0.5 h-4 w-4 shrink-0 text-amber-500/80" aria-hidden />
-              <a href="mailto:hello@unimondo.example" className="hover:text-white">
-                hello@unimondo.example
-              </a>
+              <div className="space-y-1">
+                <a href={`mailto:${emailHello}`} className="block hover:text-white">
+                  {emailHello}
+                </a>
+                <a href={`mailto:${emailAdmissions}`} className="block hover:text-white">
+                  {emailAdmissions}
+                </a>
+              </div>
             </li>
           </ul>
         </div>

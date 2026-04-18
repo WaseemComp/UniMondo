@@ -28,12 +28,12 @@ export function FeaturedPrograms({ openings }: Props) {
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-400/90">Featured programs</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-400/90">Featured universities</p>
             <h2 className="mt-2 font-[family-name:var(--font-heading)] text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-              Current openings
+              Featured Universities and Programs
             </h2>
             <p className="mt-3 max-w-xl text-slate-300">
-              Hand-picked MSc and graduate tracks with clear deadlines and tuition bands.
+              Hand-picked tracks from leading institutions — clear deadlines, transparent tuition bands, and counselor support.
             </p>
           </div>
           <Link

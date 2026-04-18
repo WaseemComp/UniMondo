@@ -10,11 +10,11 @@ import { cn } from "@/lib/utils";
 const NAV = [
   { href: "/", label: "Home" },
   { href: "/current-openings", label: "Featured Universities" },
-  { href: "/packages", label: "Our Packages" },
   { href: "/destinations", label: "Countries" },
+  { href: "/packages", label: "Our Packages" },
   { href: "/about", label: "About" },
-  { href: "/blog", label: "Blog" },
   { href: "/contact", label: "Contact" },
+  { href: "/blog", label: "Blog" },
 ] as const;
 
 function isNavActive(pathname: string, href: string) {
