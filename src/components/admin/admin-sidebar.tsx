@@ -10,6 +10,7 @@ import {
   Globe,
   GraduationCap,
   Home,
+  Landmark,
   LayoutDashboard,
   LogOut,
   Map,
@@ -20,6 +21,7 @@ import {
 const NAV = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/programs", label: "Programs", icon: FileText },
+  { href: "/admin/featured-universities", label: "Featured universities", icon: Landmark },
   { href: "/admin/countries", label: "Countries", icon: Globe },
   { href: "/admin/blogs", label: "Blogs", icon: BookOpen },
   { href: "/admin/settings", label: "Site settings", icon: Settings },
