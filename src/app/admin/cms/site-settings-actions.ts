@@ -22,22 +22,21 @@ export async function saveSiteSettings(input: unknown): Promise<{ ok: true } | {
       return { ok: false, error: first ? first.message : "Invalid data" };
     }
 
-    const { error } = await svc
-      .from("site_settings")
-      .upsert(
-        {
-          id: 1,
-          ticker_text: parsed.data.ticker_text,
-          ticker_active: parsed.data.ticker_active,
- },
-        { onConflict: "id" },
-      );
+    const { error } = await svc.from("site_settings").upsert(
+      {
+        id: 1,
+        ticker_text: parsed.data.ticker_text,
+        ticker_active: parsed.data.ticker_active,
+      },
+      { onConflict: "id" },
+    );
 
     if (error) return { ok: false, error: error.message };
 
     revalidatePath("/");
     revalidatePath("/admin/settings");
     revalidatePath("/admin/dashboard");
+    revalidatePath("/admin/content/ticker");
     return { ok: true };
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Save failed";

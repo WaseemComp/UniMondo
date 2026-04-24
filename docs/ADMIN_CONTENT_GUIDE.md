@@ -108,7 +108,7 @@ After configuring `.env.local`:
 3. Run SQL migrations (including `20260331200000_admin_cms.sql` for `site_content` + `news_ticker_items`).
 4. Open **`/admin/login`**, then use the sidebar: **Homepage**, **News ticker**, **Programs**, **Countries**, **Regions**, **Applications**.
 
-Programs/countries/regions tables are **view + link to Supabase** for full edits; homepage copy and ticker are **editable in-app**.
+Programs and countries are **editable in-app**; **Regions** (`/admin/data/regions`) supports add/edit/delete. Homepage copy and the **multi-line News ticker** (plus Settings fallback) are editable in-app.
 
 ---
 

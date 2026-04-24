@@ -98,7 +98,7 @@ Public pages subscribe with the **anon** browser client:
 
 - Home featured programs: `FeaturedProgramsLive` → `programs`
 - Destinations: `DestinationsLive` → `countries`
-- Marquee: `SiteMarquee` → `site_settings` (`id=eq.1`)
+- Marquee: `SiteTickerBand` subscribes to `site_settings` (`id=eq.1`) for on/off + fallback text; server also passes published `news_ticker_items` from `getTickerItems()`.
 
 ## Admin UI routes
 
@@ -108,7 +108,9 @@ Public pages subscribe with the **anon** browser client:
 | `/admin/programs` | CRUD programs (table + modal form) |
 | `/admin/countries` | CRUD countries (region group, slug, emoji, copy, universities) |
 | `/admin/blogs` | CRUD blog posts |
-| `/admin/settings` | Ticker text + on/off |
+| `/admin/settings` | Ticker master on/off + fallback single-line text when no News ticker items |
+| `/admin/content/ticker` | Multi-line published News ticker (links + order) |
+| `/admin/data/regions` | CRUD region groups + continent |
 
 Legacy shortcuts:
 
@@ -119,7 +121,7 @@ Homepage copy and multi-item news ticker remain under `/admin/content/*` for bac
 
 ## Public site wiring
 
-- **Marquee:** `src/app/(public)/layout.tsx` loads `getSiteSettings()` and renders `SiteMarquee` below `SiteHeader`.
+- **Marquee:** `src/app/(public)/layout.tsx` loads `getSiteSettings()` + `getTickerItems()` and renders `SiteTickerBand` below `SiteHeader` (published ticker rows scroll when enabled; otherwise fallback text from settings).
 - **Featured programs:** `HomePage` uses `FeaturedProgramsLive` with server-rendered `getOpenings()` as initial data; client listens for `programs` changes.
 - **Destinations:** `DestinationsLive` wraps `DestinationsBrowser` with a `countries` subscription.
 - **Blog:** `/blog` lists published posts; `/blog/[slug]` shows a post.
