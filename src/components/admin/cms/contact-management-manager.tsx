@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { Trash2 } from "lucide-react";
 
 type Props = {
   offices: ContactOfficeRow[];
@@ -80,6 +81,13 @@ export function ContactManagementManager({ offices: initial }: Props) {
       links[i] = { ...links[i]!, ...s };
       return { ...d, social_links: links };
     });
+
+  const removePhone = (i: number) =>
+    setDraft((d) => ({ ...d, phones: (d.phones ?? []).filter((_, idx) => idx !== i) }));
+  const removeEmail = (i: number) =>
+    setDraft((d) => ({ ...d, emails: (d.emails ?? []).filter((_, idx) => idx !== i) }));
+  const removeSocial = (i: number) =>
+    setDraft((d) => ({ ...d, social_links: (d.social_links ?? []).filter((_, idx) => idx !== i) }));
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -222,23 +230,35 @@ export function ContactManagementManager({ offices: initial }: Props) {
             </div>
             <div className="mt-3 space-y-3">
               {(draft.phones ?? []).map((p, i) => (
-                <div key={i} className="grid gap-2 rounded-lg border border-zinc-100 p-3 sm:grid-cols-4">
-                  <Input
-                    placeholder="Number"
-                    value={p.number}
-                    onChange={(e) => setPhone(i, { number: e.target.value })}
-                    className="sm:col-span-2"
-                  />
-                  <Input placeholder="Label" value={p.label ?? ""} onChange={(e) => setPhone(i, { label: e.target.value })} />
-                  <select
-                    value={p.kind ?? "landline"}
-                    onChange={(e) => setPhone(i, { kind: e.target.value as OfficePhone["kind"] })}
-                    className="rounded-md border border-zinc-200 px-2 text-sm"
+                <div key={i} className="flex flex-col gap-2 rounded-lg border border-zinc-100 p-3 sm:flex-row sm:items-end">
+                  <div className="grid flex-1 gap-2 sm:grid-cols-4">
+                    <Input
+                      placeholder="Number"
+                      value={p.number}
+                      onChange={(e) => setPhone(i, { number: e.target.value })}
+                      className="sm:col-span-2"
+                    />
+                    <Input placeholder="Label" value={p.label ?? ""} onChange={(e) => setPhone(i, { label: e.target.value })} />
+                    <select
+                      value={p.kind ?? "landline"}
+                      onChange={(e) => setPhone(i, { kind: e.target.value as OfficePhone["kind"] })}
+                      className="h-10 rounded-md border border-zinc-200 px-2 text-sm"
+                    >
+                      <option value="landline">Landline</option>
+                      <option value="mobile">Mobile</option>
+                      <option value="fax">Fax</option>
+                    </select>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="shrink-0 text-red-700 hover:bg-red-50"
+                    onClick={() => removePhone(i)}
+                    aria-label="Remove phone number"
                   >
-                    <option value="landline">Landline</option>
-                    <option value="mobile">Mobile</option>
-                    <option value="fax">Fax</option>
-                  </select>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
               ))}
             </div>
@@ -253,15 +273,31 @@ export function ContactManagementManager({ offices: initial }: Props) {
             </div>
             <div className="mt-3 space-y-3">
               {(draft.emails ?? []).map((em, i) => (
-                <div key={i} className="grid gap-2 sm:grid-cols-2">
-                  <Input
-                    type="email"
-                    placeholder="email@domain.com"
-                    value={em.email}
-                    onChange={(e) => setEmail(i, { email: e.target.value })}
-                    required
-                  />
-                  <Input placeholder="Label (e.g. General)" value={em.label ?? ""} onChange={(e) => setEmail(i, { label: e.target.value })} />
+                <div key={i} className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                  <div className="grid flex-1 gap-2 sm:grid-cols-2">
+                    <Input
+                      type="email"
+                      placeholder="email@domain.com"
+                      value={em.email}
+                      onChange={(e) => setEmail(i, { email: e.target.value })}
+                      required
+                    />
+                    <Input
+                      placeholder="Label (e.g. General)"
+                      value={em.label ?? ""}
+                      onChange={(e) => setEmail(i, { label: e.target.value })}
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="shrink-0 text-red-700 hover:bg-red-50"
+                    onClick={() => removeEmail(i)}
+                    aria-label="Remove email"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
               ))}
             </div>
@@ -276,13 +312,25 @@ export function ContactManagementManager({ offices: initial }: Props) {
             </div>
             <div className="mt-3 space-y-3">
               {(draft.social_links ?? []).map((s, i) => (
-                <div key={i} className="grid gap-2 sm:grid-cols-2">
-                  <Input
-                    placeholder="Platform (e.g. LinkedIn)"
-                    value={s.platform}
-                    onChange={(e) => setSocial(i, { platform: e.target.value })}
-                  />
-                  <Input placeholder="https://…" value={s.url} onChange={(e) => setSocial(i, { url: e.target.value })} />
+                <div key={i} className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                  <div className="grid flex-1 gap-2 sm:grid-cols-2">
+                    <Input
+                      placeholder="Platform (e.g. LinkedIn)"
+                      value={s.platform}
+                      onChange={(e) => setSocial(i, { platform: e.target.value })}
+                    />
+                    <Input placeholder="https://…" value={s.url} onChange={(e) => setSocial(i, { url: e.target.value })} />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="shrink-0 text-red-700 hover:bg-red-50"
+                    onClick={() => removeSocial(i)}
+                    aria-label="Remove social link"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
               ))}
             </div>

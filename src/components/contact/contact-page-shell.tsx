@@ -64,13 +64,21 @@ export function ContactPageShell({ contact }: Props) {
     document.getElementById("our-offices")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  const allEmails = [
-    ...contact.offices.flatMap((o) => o.emails),
-    ...contact.emails.map((e) => ({ email: e.email, label: e.label || undefined })),
-  ];
+  const officeEmails = contact.offices.flatMap((o) => o.emails ?? []).filter((e) => e.email?.trim());
+  const hasOfficeInboxes = officeEmails.length > 0;
+  const legacyEmails = contact.emails.map((e) => ({ email: e.email, label: e.label || undefined }));
+  const officeNorm = new Set(officeEmails.map((e) => e.email.trim().toLowerCase()));
+  const merged = hasOfficeInboxes
+    ? [
+        ...officeEmails,
+        ...legacyEmails.filter((e) => e.email?.trim() && !officeNorm.has(e.email.trim().toLowerCase())),
+      ]
+    : legacyEmails;
 
-  const uniqueEmails = allEmails.filter(
-    (e, i, arr) => e.email && arr.findIndex((x) => x.email === e.email) === i,
+  const uniqueEmails = merged.filter(
+    (e, i, arr) =>
+      e.email?.trim() &&
+      arr.findIndex((x) => x.email.trim().toLowerCase() === e.email.trim().toLowerCase()) === i,
   );
 
   const openPath = (id: (typeof paths)[number]["id"]) => {

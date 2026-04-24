@@ -16,7 +16,7 @@ export default async function AdminCountriesCmsPage() {
   }
 
   const [{ data: regions, error: rErr }, { data: countries, error: cErr }] = await Promise.all([
-    svc.from("region_groups").select("id, label").order("sort_order", { ascending: true }),
+    svc.from("region_groups").select("id, label, continent, sort_order").order("sort_order", { ascending: true }),
     svc.from("countries").select("*").order("sort_order", { ascending: true }),
   ]);
 

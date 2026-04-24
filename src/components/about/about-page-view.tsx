@@ -1,12 +1,15 @@
 import Image from "next/image";
-import type { AboutSectionRow, TeamMemberRow } from "@/lib/data/about-page";
+import { Fragment } from "react";
+import { AboutPartnersShowcase } from "@/components/about/about-partners-showcase";
+import type { AboutPartnerRow, AboutSectionRow, TeamMemberRow } from "@/lib/data/about-page";
 
 type Props = {
   sections: AboutSectionRow[];
   team: TeamMemberRow[];
+  partners: AboutPartnerRow[];
 };
 
-export function AboutPageView({ sections, team }: Props) {
+export function AboutPageView({ sections, team, partners }: Props) {
   if (!sections.length) {
     return (
       <main className="mx-auto max-w-4xl px-4 py-16 sm:px-6 lg:px-8">
@@ -49,10 +52,15 @@ export function AboutPageView({ sections, team }: Props) {
 
       <div className="mx-auto max-w-4xl space-y-12 px-4 py-12 sm:px-6 lg:px-8">
         {rest.map((s) => (
-          <section key={s.section_key} className="scroll-mt-24">
-            <h2 className="font-[family-name:var(--font-heading)] text-2xl font-semibold text-[#0a1628]">{s.title}</h2>
-            <div className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-slate-700 sm:text-[15px]">{s.body}</div>
-          </section>
+          <Fragment key={s.section_key}>
+            <section className="scroll-mt-24">
+              <h2 className="font-[family-name:var(--font-heading)] text-2xl font-semibold text-[#0a1628]">{s.title}</h2>
+              <div className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-slate-700 sm:text-[15px]">{s.body}</div>
+            </section>
+            {s.section_key === "values" && partners.length > 0 ? (
+              <AboutPartnersShowcase partners={partners} />
+            ) : null}
+          </Fragment>
         ))}
 
         <section className="scroll-mt-24">

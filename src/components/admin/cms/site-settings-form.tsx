@@ -40,7 +40,11 @@ export function SiteSettingsForm({ initial }: Props) {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-zinc-900">Site settings</h1>
-        <p className="mt-1 text-sm text-zinc-600">Top announcement marquee under the main navigation.</p>
+        <p className="mt-1 text-sm text-zinc-600">
+          Master switch and fallback text for the gold strip under the main navigation. When{" "}
+          <strong className="font-medium text-zinc-800">News ticker</strong> has published lines, those rotate in the strip
+          instead of the text below.
+        </p>
       </div>
 
       <Card>
@@ -50,13 +54,14 @@ export function SiteSettingsForm({ initial }: Props) {
         <CardContent>
           <form onSubmit={onSubmit} className="space-y-4">
             <div className="space-y-1">
-              <Label htmlFor="tt">Ticker text</Label>
+              <Label htmlFor="tt">Fallback ticker text</Label>
               <Textarea
                 id="tt"
                 value={tickerText}
                 onChange={(e) => setTickerText(e.target.value)}
                 className="min-h-[100px]"
               />
+              <p className="text-xs text-zinc-500">Used only when there are no published items under Content → News ticker.</p>
             </div>
             <div className="flex items-center gap-2">
               <input

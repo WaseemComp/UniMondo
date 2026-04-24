@@ -162,3 +162,28 @@
     width: 100%;
   }
 }
+
+@keyframes about-partners-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.about-partners-marquee-track {
+  display: flex;
+  width: max-content;
+  animation: about-partners-marquee 52s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .about-partners-marquee-track {
+    animation: none;
+    justify-content: center;
+    width: 100%;
+    flex-wrap: wrap;
+    row-gap: 2.5rem;
+  }
+}

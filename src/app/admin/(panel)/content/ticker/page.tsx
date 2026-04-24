@@ -13,8 +13,12 @@ export default async function AdminTickerPage() {
       <div>
         <h1 className="text-2xl font-bold text-zinc-900">News ticker</h1>
         <p className="mt-1 text-sm text-zinc-600">
-          Lines appear under the main navigation on the public site when “Show ticker” is enabled on the homepage
-          content screen.
+          When <strong className="font-medium text-zinc-800">Show ticker</strong> is on in{" "}
+          <a href="/admin/settings" className="font-medium text-amber-800 underline-offset-2 hover:underline">
+            Admin → Settings
+          </a>
+          , published lines below scroll in the gold strip <strong className="font-medium text-zinc-800">directly under the main navigation</strong> on
+          every public page. If no lines are published here, the fallback single message from Settings is used instead.
         </p>
       </div>
       {!svc ? (

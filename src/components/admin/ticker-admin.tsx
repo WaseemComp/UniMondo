@@ -60,6 +60,13 @@ export function TickerAdminClient({ initial }: { initial: Row[] }) {
 
   return (
     <div className="space-y-6">
+      <div className="rounded-lg border border-amber-200/80 bg-amber-50/90 px-4 py-3 text-sm text-amber-950">
+        <p className="font-medium">Where this shows</p>
+        <p className="mt-1 text-amber-900/90">
+          Each published line can include a site path (e.g. <code className="rounded bg-white/80 px-1">/contact</code>) as a
+          link. Turn the strip on or off under Settings → Show ticker on public site.
+        </p>
+      </div>
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
       <div className="space-y-4">
         {sorted.map((row) => (

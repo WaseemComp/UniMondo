@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
-export type RegionGroupRow = { id: number; label: string };
+export type RegionGroupRow = { id: number; label: string; continent?: string | null; sort_order?: number | null };
 
 export type CountryAdminRow = {
   id: string;
@@ -228,6 +228,7 @@ export function CountriesManager({ countries: initial, regions }: Props) {
                   {regions.map((r) => (
                     <option key={r.id} value={r.id}>
                       {r.label}
+                      {r.continent?.trim() ? ` — ${r.continent.trim()}` : ""}
                     </option>
                   ))}
                 </select>
