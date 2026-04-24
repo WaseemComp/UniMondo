@@ -62,7 +62,7 @@ export function PopularDestinations() {
             </p>
           </div>
           <Link
-            href="/destinations"
+            href={"/destinations"}
             className="inline-flex items-center gap-2 text-sm font-semibold text-amber-700 hover:text-amber-600"
           >
             View all countries
@@ -96,7 +96,7 @@ export function PopularDestinations() {
                   <h3 className="font-[family-name:var(--font-heading)] text-xl font-semibold text-white">{d.country}</h3>
                   <p className="mt-1 line-clamp-2 text-sm text-slate-200">{d.blurb}</p>
                   <Link
-                    href="/destinations"
+                    href={"/destinations"}
                     className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-amber-300 hover:text-amber-200"
                   >
                     Explore programs

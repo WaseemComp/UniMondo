@@ -29,7 +29,10 @@ export function NewsTicker({ items, enabled }: Props) {
         {items.map((item) => (
           <span key={item.id}>
             {item.href ? (
-              <Link href={item.href} className="font-medium underline-offset-2 hover:text-white hover:underline">
+              <Link
+                href={item.href}
+                className="font-medium underline-offset-2 hover:text-white hover:underline"
+              >
                 {item.message}
               </Link>
             ) : (

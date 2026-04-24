@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import useSWR from "swr";
 import { z } from "zod";
-import type { AppLocale } from "../../../i18n/request";
 
 type LanguageCourseRow = {
   id: string;
@@ -17,25 +16,13 @@ type LanguageCourseRow = {
   created_at: string | null;
 };
 
-const locales: AppLocale[] = ["en", "ar", "de", "fr"];
-
 const courseSchema = z.object({
-  title: z.object({
-    en: z.string().min(1, "English title is required"),
-    ar: z.string().optional().default(""),
-    de: z.string().optional().default(""),
-    fr: z.string().optional().default(""),
-  }),
+  title: z.string().min(1, "Title is required"),
   country: z.string().optional().default(""),
   city: z.string().optional().default(""),
   duration: z.string().optional().default(""),
   price: z.number().optional().nullable(),
-  description: z.object({
-    en: z.string().optional().default(""),
-    ar: z.string().optional().default(""),
-    de: z.string().optional().default(""),
-    fr: z.string().optional().default(""),
-  }),
+  description: z.string().optional().default(""),
   is_active: z.boolean().default(true),
 });
 
@@ -47,6 +34,13 @@ const fetcher = async (url: string) => {
   return (await res.json()) as { courses: LanguageCourseRow[] };
 };
 
+function toEnPayload(input: CourseInput) {
+  return {
+    title: { en: input.title.trim() },
+    description: input.description.trim() ? { en: input.description.trim() } : { en: "" },
+  };
+}
+
 export function CoursesAdmin() {
   const { data, isLoading, mutate } = useSWR<{ courses: LanguageCourseRow[] }>(
     "/api/admin/courses",
@@ -56,12 +50,12 @@ export function CoursesAdmin() {
 
   const empty = useMemo<CourseInput>(
     () => ({
-      title: { en: "", ar: "", de: "", fr: "" },
+      title: "",
       country: "",
       city: "",
       duration: "",
       price: null,
-      description: { en: "", ar: "", de: "", fr: "" },
+      description: "",
       is_active: true,
     }),
     []
@@ -81,17 +75,12 @@ export function CoursesAdmin() {
   const startEdit = (course: LanguageCourseRow) => {
     setEditing(course);
     setDraft({
-      title: { en: course.title?.en ?? "", ar: course.title?.ar ?? "", de: course.title?.de ?? "", fr: course.title?.fr ?? "" },
+      title: course.title?.en ?? "",
       country: course.country ?? "",
       city: course.city ?? "",
       duration: course.duration ?? "",
       price: course.price ?? null,
-      description: {
-        en: course.description?.en ?? "",
-        ar: course.description?.ar ?? "",
-        de: course.description?.de ?? "",
-        fr: course.description?.fr ?? "",
-      },
+      description: course.description?.en ?? "",
       is_active: Boolean(course.is_active),
     });
     setError(null);
@@ -107,11 +96,23 @@ export function CoursesAdmin() {
         return;
       }
 
+      const v = parsed.data;
+      const en = toEnPayload(v);
+
       const method = editing ? "PATCH" : "POST";
       const res = await fetch("/api/admin/courses", {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: editing?.id, ...parsed.data }),
+        body: JSON.stringify({
+          id: editing?.id,
+          country: v.country || null,
+          city: v.city || null,
+          duration: v.duration || null,
+          price: v.price ?? null,
+          is_active: v.is_active,
+          title: en.title,
+          description: en.description,
+        }),
       });
       const j = (await res.json()) as { message?: string };
       if (!res.ok) throw new Error(j.message || "Failed to save");
@@ -193,16 +194,14 @@ export function CoursesAdmin() {
         {error ? <p className="mt-2 text-sm text-red-700">{error}</p> : null}
 
         <div className="mt-4 grid gap-4 md:grid-cols-2">
-          {locales.map((l) => (
-            <label key={`title-${l}`} className="space-y-1 text-sm text-zinc-700">
-              <span className="font-medium">Title ({l})</span>
-              <input
-                value={draft.title[l] ?? ""}
-                onChange={(e) => setDraft((d) => ({ ...d, title: { ...d.title, [l]: e.target.value } }))}
-                className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2"
-              />
-            </label>
-          ))}
+          <label className="space-y-1 text-sm text-zinc-700 md:col-span-2">
+            <span className="font-medium">Title</span>
+            <input
+              value={draft.title}
+              onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))}
+              className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2"
+            />
+          </label>
 
           <label className="space-y-1 text-sm text-zinc-700">
             <span className="font-medium">Country</span>
@@ -256,18 +255,14 @@ export function CoursesAdmin() {
             Active (visible on public site)
           </label>
 
-          {locales.map((l) => (
-            <label key={`desc-${l}`} className="space-y-1 text-sm text-zinc-700 md:col-span-2">
-              <span className="font-medium">Description ({l})</span>
-              <textarea
-                value={draft.description[l] ?? ""}
-                onChange={(e) =>
-                  setDraft((d) => ({ ...d, description: { ...d.description, [l]: e.target.value } }))
-                }
-                className="min-h-24 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2"
-              />
-            </label>
-          ))}
+          <label className="space-y-1 text-sm text-zinc-700 md:col-span-2">
+            <span className="font-medium">Description</span>
+            <textarea
+              value={draft.description}
+              onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
+              className="min-h-24 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2"
+            />
+          </label>
         </div>
 
         <div className="mt-4 flex justify-end">
@@ -284,4 +279,3 @@ export function CoursesAdmin() {
     </div>
   );
 }
-

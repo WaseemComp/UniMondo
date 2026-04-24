@@ -1,18 +1,16 @@
-import type { AppLocale } from "../../../i18n/request";
-
 type LocalizedJson = Record<string, unknown> | null | undefined;
 
-export function getLocalized<T = string>(
-  field: LocalizedJson,
-  locale: AppLocale,
-  fallbackLocale: AppLocale = "en"
-): T | null {
+/**
+ * Resolves a JSONB multilingual field to a display string. The app is English-only; we
+ * prefer the `en` key when present, then any other string value.
+ */
+export function getLocalized<T = string>(field: LocalizedJson): T | null {
   if (!field || typeof field !== "object") return null;
   const record = field as Record<string, unknown>;
-  const preferred = record[locale];
-  if (preferred != null) return preferred as T;
-  const fallback = record[fallbackLocale];
-  if (fallback != null) return fallback as T;
+  const en = record.en;
+  if (en != null) return en as T;
+  for (const v of Object.values(record)) {
+    if (v != null) return v as T;
+  }
   return null;
 }
-

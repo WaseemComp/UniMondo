@@ -5,6 +5,7 @@ import { getContactFooterSummary } from "@/lib/data/contact-page";
 const LINKS = {
   explore: [
     { href: "/current-openings", label: "Featured Universities" },
+    { href: "/courses", label: "Language Courses" },
     { href: "/destinations", label: "Countries" },
     { href: "/packages", label: "Our Packages" },
     { href: "/apply", label: "Apply" },

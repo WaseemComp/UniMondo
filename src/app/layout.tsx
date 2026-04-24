@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
 import { Manrope, Playfair_Display } from "next/font/google";
-import { NextIntlClientProvider } from "next-intl";
-import { getLocale, getMessages } from "next-intl/server";
 import { Toaster } from "sonner";
 import "./globals.css";
 
@@ -34,14 +32,10 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const locale = await getLocale();
-  const messages = await getMessages();
-  const dir = locale === "ar" ? "rtl" : "ltr";
-
   return (
-    <html lang={locale} dir={dir} className={`${manrope.variable} ${playfairDisplay.variable} h-full antialiased`}>
+    <html lang="en" dir="ltr" className={`${manrope.variable} ${playfairDisplay.variable} h-full antialiased`}>
       <body className="min-h-full bg-slate-50 text-slate-900">
-        <NextIntlClientProvider messages={messages}>{children}</NextIntlClientProvider>
+        {children}
         <Toaster richColors position="top-center" />
       </body>
     </html>

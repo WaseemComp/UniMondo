@@ -37,7 +37,7 @@ export function FeaturedPrograms({ openings }: Props) {
             </p>
           </div>
           <Link
-            href="/current-openings"
+            href={"/current-openings"}
             className="inline-flex items-center gap-2 rounded-full border border-amber-500/40 bg-amber-500/10 px-5 py-2.5 text-sm font-semibold text-amber-300 transition hover:bg-amber-500/20"
           >
             See all openings
@@ -95,13 +95,13 @@ export function FeaturedPrograms({ openings }: Props) {
               <p className="mt-3 text-sm text-slate-500">Tuition: {o.tuitionRange}</p>
               <div className="mt-5 flex flex-wrap gap-3">
                 <Link
-                  href="/apply"
+                  href={"/apply"}
                   className="inline-flex flex-1 items-center justify-center rounded-full bg-amber-500 px-5 py-2.5 text-center text-sm font-semibold text-[#0a1628] transition hover:bg-amber-400 sm:flex-none"
                 >
                   Apply now
                 </Link>
                 <Link
-                  href="/current-openings"
+                  href={"/current-openings"}
                   className="inline-flex flex-1 items-center justify-center rounded-full border border-white/20 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10 sm:flex-none"
                 >
                   Details

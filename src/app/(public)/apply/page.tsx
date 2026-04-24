@@ -17,6 +17,7 @@ export default async function ApplyPage({
     country: getOne("country") ?? "",
     program: getOne("program") ?? "",
     type: getOne("type") ?? "",
+    course: getOne("course") ?? "",
   };
 
   return (

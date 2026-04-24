@@ -80,7 +80,7 @@ export function AdminDashboard() {
               className="w-full max-w-xs rounded-lg border border-zinc-300 bg-white px-3 py-2"
             >
               <option value="All">All</option>
-              {(Object.keys(typeLabel) as ApplicationType[]).map((t) => (
+              {(["university", "language_course"] as const).map((t) => (
                 <option key={t} value={t}>
                   {typeLabel[t]}
                 </option>
@@ -95,7 +95,7 @@ export function AdminDashboard() {
       ) : (
         <section className="grid gap-4">
           {applications.map((application) => {
-            const type = application.applicationType ?? "university";
+            const type = (application.applicationType ?? "university") as ApplicationType;
             const prefs = application.payload.programPreferences;
             const personal = application.payload.personalInfo;
             const academic = application.payload.academicBackground;
@@ -114,7 +114,7 @@ export function AdminDashboard() {
                     </p>
                     <div className="mt-2">
                       <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-900">
-                        {typeLabel[type]}
+                        {type === "language_course" ? "Language Course" : "University"}
                       </span>
                     </div>
                     <p className="mt-1 text-sm text-zinc-700">{personal.fullName}</p>
