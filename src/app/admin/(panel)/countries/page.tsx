@@ -1,3 +1,4 @@
+import { assertAdminScope } from "@/lib/auth/admin-page-guard";
 import {
   CountriesManager,
   type CountryAdminRow,
@@ -6,6 +7,7 @@ import {
 import { createSupabaseServiceClient } from "@/lib/supabase/admin";
 
 export default async function AdminCountriesCmsPage() {
+  await assertAdminScope("academic");
   const svc = createSupabaseServiceClient();
   if (!svc) {
     return (

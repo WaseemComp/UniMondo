@@ -1,7 +1,9 @@
+import { assertAdminScope } from "@/lib/auth/admin-page-guard";
 import { BlogsManager, type BlogAdminRow } from "@/components/admin/cms/blogs-manager";
 import { createSupabaseServiceClient } from "@/lib/supabase/admin";
 
 export default async function AdminBlogsPage() {
+  await assertAdminScope("academic");
   const svc = createSupabaseServiceClient();
   if (!svc) {
     return (

@@ -1,8 +1,10 @@
+import { assertAdminScope } from "@/lib/auth/admin-page-guard";
 import { RegionsManager } from "@/components/admin/cms/regions-manager";
 import type { RegionGroupRow } from "@/components/admin/cms/countries-manager";
 import { createSupabaseServiceClient } from "@/lib/supabase/admin";
 
 export default async function AdminRegionsPage() {
+  await assertAdminScope("academic");
   const svc = createSupabaseServiceClient();
   const { data, error } = svc
     ? await svc.from("region_groups").select("id, label, continent, sort_order").order("sort_order", { ascending: true })

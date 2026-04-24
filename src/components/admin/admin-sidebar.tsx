@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOutAdmin } from "@/app/admin/actions";
 import { cn } from "@/lib/utils";
+import type { AdminAccessContext, AdminAreaPermission } from "@/lib/auth/admin";
 import {
   BookOpen,
   FileText,
@@ -24,33 +25,48 @@ import {
   UserCircle2,
   Users,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
-const NAV = [
+type NavItem =
+  | { section: string }
+  | { href: string; label: string; icon: LucideIcon; scope?: AdminAreaPermission };
+
+const NAV: NavItem[] = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/admin/programs", label: "Programs", icon: FileText },
-  { href: "/admin/featured-universities", label: "Featured universities", icon: Landmark },
-  { href: "/admin/packages", label: "Packages", icon: Gift },
-  { href: "/admin/courses", label: "Courses", icon: BookOpen },
-  { href: "/admin/countries", label: "Countries", icon: Globe },
-  { href: "/admin/blogs", label: "Blogs", icon: BookOpen },
-  { href: "/admin/settings", label: "Site settings", icon: Settings },
+  { href: "/admin/programs", label: "Programs", icon: FileText, scope: "academic" },
+  { href: "/admin/featured-universities", label: "Featured universities", icon: Landmark, scope: "academic" },
+  { href: "/admin/packages", label: "Packages", icon: Gift, scope: "academic" },
+  { href: "/admin/courses", label: "Courses", icon: BookOpen, scope: "academic" },
+  { href: "/admin/countries", label: "Countries", icon: Globe, scope: "academic" },
+  { href: "/admin/blogs", label: "Blogs", icon: BookOpen, scope: "academic" },
+  { href: "/admin/settings", label: "Team & account", icon: Settings },
   { section: "More" },
-  { href: "/admin/applications", label: "Applications", icon: GraduationCap },
+  { href: "/admin/applications", label: "Applications", icon: GraduationCap, scope: "applications" },
   { section: "Site content" },
-  { href: "/admin/content/success-stories", label: "Success stories", icon: Sparkles },
-  { href: "/admin/content/about", label: "About page", icon: ScrollText },
-  { href: "/admin/content/team", label: "Team members", icon: Users },
-  { href: "/admin/content/contact", label: "Contact management", icon: Phone },
+  { href: "/admin/content/success-stories", label: "Success stories", icon: Sparkles, scope: "content" },
+  { href: "/admin/content/about", label: "About page", icon: ScrollText, scope: "content" },
+  { href: "/admin/content/team", label: "Team members", icon: Users, scope: "content" },
+  { href: "/admin/content/contact", label: "Contact management", icon: Phone, scope: "content" },
   { section: "Submissions" },
-  { href: "/admin/submissions/work-with-us", label: "Work with us", icon: Inbox },
-  { href: "/admin/submissions/join-us", label: "Join us", icon: UserCircle2 },
-  { section: "Legacy content" },
-  { href: "/admin/content/home", label: "Homepage", icon: Home },
-  { href: "/admin/content/ticker", label: "News ticker (multi)", icon: Newspaper },
-  { href: "/admin/data/regions", label: "Regions", icon: Map },
+  { href: "/admin/submissions/work-with-us", label: "Work with us", icon: Inbox, scope: "submissions" },
+  { href: "/admin/submissions/join-us", label: "Join us", icon: UserCircle2, scope: "submissions" },
+  { section: "Extra" },
+  { href: "/admin/content/home", label: "Homepage", icon: Home, scope: "content" },
+  { href: "/admin/content/ticker", label: "News ticker", icon: Newspaper, scope: "content" },
+  { href: "/admin/data/regions", label: "Regions", icon: Map, scope: "academic" },
 ] as const;
 
-export function AdminSidebar() {
+type Props = {
+  access: AdminAccessContext;
+};
+
+function canSeeScope(access: AdminAccessContext, scope: AdminAreaPermission | undefined) {
+  if (!scope) return true;
+  if (access.isSuper) return true;
+  return access.permissions[scope] !== false;
+}
+
+export function AdminSidebar({ access }: Props) {
   const pathname = usePathname();
 
   return (
@@ -67,7 +83,7 @@ export function AdminSidebar() {
             <p key={`s-${i}`} className="mt-3 px-2 text-xs font-semibold uppercase tracking-wide text-zinc-400 first:mt-0">
               {item.section}
             </p>
-          ) : (
+          ) : canSeeScope(access, item.scope) ? (
             <Link
               key={item.href}
               href={item.href}
@@ -81,7 +97,7 @@ export function AdminSidebar() {
               <item.icon className="h-4 w-4 shrink-0" />
               {item.label}
             </Link>
-          ),
+          ) : null,
         )}
       </nav>
       <div className="border-t border-zinc-200 p-3">

@@ -64,22 +64,32 @@ export function ContactPageShell({ contact }: Props) {
     document.getElementById("our-offices")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  type InboxRow = { email: string; label?: string };
+
   const officeEmails = contact.offices.flatMap((o) => o.emails ?? []).filter((e) => e.email?.trim());
   const hasOfficeInboxes = officeEmails.length > 0;
   const legacyEmails = contact.emails.map((e) => ({ email: e.email, label: e.label || undefined }));
   const officeNorm = new Set(officeEmails.map((e) => e.email.trim().toLowerCase()));
-  const merged = hasOfficeInboxes
+  const merged: InboxRow[] = hasOfficeInboxes
     ? [
         ...officeEmails,
         ...legacyEmails.filter((e) => e.email?.trim() && !officeNorm.has(e.email.trim().toLowerCase())),
       ]
     : legacyEmails;
 
-  const uniqueEmails = merged.filter(
+  const dedupedByEmail = merged.filter(
     (e, i, arr) =>
       e.email?.trim() &&
       arr.findIndex((x) => x.email.trim().toLowerCase() === e.email.trim().toLowerCase()) === i,
   );
+
+  /** One pill per inbox *label* (case-insensitive); unlabeled rows keyed by email so distinct addresses still show. */
+  const inboxLabelKey = (e: InboxRow) => {
+    const L = (e.label ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+    return L.length > 0 ? `label:${L}` : `email:${e.email.trim().toLowerCase()}`;
+  };
+
+  const uniqueEmails = dedupedByEmail.filter((e, i, arr) => arr.findIndex((x) => inboxLabelKey(x) === inboxLabelKey(e)) === i);
 
   const openPath = (id: (typeof paths)[number]["id"]) => {
     if (id === "work") setModal("work");

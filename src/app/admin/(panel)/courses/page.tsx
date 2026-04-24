@@ -1,6 +1,8 @@
+import { assertAdminScope } from "@/lib/auth/admin-page-guard";
 import { CoursesAdmin } from "@/components/admin/courses-admin";
 
-export default function AdminCoursesPage() {
+export default async function AdminCoursesPage() {
+  await assertAdminScope("academic");
   return (
     <div className="space-y-8">
       <div>

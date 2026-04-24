@@ -1,6 +1,8 @@
+import { assertAdminScope } from "@/lib/auth/admin-page-guard";
 import { AdminDashboard } from "@/components/admin-dashboard";
 
-export default function AdminApplicationsPage() {
+export default async function AdminApplicationsPage() {
+  await assertAdminScope("applications");
   return (
     <div className="space-y-8">
       <div>

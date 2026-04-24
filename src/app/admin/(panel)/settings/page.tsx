@@ -1,32 +1,21 @@
-import { SiteSettingsForm } from "@/components/admin/cms/site-settings-form";
-import { getSiteSettings } from "@/lib/data/site-settings";
+import { AdminSettingsContent } from "@/components/admin/admin-settings-content";
+import { type AdminProfileRow } from "@/app/admin/cms/admin-users-actions";
+import { getAdminAccess } from "@/lib/auth/admin";
+import { requireAdminUser } from "@/app/admin/require-admin";
 import { createSupabaseServiceClient } from "@/lib/supabase/admin";
 
 export default async function AdminSiteSettingsPage() {
-  const fallback = await getSiteSettings();
+  const user = await requireAdminUser();
+  const access = await getAdminAccess(user);
   const svc = createSupabaseServiceClient();
-
-  if (!svc) {
-    return <SiteSettingsForm initial={fallback} />;
+  let adminRows: AdminProfileRow[] = [];
+  if (access.isSuper && svc) {
+    const { data } = await svc
+      .from("admin_profiles")
+      .select("user_id, email, is_super_admin, permissions")
+      .order("email", { ascending: true });
+    adminRows = (data ?? []) as AdminProfileRow[];
   }
 
-  const { data, error } = await svc
-    .from("site_settings")
-    .select("ticker_text, ticker_active, updated_at")
-    .eq("id", 1)
-    .maybeSingle();
-
-  if (error || !data) {
-    return <SiteSettingsForm key="fallback" initial={fallback} />;
-  }
-
-  return (
-    <SiteSettingsForm
-      key={String(data.updated_at ?? "1")}
-      initial={{
-        tickerText: String(data.ticker_text ?? ""),
-        tickerActive: Boolean(data.ticker_active),
-      }}
-    />
-  );
+  return <AdminSettingsContent access={access} currentUserId={user.id} adminRows={adminRows} />;
 }

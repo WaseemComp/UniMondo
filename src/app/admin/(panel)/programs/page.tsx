@@ -1,7 +1,9 @@
+import { assertAdminScope } from "@/lib/auth/admin-page-guard";
 import { ProgramsManager, type ProgramAdminRow } from "@/components/admin/cms/programs-manager";
 import { createSupabaseServiceClient } from "@/lib/supabase/admin";
 
 export default async function AdminProgramsCmsPage() {
+  await assertAdminScope("academic");
   const svc = createSupabaseServiceClient();
   if (!svc) {
     return (

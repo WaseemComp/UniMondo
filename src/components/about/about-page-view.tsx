@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { Fragment } from "react";
 import { AboutPartnersShowcase } from "@/components/about/about-partners-showcase";
+import { AboutTeamShowcase } from "@/components/about/about-team-showcase";
 import type { AboutPartnerRow, AboutSectionRow, TeamMemberRow } from "@/lib/data/about-page";
 
 type Props = {
@@ -63,54 +64,19 @@ export function AboutPageView({ sections, team, partners }: Props) {
           </Fragment>
         ))}
 
-        <section className="scroll-mt-24">
-          <h2 className="font-[family-name:var(--font-heading)] text-2xl font-semibold text-[#0a1628]">Our Team</h2>
-          <p className="mt-2 text-sm text-slate-600">
-            The counselors and specialists behind your application — approachable, rigorous, and invested in outcomes.
-          </p>
-
-          {team.length === 0 ? (
+        {team.length === 0 ? (
+          <section className="scroll-mt-24">
+            <h2 className="font-[family-name:var(--font-heading)] text-2xl font-semibold text-[#0a1628]">Our Team</h2>
+            <p className="mt-2 text-sm text-slate-600">
+              The counselors and specialists behind your application — approachable, rigorous, and invested in outcomes.
+            </p>
             <p className="mt-6 rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-8 text-center text-sm text-slate-600">
               Team profiles will appear here once added in the admin panel.
             </p>
-          ) : (
-            <div className="mt-8 grid gap-6 sm:grid-cols-2">
-              {team.map((m) => (
-                <article
-                  key={m.id}
-                  className="flex flex-col overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-sm transition hover:shadow-md"
-                >
-                  <div className="flex gap-4 p-5">
-                    {m.image_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element -- CMS URLs may be arbitrary hosts
-                      <img
-                        src={m.image_url}
-                        alt=""
-                        className="h-20 w-20 shrink-0 rounded-2xl object-cover ring-2 ring-amber-400/25"
-                      />
-                    ) : (
-                      <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-[#0a1628] text-lg font-semibold text-amber-300">
-                        {m.name
-                          .split(" ")
-                          .map((p) => p[0])
-                          .join("")
-                          .slice(0, 2)
-                          .toUpperCase()}
-                      </div>
-                    )}
-                    <div className="min-w-0">
-                      <h3 className="font-[family-name:var(--font-heading)] text-lg font-semibold text-[#0a1628]">{m.name}</h3>
-                      {m.qualification ? (
-                        <p className="mt-1 text-xs font-medium uppercase tracking-wide text-amber-800/90">{m.qualification}</p>
-                      ) : null}
-                    </div>
-                  </div>
-                  {m.bio ? <p className="border-t border-slate-100 px-5 py-4 text-sm leading-relaxed text-slate-700">{m.bio}</p> : null}
-                </article>
-              ))}
-            </div>
-          )}
-        </section>
+          </section>
+        ) : (
+          <AboutTeamShowcase team={team} />
+        )}
       </div>
     </main>
   );

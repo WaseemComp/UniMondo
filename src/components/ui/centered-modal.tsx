@@ -16,18 +16,33 @@ type Props = {
   wide?: boolean;
   /** Optional id for aria-labelledby */
   labelledBy?: string;
+  /** If false, page can scroll behind the fixed overlay (modal stays centered in the viewport). Default true. */
+  lockBodyScroll?: boolean;
+  /** Softer, lighter dim (e.g. story-style detail on About). */
+  lightBackdrop?: boolean;
 };
 
 /** Centered overlay modal with blur/dim backdrop (matches site navy + gold header). */
-export function CenteredModal({ open, onClose, title, subtitle, icon, children, wide, labelledBy }: Props) {
+export function CenteredModal({
+  open,
+  onClose,
+  title,
+  subtitle,
+  icon,
+  children,
+  wide,
+  labelledBy,
+  lockBodyScroll = true,
+  lightBackdrop = false,
+}: Props) {
   useEffect(() => {
-    if (!open) return;
+    if (!open || !lockBodyScroll) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = prev;
     };
-  }, [open]);
+  }, [open, lockBodyScroll]);
 
   useEffect(() => {
     if (!open) return;
@@ -49,7 +64,11 @@ export function CenteredModal({ open, onClose, title, subtitle, icon, children, 
     >
       <button
         type="button"
-        className="absolute inset-0 bg-[#050814]/80 backdrop-blur-md transition-opacity"
+        className={
+          lightBackdrop
+            ? "absolute inset-0 bg-slate-900/35 backdrop-blur-[2px] transition-opacity"
+            : "absolute inset-0 bg-[#050814]/80 backdrop-blur-md transition-opacity"
+        }
         onClick={onClose}
         aria-label="Close dialog"
       />
