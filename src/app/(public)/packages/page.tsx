@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { StudyPackagesTables } from "@/components/packages/study-packages-tables";
 import { getPublishedAddOns, getPublishedPackages } from "@/lib/data/study-pricing";
 
@@ -33,9 +34,9 @@ export default async function StudyPackagesPage() {
         {!packages.length && !addOns.length ? (
           <p className="rounded-xl border border-dashed border-zinc-300 bg-white p-8 text-center text-sm text-zinc-600">
             Packages are being configured. Please check back soon or{" "}
-            <a href="/contact" className="font-medium text-amber-800 underline-offset-2 hover:underline">
+            <Link href="/contact" className="font-medium text-amber-800 underline-offset-2 hover:underline">
               contact us
-            </a>
+            </Link>
             .
           </p>
         ) : (

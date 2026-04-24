@@ -140,7 +140,54 @@ export const uploadMetaSchema = z.object({
 
 export const documentMetaListSchema = z.array(uploadMetaSchema);
 
-export const serverSubmitPayloadSchema = applicationFormSchema.extend({
+const universitySubmitSchema = applicationFormSchema.extend({
+  applicationType: z.literal("university").optional().default("university"),
   sourceCountry: z.string().optional(),
   sourceProgram: z.string().optional(),
 });
+
+const simpleContactSchema = z.object({
+  fullName: z.string().min(2, "Full name is required"),
+  email: z.string().email("Valid email required"),
+  phone: z.string().min(5, "Phone is required"),
+});
+
+const languageCourseSubmitSchema = z.object({
+  applicationType: z.literal("language_course"),
+  contact: simpleContactSchema,
+  country: z.string().min(2, "Country is required").optional(),
+  city: z.string().min(2, "City is required").optional(),
+  duration: z.string().optional(),
+  notes: z.string().optional(),
+});
+
+const workWithUsSubmitSchema = z.object({
+  applicationType: z.literal("work_with_us"),
+  contact: simpleContactSchema,
+  role: z.string().min(2, "Role is required").optional(),
+  linkedin: z.string().url("Valid URL required").optional(),
+  notes: z.string().optional(),
+});
+
+const joinUsSubmitSchema = z.object({
+  applicationType: z.literal("join_us"),
+  organization: z.string().min(2, "Organization is required").optional(),
+  contact: simpleContactSchema,
+  country: z.string().optional(),
+  message: z.string().optional(),
+});
+
+export const serverSubmitPayloadSchema = z.preprocess(
+  (value) => {
+    if (value && typeof value === "object" && !("applicationType" in (value as Record<string, unknown>))) {
+      return { ...(value as Record<string, unknown>), applicationType: "university" };
+    }
+    return value;
+  },
+  z.discriminatedUnion("applicationType", [
+    universitySubmitSchema,
+    languageCourseSubmitSchema,
+    workWithUsSubmitSchema,
+    joinUsSubmitSchema,
+  ])
+);

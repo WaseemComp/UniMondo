@@ -30,6 +30,7 @@ const NAV = [
   { href: "/admin/programs", label: "Programs", icon: FileText },
   { href: "/admin/featured-universities", label: "Featured universities", icon: Landmark },
   { href: "/admin/packages", label: "Packages", icon: Gift },
+  { href: "/admin/courses", label: "Courses", icon: BookOpen },
   { href: "/admin/countries", label: "Countries", icon: Globe },
   { href: "/admin/blogs", label: "Blogs", icon: BookOpen },
   { href: "/admin/settings", label: "Site settings", icon: Settings },

@@ -6,12 +6,19 @@ import { createApplicationWithDocuments, getApplications } from "@/lib/persisten
 import { evaluateApplication } from "@/lib/screening";
 import { generateTrackingId } from "@/lib/tracking";
 import type { ApplicationFormValues } from "@/lib/apply/schema";
-import type { ReviewStatus } from "@/types/application";
+import type { ApplicationPayload, ApplicationType, ReviewStatus } from "@/types/application";
 
 export async function GET(request: NextRequest) {
   try {
     const statusParam = request.nextUrl.searchParams.get("status") as ReviewStatus | null;
-    const applications = await getApplications(statusParam || undefined);
+    const typeParam = request.nextUrl.searchParams.get("type") as ApplicationType | null;
+    const allowedStatuses: ReviewStatus[] = ["Pending", "Approved", "Need More Info", "Rejected"];
+    const allowedTypes: ApplicationType[] = ["university", "language_course", "work_with_us", "join_us"];
+
+    const status = statusParam && allowedStatuses.includes(statusParam) ? statusParam : undefined;
+    const type = typeParam && allowedTypes.includes(typeParam) ? typeParam : undefined;
+
+    const applications = await getApplications({ status, type });
     return NextResponse.json({ applications });
   } catch (error) {
     return NextResponse.json(
@@ -46,13 +53,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { sourceCountry, sourceProgram, ...rest } = parsedApp.data;
-    const formValues: ApplicationFormValues = {
-      personalInfo: rest.personalInfo,
-      academicInfo: rest.academicInfo,
-      studyPreferences: rest.studyPreferences,
-      packageSelection: rest.packageSelection,
-    };
+    const applicationType = parsedApp.data.applicationType as ApplicationType;
 
     let metaJson: unknown = [];
     if (rawMeta != null && typeof rawMeta === "string") {
@@ -81,29 +82,99 @@ export async function POST(request: NextRequest) {
     }
 
     const trackingId = generateTrackingId();
-    const payload = buildPayloadSnapshot(formValues, {
-      country: sourceCountry,
-      program: sourceProgram,
-    });
-    const screeningTag = evaluateApplication(payload.academicBackground);
     const submittedAt = new Date().toISOString();
+
+    const commonDocItems = files.map((file, i) => ({
+      file,
+      category: parsedMeta.data[i].category,
+      description: parsedMeta.data[i].description ?? "",
+    }));
+
+    if (applicationType !== "university") {
+      const contact =
+        "contact" in parsedApp.data && parsedApp.data.contact && typeof parsedApp.data.contact === "object"
+          ? (parsedApp.data.contact as { fullName: string; email: string; phone: string })
+          : { fullName: "—", email: "—", phone: "—" };
+
+      const payload: ApplicationPayload = {
+        personalInfo: {
+          fullName: contact.fullName,
+          email: contact.email,
+          phone: contact.phone,
+          dateOfBirth: "",
+          nationality: "",
+        },
+        academicBackground: {
+          highestQualification: "",
+          institutionName: "",
+          gpa: 0,
+          ieltsScore: 0,
+          graduationYear: "",
+        },
+        programPreferences: {
+          intake: "Fall 2026",
+          preferredContinent: "",
+          destinationChoices: [],
+          programInterest: "",
+        },
+        submission: {
+          applicationType,
+          data: parsedApp.data,
+        },
+      };
+
+      const screeningTag = "Review Needed" as const;
+
+      await createApplicationWithDocuments({
+        trackingId,
+        submittedAt,
+        screeningTag,
+        reviewStatus: "Pending",
+        applicationType,
+        payload,
+        personalInfo: contact,
+        documentItems: commonDocItems,
+      });
+
+      return NextResponse.json({ trackingId, screeningTag }, { status: 201 });
+    }
+
+    const data = parsedApp.data as unknown as {
+      personalInfo: ApplicationFormValues["personalInfo"];
+      academicInfo: ApplicationFormValues["academicInfo"];
+      studyPreferences: ApplicationFormValues["studyPreferences"];
+      packageSelection: ApplicationFormValues["packageSelection"];
+      sourceCountry?: string;
+      sourceProgram?: string;
+    };
+
+    const formValues: ApplicationFormValues = {
+      personalInfo: data.personalInfo,
+      academicInfo: data.academicInfo,
+      studyPreferences: data.studyPreferences,
+      packageSelection: data.packageSelection,
+    };
+
+    const payload = buildPayloadSnapshot(formValues, {
+      country: data.sourceCountry,
+      program: data.sourceProgram,
+    });
+
+    const screeningTag = evaluateApplication(payload.academicBackground);
 
     const record = await createApplicationWithDocuments({
       trackingId,
       submittedAt,
       screeningTag,
       reviewStatus: "Pending",
+      applicationType,
       payload,
       personalInfo: formValues.personalInfo,
       academicInfo: formValues.academicInfo,
       studyPreferences: formValues.studyPreferences,
       selectedPackage: formValues.packageSelection.packageSlug,
       selectedAddons: formValues.packageSelection.addonIds,
-      documentItems: files.map((file, i) => ({
-        file,
-        category: parsedMeta.data[i].category,
-        description: parsedMeta.data[i].description ?? "",
-      })),
+      documentItems: commonDocItems,
     });
 
     await triggerStudentEmail(record);

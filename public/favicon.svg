@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <style>
+      .amber{stroke:#F59E0B;fill:none;stroke-width:28;stroke-linecap:round;stroke-linejoin:round}
+      .navy{fill:#0A1628}
+    </style>
+  </defs>
+
+  <!-- Outer globe ring -->
+  <circle class="amber" cx="256" cy="256" r="200"/>
+
+  <!-- Latitude lines -->
+  <path class="amber" d="M96 256h320"/>
+  <path class="amber" d="M120 180c45 30 94 45 136 45s91-15 136-45"/>
+  <path class="amber" d="M120 332c45-30 94-45 136-45s91 15 136 45"/>
+
+  <!-- Longitude-ish curves -->
+  <path class="amber" d="M256 56c-58 58-92 122-92 200s34 142 92 200"/>
+  <path class="amber" d="M256 56c58 58 92 122 92 200s-34 142-92 200"/>
+
+  <!-- UM monogram -->
+  <g class="navy">
+    <!-- U -->
+    <path d="M170 182c0-10 8-18 18-18h0c10 0 18 8 18 18v88c0 34 22 58 50 58s50-24 50-58v-88c0-10 8-18 18-18h0c10 0 18 8 18 18v90c0 56-40 96-86 96s-86-40-86-96v-90z"/>
+    <!-- M -->
+    <path d="M196 360c-10 0-18-8-18-18V220c0-7 4-14 11-17 7-3 15-1 20 5l47 61 47-61c5-6 13-8 20-5 7 3 11 10 11 17v122c0 10-8 18-18 18s-18-8-18-18v-69l-29 38c-3 4-9 7-14 7s-11-3-14-7l-29-38v69c0 10-8 18-18 18z"/>
+  </g>
+</svg>
+

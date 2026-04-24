@@ -2,8 +2,22 @@ import { Suspense } from "react";
 import { ApplyWizard } from "@/components/apply-wizard";
 import { getPublishedAddOns, getPublishedPackages } from "@/lib/data/study-pricing";
 
-export default async function ApplyPage() {
+export default async function ApplyPage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const [packages, addOns] = await Promise.all([getPublishedPackages(), getPublishedAddOns()]);
+  const sp = (await searchParams) ?? {};
+  const getOne = (key: string) => {
+    const v = sp[key];
+    return Array.isArray(v) ? v[0] : v;
+  };
+  const prefill = {
+    country: getOne("country") ?? "",
+    program: getOne("program") ?? "",
+    type: getOne("type") ?? "",
+  };
 
   return (
     <main className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
@@ -17,7 +31,7 @@ export default async function ApplyPage() {
       </section>
 
       <Suspense fallback={<p className="text-sm text-zinc-600">Loading application form...</p>}>
-        <ApplyWizard packages={packages} addOns={addOns} />
+        <ApplyWizard packages={packages} addOns={addOns} prefill={prefill} />
       </Suspense>
     </main>
   );

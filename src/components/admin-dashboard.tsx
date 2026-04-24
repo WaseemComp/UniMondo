@@ -4,7 +4,7 @@ import { useState } from "react";
 import useSWR from "swr";
 import { DOCUMENT_CATEGORY_LABELS, PROGRAM_LEVEL_LABELS } from "@/lib/apply/constants";
 import type { DocumentCategory } from "@/lib/apply/constants";
-import type { ApplicationRecord, ReviewStatus } from "@/types/application";
+import type { ApplicationRecord, ApplicationType, ReviewStatus } from "@/types/application";
 
 function docCategoryLabel(category: string | undefined) {
   if (!category) return "Document";
@@ -20,7 +20,22 @@ const fetcher = async (url: string) => {
 
 export function AdminDashboard() {
   const [statusFilter, setStatusFilter] = useState<ReviewStatus | "All">("All");
-  const query = statusFilter === "All" ? "" : `?status=${encodeURIComponent(statusFilter)}`;
+  const [typeFilter, setTypeFilter] = useState<ApplicationType | "All">("All");
+
+  const typeLabel: Record<ApplicationType, string> = {
+    university: "University",
+    language_course: "Language Course",
+    work_with_us: "Work With Us",
+    join_us: "Join Us",
+  };
+
+  const query = (() => {
+    const params = new URLSearchParams();
+    if (statusFilter !== "All") params.set("status", statusFilter);
+    if (typeFilter !== "All") params.set("type", typeFilter);
+    const s = params.toString();
+    return s ? `?${s}` : "";
+  })();
   const { data: applications = [], isLoading, mutate } = useSWR<ApplicationRecord[]>(
     `/api/applications${query}`,
     fetcher
@@ -40,21 +55,39 @@ export function AdminDashboard() {
   return (
     <div className="space-y-6">
       <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-        <label className="space-y-1 text-sm text-zinc-700">
-          <span className="font-medium">Filter by status</span>
-          <select
-            value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value as ReviewStatus | "All")}
-            className="w-full max-w-xs rounded-lg border border-zinc-300 bg-white px-3 py-2"
-          >
-            <option value="All">All</option>
-            {reviewStatuses.map((status) => (
-              <option key={status} value={status}>
-                {status}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="flex flex-wrap gap-4">
+          <label className="space-y-1 text-sm text-zinc-700">
+            <span className="font-medium">Filter by status</span>
+            <select
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value as ReviewStatus | "All")}
+              className="w-full max-w-xs rounded-lg border border-zinc-300 bg-white px-3 py-2"
+            >
+              <option value="All">All</option>
+              {reviewStatuses.map((status) => (
+                <option key={status} value={status}>
+                  {status}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="space-y-1 text-sm text-zinc-700">
+            <span className="font-medium">Filter by type</span>
+            <select
+              value={typeFilter}
+              onChange={(event) => setTypeFilter(event.target.value as ApplicationType | "All")}
+              className="w-full max-w-xs rounded-lg border border-zinc-300 bg-white px-3 py-2"
+            >
+              <option value="All">All</option>
+              {(Object.keys(typeLabel) as ApplicationType[]).map((t) => (
+                <option key={t} value={t}>
+                  {typeLabel[t]}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
       </section>
 
       {isLoading ? (
@@ -62,6 +95,7 @@ export function AdminDashboard() {
       ) : (
         <section className="grid gap-4">
           {applications.map((application) => {
+            const type = application.applicationType ?? "university";
             const prefs = application.payload.programPreferences;
             const personal = application.payload.personalInfo;
             const academic = application.payload.academicBackground;
@@ -78,11 +112,18 @@ export function AdminDashboard() {
                     <p className="mt-1 text-xs text-zinc-500">
                       Submitted {new Date(application.submittedAt).toLocaleString()}
                     </p>
+                    <div className="mt-2">
+                      <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-900">
+                        {typeLabel[type]}
+                      </span>
+                    </div>
                     <p className="mt-1 text-sm text-zinc-700">{personal.fullName}</p>
                     <p className="text-sm text-zinc-600">{personal.email}</p>
-                    <p className="mt-2 text-sm text-zinc-700">
-                      <span className="font-semibold text-zinc-900">Program level:</span> {levelLabel}
-                    </p>
+                    {type === "university" ? (
+                      <p className="mt-2 text-sm text-zinc-700">
+                        <span className="font-semibold text-zinc-900">Program level:</span> {levelLabel}
+                      </p>
+                    ) : null}
                     {application.payload.packageSelection?.packageName ? (
                       <p className="mt-1 text-sm text-zinc-700">
                         <span className="font-semibold text-zinc-900">Package:</span>{" "}
@@ -115,36 +156,47 @@ export function AdminDashboard() {
                       <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Contact</p>
                       <ul className="mt-1 list-inside list-disc space-y-0.5 text-zinc-700">
                         <li>Phone: {personal.phone}</li>
-                        <li>Date of birth: {personal.dateOfBirth}</li>
-                        <li>Nationality: {personal.nationality}</li>
+                        {personal.dateOfBirth ? <li>Date of birth: {personal.dateOfBirth}</li> : null}
+                        {personal.nationality ? <li>Nationality: {personal.nationality}</li> : null}
                       </ul>
                     </div>
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Academic</p>
-                      <ul className="mt-1 list-inside list-disc space-y-0.5 text-zinc-700">
-                        <li>Highest qualification: {academic.highestQualification}</li>
-                        <li>Institution: {academic.institutionName}</li>
-                        <li>
-                          Result (normalized to 4.0 scale for screening): {academic.gpa.toFixed(2)} / 4.0
-                        </li>
-                        <li>IELTS: {academic.ieltsScore}</li>
-                        <li>Graduation year: {academic.graduationYear || "—"}</li>
-                      </ul>
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Study preferences</p>
-                      <ul className="mt-1 list-inside list-disc space-y-0.5 text-zinc-700">
-                        <li>Intake: {prefs.intake}</li>
-                        <li>Program level: {levelLabel}</li>
-                        <li>Preferred region: {prefs.preferredContinent}</li>
-                        <li>
-                          Destinations:{" "}
-                          {prefs.destinationChoices.map((d) => `#${d.rank} ${d.country}`).join(" · ") || "—"}
-                        </li>
-                        <li>Program / field: {prefs.programInterest}</li>
-                        {prefs.notes?.trim() ? <li>Notes: {prefs.notes}</li> : null}
-                      </ul>
-                    </div>
+                    {type === "university" ? (
+                      <>
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Academic</p>
+                          <ul className="mt-1 list-inside list-disc space-y-0.5 text-zinc-700">
+                            <li>Highest qualification: {academic.highestQualification}</li>
+                            <li>Institution: {academic.institutionName}</li>
+                            <li>
+                              Result (normalized to 4.0 scale for screening): {academic.gpa.toFixed(2)} / 4.0
+                            </li>
+                            <li>IELTS: {academic.ieltsScore}</li>
+                            <li>Graduation year: {academic.graduationYear || "—"}</li>
+                          </ul>
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Study preferences</p>
+                          <ul className="mt-1 list-inside list-disc space-y-0.5 text-zinc-700">
+                            <li>Intake: {prefs.intake}</li>
+                            <li>Program level: {levelLabel}</li>
+                            <li>Preferred region: {prefs.preferredContinent}</li>
+                            <li>
+                              Destinations:{" "}
+                              {prefs.destinationChoices.map((d) => `#${d.rank} ${d.country}`).join(" · ") || "—"}
+                            </li>
+                            <li>Program / field: {prefs.programInterest}</li>
+                            {prefs.notes?.trim() ? <li>Notes: {prefs.notes}</li> : null}
+                          </ul>
+                        </div>
+                      </>
+                    ) : (
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Submission</p>
+                        <pre className="mt-2 overflow-auto rounded-lg border border-zinc-200 bg-white p-3 text-xs text-zinc-700">
+                          {JSON.stringify(application.payload.submission?.data ?? {}, null, 2)}
+                        </pre>
+                      </div>
+                    )}
                     {application.payload.sourceCountry || application.payload.sourceProgram ? (
                       <div>
                         <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Apply source</p>

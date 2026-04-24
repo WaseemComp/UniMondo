@@ -23,9 +23,12 @@ export function TeamPhotoCropDialog({ open, imageSrc, onClose, onApply, applying
 
   useEffect(() => {
     if (!open || !imageSrc) return;
-    setCrop({ x: 0, y: 0 });
-    setZoom(1);
-    setCroppedAreaPixels(null);
+    const id = window.setTimeout(() => {
+      setCrop({ x: 0, y: 0 });
+      setZoom(1);
+      setCroppedAreaPixels(null);
+    }, 0);
+    return () => window.clearTimeout(id);
   }, [open, imageSrc]);
 
   const onCropComplete = useCallback((_c: Area, pixels: Area) => {

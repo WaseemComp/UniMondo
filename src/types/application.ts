@@ -2,6 +2,8 @@ export type ScreeningTag = "Eligible" | "Review Needed" | "Not Eligible";
 
 export type ReviewStatus = "Pending" | "Approved" | "Need More Info" | "Rejected";
 
+export type ApplicationType = "university" | "language_course" | "work_with_us" | "join_us";
+
 export interface PersonalInfo {
   fullName: string;
   email: string;
@@ -54,6 +56,11 @@ export interface ApplicationPayload {
   packageSelection?: PackageSelection;
   sourceCountry?: string;
   sourceProgram?: string;
+  /** Unified submissions: non-university payloads live here. */
+  submission?: {
+    applicationType: ApplicationType;
+    data: unknown;
+  };
 }
 
 export interface ApplicationRecord {
@@ -61,6 +68,8 @@ export interface ApplicationRecord {
   submittedAt: string;
   screeningTag: ScreeningTag;
   reviewStatus: ReviewStatus;
+  /** Unified submissions system (defaults to university). */
+  applicationType?: ApplicationType;
   payload: ApplicationPayload;
   documents: UploadedDocument[];
 }

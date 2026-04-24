@@ -4,6 +4,7 @@ import type {
 import type {
   ApplicationPayload,
   ApplicationRecord,
+  ApplicationType,
   ReviewStatus,
   ScreeningTag,
   UploadedDocument,
@@ -44,12 +45,13 @@ export type CreateApplicationInput = {
   submittedAt: string;
   screeningTag: ScreeningTag;
   reviewStatus: ReviewStatus;
+  applicationType?: ApplicationType;
   payload: ApplicationPayload;
-  personalInfo: ApplicationFormValues["personalInfo"];
-  academicInfo: ApplicationFormValues["academicInfo"];
-  studyPreferences: ApplicationFormValues["studyPreferences"];
-  selectedPackage: string;
-  selectedAddons: ApplicationFormValues["packageSelection"]["addonIds"];
+  personalInfo?: ApplicationFormValues["personalInfo"] | Record<string, unknown>;
+  academicInfo?: ApplicationFormValues["academicInfo"] | Record<string, unknown>;
+  studyPreferences?: ApplicationFormValues["studyPreferences"] | Record<string, unknown>;
+  selectedPackage?: string | null;
+  selectedAddons?: ApplicationFormValues["packageSelection"]["addonIds"];
   documentItems: DocumentUploadItem[];
 };
 
@@ -77,6 +79,7 @@ export async function createApplicationWithDocuments(
   input: CreateApplicationInput
 ): Promise<ApplicationRecord> {
   const uploadedDocs: UploadedDocument[] = [];
+  const applicationType: ApplicationType = input.applicationType ?? "university";
 
   if (!hasSupabase) {
     for (const item of input.documentItems) {
@@ -94,6 +97,7 @@ export async function createApplicationWithDocuments(
       submittedAt: input.submittedAt,
       screeningTag: input.screeningTag,
       reviewStatus: input.reviewStatus,
+      applicationType,
       payload: input.payload,
       documents: uploadedDocs,
     };
@@ -112,12 +116,13 @@ export async function createApplicationWithDocuments(
         submitted_at: input.submittedAt,
         screening_tag: input.screeningTag,
         review_status: input.reviewStatus,
+        application_type: applicationType,
         status: "submitted",
-        personal_info: input.personalInfo,
-        academic_info: input.academicInfo,
-        study_preferences: input.studyPreferences,
-        selected_package: input.selectedPackage,
-        selected_addons: input.selectedAddons,
+        personal_info: input.personalInfo ?? {},
+        academic_info: input.academicInfo ?? {},
+        study_preferences: input.studyPreferences ?? {},
+        selected_package: input.selectedPackage ?? null,
+        selected_addons: input.selectedAddons ?? [],
         payload: input.payload,
       },
     ]),
@@ -212,31 +217,52 @@ export async function createApplicationWithDocuments(
     submittedAt: input.submittedAt,
     screeningTag: input.screeningTag,
     reviewStatus: input.reviewStatus,
+    applicationType,
     payload: input.payload,
     documents: uploadedDocs,
   };
 }
 
-export async function getApplications(status?: ReviewStatus): Promise<ApplicationRecord[]> {
+export async function getApplications(params?: {
+  status?: ReviewStatus;
+  type?: ApplicationType;
+}): Promise<ApplicationRecord[]> {
+  const status = params?.status;
+  const type = params?.type;
+
   if (!hasSupabase) {
-    if (!status) {
+    if (!status && !type) {
       return inMemoryApplications;
     }
 
-    return inMemoryApplications.filter((application) => application.reviewStatus === status);
+    return inMemoryApplications.filter((application) => {
+      const matchesStatus = !status || application.reviewStatus === status;
+      const appType = application.applicationType ?? "university";
+      const matchesType = !type || appType === type;
+      return matchesStatus && matchesType;
+    });
   }
 
-  const params = new URLSearchParams({
+  const qs = new URLSearchParams({
     select:
-      "tracking_id,submitted_at,screening_tag,review_status,payload,documents(file_url,file_name,category,description)",
+      "tracking_id,submitted_at,screening_tag,review_status,application_type,payload,documents(file_url,file_name,category,description)",
     order: "submitted_at.desc",
   });
 
   if (status) {
-    params.append("review_status", `eq.${status}`);
+    qs.append("review_status", `eq.${status}`);
   }
 
-  const response = await supabaseRequest(`/rest/v1/applications?${params.toString()}`, {
+  if (type) {
+    if (type === "university") {
+      // Backward compatibility: treat NULL as university (older rows).
+      qs.append("or", "(application_type.eq.university,application_type.is.null)");
+    } else {
+      qs.append("application_type", `eq.${type}`);
+    }
+  }
+
+  const response = await supabaseRequest(`/rest/v1/applications?${qs.toString()}`, {
     method: "GET",
   });
 
@@ -250,6 +276,7 @@ export async function getApplications(status?: ReviewStatus): Promise<Applicatio
     submitted_at: string;
     screening_tag: ApplicationRecord["screeningTag"];
     review_status: ApplicationRecord["reviewStatus"];
+    application_type: ApplicationType | null;
     payload: ApplicationPayload;
     documents:
       | Array<{
@@ -266,6 +293,7 @@ export async function getApplications(status?: ReviewStatus): Promise<Applicatio
     submittedAt: row.submitted_at,
     screeningTag: row.screening_tag,
     reviewStatus: row.review_status,
+    applicationType: row.application_type ?? "university",
     payload: row.payload,
     documents: (row.documents ?? []).map(mapDbDocumentRow),
   }));

@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
-import { useSearchParams } from "next/navigation";
+import { z } from "zod";
 import {
   DESTINATION_OPTIONS,
   DOCUMENT_CATEGORIES,
@@ -15,6 +15,7 @@ import {
 } from "@/lib/apply/constants";
 import { applicationFormSchema, type ApplicationFormValues } from "@/lib/apply/schema";
 import type { StudyAddOnPublic, StudyPackagePublic } from "@/lib/cms/pricing-types";
+import type { ApplicationType } from "@/types/application";
 const stepLabels = [
   "Personal Info",
   "Academic Information",
@@ -23,6 +24,26 @@ const stepLabels = [
   "Documents",
   "Review & Submit",
 ];
+
+const applicationTypes: Array<{ value: ApplicationType; label: string; description: string }> = [
+  { value: "university", label: "University", description: "Full university admissions application" },
+  { value: "language_course", label: "Language Course", description: "Request a language course placement" },
+  { value: "work_with_us", label: "Work With Us", description: "Submit your CV and interest to join our team" },
+  { value: "join_us", label: "Join Us", description: "Partnership / agent / business inquiry" },
+];
+
+const simpleSubmissionSchema = z.object({
+  fullName: z.string().min(2, "Full name is required"),
+  email: z.string().email("Valid email required"),
+  phone: z.string().min(5, "Phone is required"),
+  country: z.string().optional(),
+  city: z.string().optional(),
+  message: z.string().optional(),
+  role: z.string().optional(),
+  linkedin: z.string().url("Valid URL required").optional(),
+});
+
+type SimpleSubmissionValues = z.infer<typeof simpleSubmissionSchema>;
 
 type SubmissionState =
   | { status: "idle" }
@@ -40,16 +61,21 @@ type PendingDoc = {
 type Props = {
   packages: StudyPackagePublic[];
   addOns: StudyAddOnPublic[];
+  prefill?: { country?: string; program?: string; type?: string };
 };
 
 function newDocKey() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-export function ApplyWizard({ packages, addOns }: Props) {
-  const searchParams = useSearchParams();
-  const prefilledCountry = searchParams.get("country")?.trim() || DESTINATION_OPTIONS[0];
-  const prefilledProgram = searchParams.get("program")?.trim() || "";
+export function ApplyWizard({ packages, addOns, prefill }: Props) {
+  const prefilledCountry = prefill?.country?.trim() || DESTINATION_OPTIONS[0];
+  const prefilledProgram = prefill?.program?.trim() || "";
+  const prefilledType = (prefill?.type?.trim() as ApplicationType | undefined) ?? undefined;
+
+  const [applicationType, setApplicationType] = useState<ApplicationType>(
+    prefilledType && applicationTypes.some((t) => t.value === prefilledType) ? prefilledType : "university"
+  );
 
   const defaultValues = useMemo<ApplicationFormValues>(
     () => ({
@@ -93,6 +119,21 @@ export function ApplyWizard({ packages, addOns }: Props) {
   const form = useForm<ApplicationFormValues>({
     resolver: zodResolver(applicationFormSchema),
     defaultValues,
+    mode: "onTouched",
+  });
+
+  const simpleForm = useForm<SimpleSubmissionValues>({
+    resolver: zodResolver(simpleSubmissionSchema),
+    defaultValues: {
+      fullName: "",
+      email: "",
+      phone: "",
+      country: "",
+      city: "",
+      message: "",
+      role: "",
+      linkedin: "",
+    },
     mode: "onTouched",
   });
 
@@ -202,6 +243,7 @@ export function ApplyWizard({ packages, addOns }: Props) {
     try {
       const body = {
         ...values,
+        applicationType,
         studyPreferences: {
           ...values.studyPreferences,
           destinations: values.studyPreferences.destinations.map((d, i) => ({
@@ -250,6 +292,66 @@ export function ApplyWizard({ packages, addOns }: Props) {
     }
   });
 
+  const onSimpleSubmit = simpleForm.handleSubmit(async (values) => {
+    setSubmission({ status: "submitting" });
+    try {
+      const body =
+        applicationType === "language_course"
+          ? {
+              applicationType,
+              contact: { fullName: values.fullName, email: values.email, phone: values.phone },
+              country: values.country,
+              city: values.city,
+              duration: "",
+              notes: values.message,
+            }
+          : applicationType === "work_with_us"
+            ? {
+                applicationType,
+                contact: { fullName: values.fullName, email: values.email, phone: values.phone },
+                role: values.role,
+                linkedin: values.linkedin,
+                notes: values.message,
+              }
+            : {
+                applicationType,
+                organization: values.country || "",
+                contact: { fullName: values.fullName, email: values.email, phone: values.phone },
+                country: values.country,
+                message: values.message,
+              };
+
+      const fd = new FormData();
+      fd.append("application", JSON.stringify(body));
+      fd.append("documentMeta", JSON.stringify([]));
+
+      const response = await fetch("/api/applications", { method: "POST", body: fd });
+      const data = (await response.json()) as {
+        trackingId?: string;
+        screeningTag?: string;
+        message?: string;
+        issues?: unknown;
+      };
+
+      if (!response.ok || !data.trackingId || !data.screeningTag) {
+        const extra =
+          data.issues != null ? ` ${typeof data.issues === "string" ? data.issues : JSON.stringify(data.issues)}` : "";
+        throw new Error((data.message || "Failed to submit application.") + extra);
+      }
+
+      setSubmission({
+        status: "success",
+        trackingId: data.trackingId,
+        screeningTag: data.screeningTag,
+      });
+    } catch (error) {
+      setSubmission({
+        status: "error",
+        message: error instanceof Error ? error.message : "Unknown error occurred.",
+      });
+    }
+  });
+
   if (submission.status === "success") {
     return (
       <section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-8 shadow-sm">
@@ -261,8 +363,127 @@ export function ApplyWizard({ packages, addOns }: Props) {
   }
 
   return (
-    <FormProvider {...form}>
-      <div className="space-y-6">
+    <div className="space-y-6">
+      <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Select application type</p>
+        <div className="mt-3 grid gap-3 md:grid-cols-2">
+          {applicationTypes.map((t) => {
+            const active = t.value === applicationType;
+            return (
+              <button
+                key={t.value}
+                type="button"
+                onClick={() => {
+                  setApplicationType(t.value);
+                  setSubmission({ status: "idle" });
+                }}
+                className={[
+                  "rounded-xl border-2 p-4 text-left transition",
+                  active ? "border-amber-500 bg-amber-50/50" : "border-zinc-200 hover:border-zinc-300",
+                ].join(" ")}
+              >
+                <p className="font-semibold text-zinc-900">{t.label}</p>
+                <p className="mt-1 text-sm text-zinc-600">{t.description}</p>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      {applicationType !== "university" ? (
+        <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+          <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
+            <div className="grid gap-4 md:grid-cols-2">
+              <Field label="Full Name" error={simpleForm.formState.errors.fullName?.message}>
+                <input
+                  {...simpleForm.register("fullName")}
+                  className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2"
+                />
+              </Field>
+              <Field label="Email" error={simpleForm.formState.errors.email?.message}>
+                <input
+                  type="email"
+                  {...simpleForm.register("email")}
+                  className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2"
+                />
+              </Field>
+              <Field label="Phone" error={simpleForm.formState.errors.phone?.message}>
+                <input
+                  {...simpleForm.register("phone")}
+                  className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2"
+                />
+              </Field>
+
+              {applicationType === "language_course" && (
+                <>
+                  <Field label="Country (preferred)" error={simpleForm.formState.errors.country?.message}>
+                    <input
+                      {...simpleForm.register("country")}
+                      className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2"
+                    />
+                  </Field>
+                  <Field label="City (preferred)" error={simpleForm.formState.errors.city?.message}>
+                    <input
+                      {...simpleForm.register("city")}
+                      className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2"
+                    />
+                  </Field>
+                </>
+              )}
+
+              {applicationType === "work_with_us" && (
+                <>
+                  <Field label="Role (optional)" error={simpleForm.formState.errors.role?.message}>
+                    <input
+                      {...simpleForm.register("role")}
+                      className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2"
+                    />
+                  </Field>
+                  <Field label="LinkedIn URL (optional)" error={simpleForm.formState.errors.linkedin?.message}>
+                    <input
+                      {...simpleForm.register("linkedin")}
+                      className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2"
+                    />
+                  </Field>
+                </>
+              )}
+            </div>
+
+            <label className="space-y-1 text-sm text-zinc-700">
+              <span className="font-medium">
+                {applicationType === "work_with_us"
+                  ? "Message (optional)"
+                  : applicationType === "join_us"
+                    ? "Message (optional)"
+                    : "Notes (optional)"}
+              </span>
+              <textarea
+                {...simpleForm.register("message")}
+                className="min-h-28 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2"
+              />
+            </label>
+
+            {submission.status === "error" && (
+              <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                {submission.message}
+              </p>
+            )}
+
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => void onSimpleSubmit()}
+                disabled={submission.status === "submitting"}
+                className="rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white disabled:opacity-60"
+              >
+                {submission.status === "submitting" ? "Submitting..." : "Submit"}
+              </button>
+            </div>
+          </form>
+        </section>
+      ) : (
+        <FormProvider {...form}>
+          <div className="space-y-6">
         <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
           <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
             {stepLabels.map((label, index) => {
@@ -800,6 +1021,8 @@ export function ApplyWizard({ packages, addOns }: Props) {
         </section>
       </div>
     </FormProvider>
+      )}
+    </div>
   );
 }
 

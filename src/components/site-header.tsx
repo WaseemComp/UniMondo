@@ -4,8 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { Menu, X } from "lucide-react";
+import { useLocale } from "next-intl";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { LanguageSwitcher } from "@/components/language-switcher";
+import { locales } from "../../i18n";
 
 const NAV = [
   { href: "/", label: "Home" },
@@ -16,6 +19,22 @@ const NAV = [
   { href: "/contact", label: "Contact" },
   { href: "/blog", label: "Blog" },
 ] as const;
+
+function stripLocalePrefix(pathname: string): string {
+  const parts = pathname.split("/").filter(Boolean);
+  if (parts.length === 0) return "/";
+  if (locales.includes(parts[0] as (typeof locales)[number])) {
+    const rest = parts.slice(1).join("/");
+    return `/${rest}`;
+  }
+  return pathname;
+}
+
+function withLocale(locale: string, href: string): string {
+  if (href.startsWith("/admin")) return href;
+  if (href === "/") return `/${locale}`;
+  return `/${locale}${href}`;
+}
 
 function isNavActive(pathname: string, href: string) {
   if (href === "/") {
@@ -28,13 +47,17 @@ function isNavActive(pathname: string, href: string) {
 }
 
 export function SiteHeader() {
-  const pathname = usePathname();
+  const locale = useLocale();
+  const pathname = stripLocalePrefix(usePathname());
   const [open, setOpen] = useState(false);
 
   return (
     <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0a1628]/92 backdrop-blur-xl">
       <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-4 py-3.5 sm:px-6 lg:px-8">
-        <Link href="/" className="font-[family-name:var(--font-heading)] text-xl font-semibold tracking-tight text-white">
+        <Link
+          href={withLocale(locale, "/")}
+          className="font-[family-name:var(--font-heading)] text-xl font-semibold tracking-tight text-white"
+        >
           <span className="text-amber-400">Uni</span>Mondo
         </Link>
 
@@ -42,7 +65,7 @@ export function SiteHeader() {
           {NAV.map((item) => (
             <Link
               key={`${item.href}-${item.label}`}
-              href={item.href}
+              href={withLocale(locale, item.href)}
               className={cn(
                 "whitespace-nowrap rounded-full px-2.5 py-2 text-[13px] font-medium transition xl:px-3 xl:text-sm",
                 isNavActive(pathname, item.href) ? "bg-white/10 text-amber-300" : "text-slate-300 hover:bg-white/5 hover:text-white",
@@ -52,6 +75,7 @@ export function SiteHeader() {
             </Link>
           ))}
           <span className="mx-1 h-4 w-px bg-white/15" aria-hidden />
+          <LanguageSwitcher />
           <Link
             href="/admin/login"
             className={cn(
@@ -65,13 +89,13 @@ export function SiteHeader() {
 
         <div className="hidden items-center gap-2 sm:flex">
           <Link
-            href="/#eligibility"
+            href={withLocale(locale, "/#eligibility")}
             className="rounded-full border border-amber-500/40 px-4 py-2 text-sm font-semibold text-amber-200 transition hover:bg-amber-500/10"
           >
             Free Eligibility Check
           </Link>
           <Link
-            href="/apply"
+            href={withLocale(locale, "/apply")}
             className="rounded-full bg-amber-500 px-4 py-2 text-sm font-semibold text-[#0a1628] shadow-md shadow-amber-500/20 transition hover:bg-amber-400"
           >
             Start Application
@@ -102,22 +126,25 @@ export function SiteHeader() {
               {NAV.map((item) => (
                 <Link
                   key={`m-${item.href}-${item.label}`}
-                  href={item.href}
+                  href={withLocale(locale, item.href)}
                   onClick={() => setOpen(false)}
                   className="rounded-lg px-3 py-3 text-base font-medium text-slate-200 hover:bg-white/5"
                 >
                   {item.label}
                 </Link>
               ))}
+              <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
+                <LanguageSwitcher />
+              </div>
               <Link
-                href="/#eligibility"
+                href={withLocale(locale, "/#eligibility")}
                 onClick={() => setOpen(false)}
                 className="mt-2 rounded-full border border-amber-500/40 px-4 py-3 text-center text-sm font-semibold text-amber-200"
               >
                 Free Eligibility Check
               </Link>
               <Link
-                href="/apply"
+                href={withLocale(locale, "/apply")}
                 onClick={() => setOpen(false)}
                 className="rounded-full bg-amber-500 px-4 py-3 text-center text-sm font-semibold text-[#0a1628]"
               >

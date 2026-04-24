@@ -1,0 +1,12 @@
+{
+  "app": {
+    "name": "UniMondo"
+  },
+  "language": {
+    "en": "Englisch",
+    "ar": "Arabisch",
+    "de": "Deutsch",
+    "fr": "Französisch"
+  }
+}
+
