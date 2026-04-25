@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { requireAdminUser } from "@/app/admin/require-admin";
+import { requirePermission } from "@/lib/auth/require-permission";
 import { createSupabaseServiceClient } from "@/lib/supabase/admin";
 
 const programSchema = z.object({
@@ -43,7 +43,7 @@ function formatZodError(err: z.ZodError): string {
 
 export async function saveProgram(input: unknown): Promise<{ ok: true } | { ok: false; error: string }> {
   try {
-    await requireAdminUser();
+    await requirePermission("universities.edit");
     const svc = createSupabaseServiceClient();
     if (!svc) return { ok: false, error: "SUPABASE_SERVICE_ROLE_KEY is not configured." };
 
@@ -87,7 +87,7 @@ export async function saveProgram(input: unknown): Promise<{ ok: true } | { ok: 
 
 export async function deleteProgram(id: string): Promise<{ ok: true } | { ok: false; error: string }> {
   try {
-    await requireAdminUser();
+    await requirePermission("universities.delete");
     const svc = createSupabaseServiceClient();
     if (!svc) return { ok: false, error: "SUPABASE_SERVICE_ROLE_KEY is not configured." };
 

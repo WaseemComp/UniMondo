@@ -31,16 +31,35 @@ const STEPS = [
   },
 ] as const;
 
-export function HowItWorks() {
+export type HowItWorksCopy = {
+  kicker?: string;
+  title?: string;
+  subtitle?: string;
+};
+
+export function HowItWorks({
+  copy = {
+    kicker: "Process",
+    title: "How it works",
+    subtitle: "Five clear stages — transparent, documented, and built around your timeline.",
+  },
+}: {
+  copy?: HowItWorksCopy;
+}) {
+  const c = {
+    kicker: copy?.kicker ?? "Process",
+    title: copy?.title ?? "How it works",
+    subtitle: copy?.subtitle ?? "Five clear stages — transparent, documented, and built around your timeline.",
+  };
   return (
     <section className="border-y border-slate-200 bg-slate-50 py-20 sm:py-28">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#0a1628]/70">Process</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#0a1628]/70">{c.kicker}</p>
           <h2 className="mt-3 font-[family-name:var(--font-heading)] text-3xl font-semibold tracking-tight text-[#0a1628] sm:text-4xl">
-            How it works
+            {c.title}
           </h2>
-          <p className="mt-4 text-slate-600">Five clear stages — transparent, documented, and built around your timeline.</p>
+          <p className="mt-4 text-slate-600">{c.subtitle}</p>
         </div>
 
         <div className="relative mx-auto mt-16 max-w-3xl">

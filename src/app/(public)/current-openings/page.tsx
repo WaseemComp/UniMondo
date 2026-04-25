@@ -6,7 +6,7 @@ import { getOpenings } from "@/lib/data/openings";
 export const revalidate = 60;
 
 export const metadata: Metadata = {
-  title: "Featured Universities & Programs | UniMondo",
+  title: "Universities & Programs | UniMondo",
   description:
     "Discover celebrated European universities with centuries of academic excellence offering outstanding Bachelor’s and Master’s programs.",
 };
@@ -28,7 +28,7 @@ export default async function CurrentOpeningsPage() {
         <div className="relative mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
           <p className="text-xs font-semibold uppercase tracking-[0.25em] text-amber-400/90">UniMondo</p>
           <h1 className="mt-4 max-w-4xl font-[family-name:var(--font-heading)] text-3xl font-semibold leading-tight tracking-tight text-white sm:text-4xl lg:text-5xl">
-            Featured Universities &amp; Programs
+            Universities &amp; Programs
           </h1>
           <p className="mt-5 max-w-2xl text-base leading-relaxed text-slate-300 sm:text-lg">
             Discover celebrated European universities with centuries of academic excellence offering outstanding

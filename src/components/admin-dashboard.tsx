@@ -18,9 +18,15 @@ const fetcher = async (url: string) => {
   return data.applications || [];
 };
 
-export function AdminDashboard() {
+type Props = {
+  allowedTypes?: ApplicationType[];
+  defaultType?: ApplicationType | "All";
+  hideTypeFilter?: boolean;
+};
+
+export function AdminDashboard({ allowedTypes, defaultType = "All", hideTypeFilter = false }: Props) {
   const [statusFilter, setStatusFilter] = useState<ReviewStatus | "All">("All");
-  const [typeFilter, setTypeFilter] = useState<ApplicationType | "All">("All");
+  const [typeFilter, setTypeFilter] = useState<ApplicationType | "All">(defaultType);
 
   const typeLabel: Record<ApplicationType, string> = {
     university: "University",
@@ -74,18 +80,22 @@ export function AdminDashboard() {
 
           <label className="space-y-1 text-sm text-zinc-700">
             <span className="font-medium">Filter by type</span>
-            <select
-              value={typeFilter}
-              onChange={(event) => setTypeFilter(event.target.value as ApplicationType | "All")}
-              className="w-full max-w-xs rounded-lg border border-zinc-300 bg-white px-3 py-2"
-            >
-              <option value="All">All</option>
-              {(["university", "language_course"] as const).map((t) => (
-                <option key={t} value={t}>
-                  {typeLabel[t]}
-                </option>
-              ))}
-            </select>
+            {hideTypeFilter ? (
+              <p className="text-sm text-zinc-500">Locked for this view</p>
+            ) : (
+              <select
+                value={typeFilter}
+                onChange={(event) => setTypeFilter(event.target.value as ApplicationType | "All")}
+                className="w-full max-w-xs rounded-lg border border-zinc-300 bg-white px-3 py-2"
+              >
+                <option value="All">All</option>
+                {(allowedTypes ?? (["university", "language_course"] as const)).map((t) => (
+                  <option key={t} value={t}>
+                    {typeLabel[t]}
+                  </option>
+                ))}
+              </select>
+            )}
           </label>
         </div>
       </section>
@@ -114,7 +124,7 @@ export function AdminDashboard() {
                     </p>
                     <div className="mt-2">
                       <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-900">
-                        {type === "language_course" ? "Language Course" : "University"}
+                        {typeLabel[type]}
                       </span>
                     </div>
                     <p className="mt-1 text-sm text-zinc-700">{personal.fullName}</p>

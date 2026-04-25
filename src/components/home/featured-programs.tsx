@@ -8,9 +8,21 @@ import type { Opening } from "@/lib/unimondo-data";
 
 type Props = {
   openings: Opening[];
+  kicker?: string;
+  title?: string;
+  subtitle?: string;
+  ctaLabel?: string;
+  ctaHref?: string;
 };
 
-export function FeaturedPrograms({ openings }: Props) {
+export function FeaturedPrograms({
+  openings,
+  kicker = "Universities",
+  title = "Universities and Programs",
+  subtitle = "Hand-picked tracks from leading institutions — clear deadlines, transparent tuition bands, and counselor support.",
+  ctaLabel = "See all openings",
+  ctaHref = "/current-openings",
+}: Props) {
   const featured = openings.slice(0, 4);
   return (
     <section className="relative bg-[#0a1628] py-20 sm:py-28">
@@ -28,19 +40,17 @@ export function FeaturedPrograms({ openings }: Props) {
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-400/90">Featured universities</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-400/90">{kicker}</p>
             <h2 className="mt-2 font-[family-name:var(--font-heading)] text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-              Featured Universities and Programs
+              {title}
             </h2>
-            <p className="mt-3 max-w-xl text-slate-300">
-              Hand-picked tracks from leading institutions — clear deadlines, transparent tuition bands, and counselor support.
-            </p>
+            <p className="mt-3 max-w-xl text-slate-300">{subtitle}</p>
           </div>
           <Link
-            href={"/current-openings"}
+            href={ctaHref}
             className="inline-flex items-center gap-2 rounded-full border border-amber-500/40 bg-amber-500/10 px-5 py-2.5 text-sm font-semibold text-amber-300 transition hover:bg-amber-500/20"
           >
-            See all openings
+            {ctaLabel}
             <ArrowRight className="h-4 w-4" />
           </Link>
         </div>

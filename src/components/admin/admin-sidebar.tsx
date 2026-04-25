@@ -29,31 +29,21 @@ import type { LucideIcon } from "lucide-react";
 
 type NavItem =
   | { section: string }
-  | { href: string; label: string; icon: LucideIcon; scope?: AdminAreaPermission };
+  | { href: string; label: string; icon: LucideIcon; scope?: AdminAreaPermission; superOnly?: boolean };
 
 const NAV: NavItem[] = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/admin/programs", label: "Programs", icon: FileText, scope: "academic" },
-  { href: "/admin/featured-universities", label: "Featured universities", icon: Landmark, scope: "academic" },
-  { href: "/admin/packages", label: "Packages", icon: Gift, scope: "academic" },
-  { href: "/admin/courses", label: "Courses", icon: BookOpen, scope: "academic" },
+  { href: "/admin/home", label: "Home", icon: Home, scope: "content" },
+  { href: "/admin/universities", label: "Universities", icon: Landmark, scope: "academic" },
   { href: "/admin/countries", label: "Countries", icon: Globe, scope: "academic" },
-  { href: "/admin/blogs", label: "Blogs", icon: BookOpen, scope: "academic" },
-  { href: "/admin/settings", label: "Team & account", icon: Settings },
-  { section: "More" },
+  { href: "/admin/packages", label: "Packages", icon: Gift, scope: "academic" },
+  { href: "/admin/courses", label: "Language Courses", icon: BookOpen, scope: "academic" },
+  { href: "/admin/about", label: "About", icon: ScrollText, scope: "content" },
+  { href: "/admin/contact", label: "Contact", icon: Phone, scope: "content" },
+  { href: "/admin/blog", label: "Blog", icon: Newspaper, scope: "academic" },
   { href: "/admin/applications", label: "Applications", icon: GraduationCap, scope: "applications" },
-  { section: "Site content" },
-  { href: "/admin/content/success-stories", label: "Success stories", icon: Sparkles, scope: "content" },
-  { href: "/admin/content/about", label: "About page", icon: ScrollText, scope: "content" },
-  { href: "/admin/content/team", label: "Team members", icon: Users, scope: "content" },
-  { href: "/admin/content/contact", label: "Contact management", icon: Phone, scope: "content" },
-  { section: "Submissions" },
-  { href: "/admin/submissions/work-with-us", label: "Work with us", icon: Inbox, scope: "submissions" },
-  { href: "/admin/submissions/join-us", label: "Join us", icon: UserCircle2, scope: "submissions" },
-  { section: "Extra" },
-  { href: "/admin/content/home", label: "Homepage", icon: Home, scope: "content" },
-  { href: "/admin/content/ticker", label: "News ticker", icon: Newspaper, scope: "content" },
-  { href: "/admin/data/regions", label: "Regions", icon: Map, scope: "academic" },
+  { href: "/admin/submissions", label: "Submissions", icon: Inbox, scope: "submissions" },
+  { href: "/admin/settings", label: "Settings", icon: Settings },
 ] as const;
 
 type Props = {
@@ -83,7 +73,7 @@ export function AdminSidebar({ access }: Props) {
             <p key={`s-${i}`} className="mt-3 px-2 text-xs font-semibold uppercase tracking-wide text-zinc-400 first:mt-0">
               {item.section}
             </p>
-          ) : canSeeScope(access, item.scope) ? (
+          ) : item.superOnly && !access.isSuper ? null : canSeeScope(access, item.scope) ? (
             <Link
               key={item.href}
               href={item.href}

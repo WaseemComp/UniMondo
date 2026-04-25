@@ -47,25 +47,48 @@ const DESTINATIONS = [
   },
 ] as const;
 
-export function PopularDestinations() {
+export type DestinationsCopy = {
+  kicker?: string;
+  title?: string;
+  subtitle?: string;
+  ctaLabel?: string;
+  ctaHref?: string;
+};
+
+export function PopularDestinations({
+  copy = {
+    kicker: "Destinations",
+    title: "Popular countries we cover",
+    subtitle: "From Mediterranean campuses to Nordic innovation — find where your profile fits best.",
+    ctaLabel: "View all countries",
+    ctaHref: "/destinations",
+  },
+}: {
+  copy?: DestinationsCopy;
+}) {
+  const c = {
+    kicker: copy?.kicker ?? "Destinations",
+    title: copy?.title ?? "Popular countries we cover",
+    subtitle: copy?.subtitle ?? "From Mediterranean campuses to Nordic innovation — find where your profile fits best.",
+    ctaLabel: copy?.ctaLabel ?? "View all countries",
+    ctaHref: copy?.ctaHref ?? "/destinations",
+  };
   return (
     <section className="bg-slate-50 py-20 sm:py-28">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#0a1628]/70">Destinations</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#0a1628]/70">{c.kicker}</p>
             <h2 className="mt-2 font-[family-name:var(--font-heading)] text-3xl font-semibold tracking-tight text-[#0a1628] sm:text-4xl">
-              Popular countries we cover
+              {c.title}
             </h2>
-            <p className="mt-3 max-w-xl text-slate-600">
-              From Mediterranean campuses to Nordic innovation — find where your profile fits best.
-            </p>
+            <p className="mt-3 max-w-xl text-slate-600">{c.subtitle}</p>
           </div>
           <Link
-            href={"/destinations"}
+            href={c.ctaHref}
             className="inline-flex items-center gap-2 text-sm font-semibold text-amber-700 hover:text-amber-600"
           >
-            View all countries
+            {c.ctaLabel}
             <ArrowRight className="h-4 w-4" />
           </Link>
         </div>

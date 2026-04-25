@@ -3,6 +3,9 @@ import { buildPayloadSnapshot } from "@/lib/apply/map-to-legacy";
 import { documentMetaListSchema, serverSubmitPayloadSchema } from "@/lib/apply/schema";
 import { triggerStudentEmail } from "@/lib/notifications";
 import { createApplicationWithDocuments, getApplications } from "@/lib/persistence";
+import { createSupabaseServerAuthClient } from "@/lib/supabase/server-auth";
+import { isAdminUser } from "@/lib/auth/admin";
+import { hasAdminPermission } from "@/lib/auth/permissions";
 import { evaluateApplication } from "@/lib/screening";
 import { generateTrackingId } from "@/lib/tracking";
 import type { ApplicationFormValues } from "@/lib/apply/schema";
@@ -10,6 +13,14 @@ import type { ApplicationPayload, ApplicationType, ReviewStatus } from "@/types/
 
 export async function GET(request: NextRequest) {
   try {
+    const supabase = await createSupabaseServerAuthClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user || !(await isAdminUser(user))) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
     const statusParam = request.nextUrl.searchParams.get("status") as ReviewStatus | null;
     const typeParam = request.nextUrl.searchParams.get("type") as ApplicationType | null;
     const allowedStatuses: ReviewStatus[] = ["Pending", "Approved", "Need More Info", "Rejected"];
@@ -18,7 +29,25 @@ export async function GET(request: NextRequest) {
     const status = statusParam && allowedStatuses.includes(statusParam) ? statusParam : undefined;
     const type = typeParam && allowedTypes.includes(typeParam) ? typeParam : undefined;
 
-    const applications = await getApplications({ status, type });
+    const canApps = await hasAdminPermission(user, "applications.view");
+    const canSubs = await hasAdminPermission(user, "submissions.view");
+    const isSubType = type === "work_with_us" || type === "join_us";
+
+    if (type) {
+      if (isSubType && !canSubs) return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+      if (!isSubType && !canApps) return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+      const applications = await getApplications({ status, type });
+      return NextResponse.json({ applications });
+    }
+
+    const typesToFetch: ApplicationType[] = [
+      ...(canApps ? (["university", "language_course"] as const) : []),
+      ...(canSubs ? (["work_with_us", "join_us"] as const) : []),
+    ];
+    if (!typesToFetch.length) return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+
+    const lists = await Promise.all(typesToFetch.map((t) => getApplications({ status, type: t })));
+    const applications = lists.flat().sort((a, b) => (a.submittedAt < b.submittedAt ? 1 : -1));
     return NextResponse.json({ applications });
   } catch (error) {
     return NextResponse.json(

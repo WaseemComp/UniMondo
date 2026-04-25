@@ -5,7 +5,30 @@ import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { useMemo, useState } from "react";
 
-export function JourneyCta() {
+export type JourneyCtaCopy = {
+  kicker?: string;
+  title?: string;
+  description?: string;
+  buttonText?: string;
+};
+
+export function JourneyCta({
+  copy = {
+    kicker: "Ready when you are",
+    title: "Begin your journey to Europe",
+    description: "Drop your GPA and IELTS — we'll carry these into your application flow so you skip retyping them.",
+    buttonText: "Start 5-step application",
+  },
+}: {
+  copy?: JourneyCtaCopy;
+}) {
+  const c = {
+    kicker: copy?.kicker ?? "Ready when you are",
+    title: copy?.title ?? "Begin your journey to Europe",
+    description:
+      copy?.description ?? "Drop your GPA and IELTS — we'll carry these into your application flow so you skip retyping them.",
+    buttonText: copy?.buttonText ?? "Start 5-step application",
+  };
   const [gpa, setGpa] = useState("");
   const [ielts, setIelts] = useState("");
 
@@ -30,13 +53,11 @@ export function JourneyCta() {
           <div className="pointer-events-none absolute -bottom-24 -left-16 h-56 w-56 rounded-full bg-emerald-500/10 blur-3xl" />
 
           <div className="relative mx-auto max-w-3xl text-center">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-400/90">Ready when you are</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-400/90">{c.kicker}</p>
             <h2 className="mt-3 font-[family-name:var(--font-heading)] text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-              Begin your journey to Europe
+              {c.title}
             </h2>
-            <p className="mt-4 text-slate-300">
-              Drop your GPA and IELTS — we&apos;ll carry these into your application flow so you skip retyping them.
-            </p>
+            <p className="mt-4 text-slate-300">{c.description}</p>
 
             <div className="mx-auto mt-8 flex max-w-md flex-col gap-3 sm:max-w-none sm:flex-row sm:justify-center">
               <label className="sr-only" htmlFor="gpa-field">
@@ -70,7 +91,7 @@ export function JourneyCta() {
                 href={applyHref}
                 className="inline-flex items-center gap-2 rounded-full bg-amber-500 px-8 py-4 text-base font-semibold text-[#0a1628] shadow-lg shadow-amber-500/25 transition hover:bg-amber-400"
               >
-                Start 5-step application
+                {c.buttonText}
                 <ArrowRight className="h-5 w-5" />
               </Link>
             </motion.div>

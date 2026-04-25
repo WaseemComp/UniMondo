@@ -2,7 +2,7 @@
 
 export const siteNav = {
   home: "Home",
-  featuredUniversities: "Featured",
+  featuredUniversities: "Universities",
   languageCourses: "Language Courses",
   countries: "Countries",
   packages: "Our Packages",

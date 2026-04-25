@@ -37,6 +37,8 @@ const FEATURES = [
   },
 ] as const;
 
+export type WhyUniMondoStat = { value: number; suffix?: string; label: string };
+
 function AnimatedStat({ value, suffix, label }: { value: number; suffix: string; label: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, margin: "-40px" });
@@ -66,19 +68,32 @@ function AnimatedStat({ value, suffix, label }: { value: number; suffix: string;
   );
 }
 
-export function WhyUniMondo() {
+export function WhyUniMondo({
+  kicker = "Why UniMondo",
+  title = "Built for ambitious students who expect clarity",
+  subtitle = "We combine European admissions know-how with human support — so you can focus on your future, not the paperwork maze.",
+  stats = [
+    { value: 150, suffix: "+", label: "Students guided to Europe" },
+    { value: 95, suffix: "%", label: "Visa success (rolling cohort)" },
+    { value: 12, suffix: "+", label: "Destination countries" },
+  ],
+}: {
+  kicker?: string;
+  title?: string;
+  subtitle?: string;
+  stats?: WhyUniMondoStat[];
+}) {
   return (
     <section className="relative overflow-hidden bg-[#060f1f] py-20 sm:py-28">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(251,191,36,0.12),transparent)]" />
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-400/90">Why UniMondo</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-400/90">{kicker}</p>
           <h2 className="mt-3 font-[family-name:var(--font-heading)] text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-            Built for ambitious students who expect clarity
+            {title}
           </h2>
           <p className="mt-4 text-base leading-relaxed text-slate-400 sm:text-lg">
-            We combine European admissions know-how with human support — so you can focus on your future, not the
-            paperwork maze.
+            {subtitle}
           </p>
         </div>
 
@@ -103,9 +118,9 @@ export function WhyUniMondo() {
         </div>
 
         <div className="mt-14 grid gap-4 sm:grid-cols-3">
-          <AnimatedStat value={150} suffix="+" label="Students guided to Europe" />
-          <AnimatedStat value={95} suffix="%" label="Visa success (rolling cohort)" />
-          <AnimatedStat value={12} suffix="+" label="Destination countries" />
+          {stats.slice(0, 3).map((s) => (
+            <AnimatedStat key={s.label} value={s.value} suffix={s.suffix ?? ""} label={s.label} />
+          ))}
         </div>
       </div>
     </section>

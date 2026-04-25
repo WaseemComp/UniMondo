@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { requireAdminUser } from "@/app/admin/require-admin";
+import { requirePermission } from "@/lib/auth/require-permission";
 import { createSupabaseServiceClient } from "@/lib/supabase/admin";
 
 const settingsSchema = z.object({
@@ -12,7 +12,7 @@ const settingsSchema = z.object({
 
 export async function saveSiteSettings(input: unknown): Promise<{ ok: true } | { ok: false; error: string }> {
   try {
-    await requireAdminUser();
+    await requirePermission("settings.edit");
     const svc = createSupabaseServiceClient();
     if (!svc) return { ok: false, error: "SUPABASE_SERVICE_ROLE_KEY is not configured." };
 

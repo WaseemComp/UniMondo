@@ -24,6 +24,7 @@ export type AdminProfileRow = {
   email: string;
   is_super_admin: boolean;
   permissions: Record<string, boolean>;
+  permissions_v2?: Record<string, boolean>;
 };
 
 function defaultPerms(): Record<AdminAreaPermission, boolean> {
@@ -43,7 +44,10 @@ export async function listAdminUsers(): Promise<{ ok: true; rows: AdminProfileRo
     await requireSuperAdmin();
     const svc = createSupabaseServiceClient();
     if (!svc) return { ok: false, error: "SUPABASE_SERVICE_ROLE_KEY is not configured." };
-    const { data, error } = await svc.from("admin_profiles").select("user_id, email, is_super_admin, permissions").order("email");
+    const { data, error } = await svc
+      .from("admin_profiles")
+      .select("user_id, email, is_super_admin, permissions, permissions_v2")
+      .order("email");
     if (error) return { ok: false, error: error.message };
     return { ok: true, rows: (data ?? []) as AdminProfileRow[] };
   } catch (e) {
@@ -74,6 +78,7 @@ export async function createAdminUser(input: unknown): Promise<{ ok: true } | { 
       email: email.trim().toLowerCase(),
       is_super_admin: false,
       permissions: permissions as unknown as Record<string, boolean>,
+      permissions_v2: {},
     });
     if (pErr) {
       await svc.auth.admin.deleteUser(created.user.id);
@@ -114,6 +119,36 @@ export async function updateAdminPermissions(
     }
     const { error } = await svc.from("admin_profiles").update({ permissions }).eq("user_id", userId);
     if (error) return { ok: false, error: error.message };
+    revalidatePath("/admin/settings");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Failed" };
+  }
+}
+
+const updatePermsV2Schema = z.object({
+  userId: z.string().uuid(),
+  permissionsV2: z.record(z.string(), z.boolean()),
+});
+
+export async function updateAdminPermissionsV2(
+  input: unknown,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const me = await requireSuperAdmin();
+    const parsed = updatePermsV2Schema.safeParse(input);
+    if (!parsed.success) return { ok: false, error: "Invalid data" };
+    const { userId, permissionsV2 } = parsed.data;
+    if (userId === me.id) return { ok: false, error: "You cannot change your own permissions here." };
+    const svc = createSupabaseServiceClient();
+    if (!svc) return { ok: false, error: "SUPABASE_SERVICE_ROLE_KEY is not configured." };
+    const { data: target } = await svc.from("admin_profiles").select("is_super_admin").eq("user_id", userId).maybeSingle();
+    if ((target as { is_super_admin?: boolean } | null)?.is_super_admin) {
+      return { ok: false, error: "Use the database to adjust another super admin; app UI protects super accounts." };
+    }
+    const { error } = await svc.from("admin_profiles").update({ permissions_v2: permissionsV2 }).eq("user_id", userId);
+    if (error) return { ok: false, error: error.message };
+    revalidatePath("/admin/users");
     revalidatePath("/admin/settings");
     return { ok: true };
   } catch (e) {

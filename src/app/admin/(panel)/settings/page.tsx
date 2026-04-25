@@ -12,7 +12,7 @@ export default async function AdminSiteSettingsPage() {
   if (access.isSuper && svc) {
     const { data } = await svc
       .from("admin_profiles")
-      .select("user_id, email, is_super_admin, permissions")
+      .select("user_id, email, is_super_admin, permissions, permissions_v2")
       .order("email", { ascending: true });
     adminRows = (data ?? []) as AdminProfileRow[];
   }

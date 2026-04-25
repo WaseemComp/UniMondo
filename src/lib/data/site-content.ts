@@ -7,7 +7,7 @@ const FALLBACK: SiteContentMap = {
   "home.hero.title": "Your Future Knows No Borders",
   "home.hero.subtitle":
     "Personalized admissions guidance, visa expertise, and full student support — from first call to campus arrival.",
-  "home.hero.cta_explore": "Featured Universities",
+  "home.hero.cta_explore": "Universities",
   "home.hero.cta_apply": "Begin Your Application",
   "home.ticker.enabled": "true",
 };

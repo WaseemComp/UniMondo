@@ -6,7 +6,18 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-const SLIDES = [
+export type HeroSlide = {
+  src: string;
+  alt: string;
+  line: string;
+  isActive?: boolean;
+  title?: string;
+  subtitle?: string;
+  ctaExplore?: string;
+  ctaApply?: string;
+};
+
+const SLIDES: HeroSlide[] = [
   {
     src: "https://images.unsplash.com/photo-1516483638261-f4dbaf036963?auto=format&fit=crop&w=2400&q=80",
     alt: "Historic Italian architecture and canals",
@@ -48,23 +59,36 @@ export function HeroCarousel({
     title: "Your Future Knows No Borders",
     subtitle:
       "Personalized admissions guidance, visa expertise, and full student support — from first call to campus arrival.",
-    ctaExplore: "Featured Universities",
+    ctaExplore: "Universities",
     ctaApply: "Begin Your Application",
   },
+  slides,
 }: {
   copy?: HeroCopy;
+  slides?: HeroSlide[];
 }) {
+  const activeSlides = (slides ?? SLIDES).filter((s) => s && (s as HeroSlide).isActive !== false);
+  const normalizedSlides = activeSlides.length ? activeSlides : SLIDES;
   const [index, setIndex] = useState(0);
 
-  const next = useCallback(() => setIndex((i) => (i + 1) % SLIDES.length), []);
-  const prev = useCallback(() => setIndex((i) => (i - 1 + SLIDES.length) % SLIDES.length), []);
+  const next = useCallback(() => setIndex((i) => (i + 1) % normalizedSlides.length), [normalizedSlides.length]);
+  const prev = useCallback(
+    () => setIndex((i) => (i - 1 + normalizedSlides.length) % normalizedSlides.length),
+    [normalizedSlides.length],
+  );
 
   useEffect(() => {
     const t = setInterval(next, INTERVAL_MS);
     return () => clearInterval(t);
   }, [next]);
 
-  const slide = SLIDES[index];
+  const slide = normalizedSlides[index];
+  const effectiveCopy: HeroCopy = {
+    title: slide.title ?? copy.title,
+    subtitle: slide.subtitle ?? copy.subtitle,
+    ctaExplore: slide.ctaExplore ?? copy.ctaExplore,
+    ctaApply: slide.ctaApply ?? copy.ctaApply,
+  };
 
   return (
     <section className="relative min-h-[100svh] min-h-[100dvh] w-full overflow-hidden bg-[#050d1a]">
@@ -103,19 +127,19 @@ export function HeroCarousel({
             className="max-w-3xl"
           >
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-400/95">
-              UniMondo · Study in Europe
+              UNIMONDO · GATEWAY TO UNIVERSE
             </p>
             <h1 className="mt-4 font-[family-name:var(--font-heading)] text-4xl font-semibold leading-[1.1] tracking-tight text-white sm:text-5xl md:text-6xl lg:text-7xl">
-              {copy.title}
+              {effectiveCopy.title}
             </h1>
-            <p className="mt-5 max-w-xl text-lg leading-relaxed text-slate-200/95 sm:text-xl">{copy.subtitle}</p>
+            <p className="mt-5 max-w-xl text-lg leading-relaxed text-slate-200/95 sm:text-xl">{effectiveCopy.subtitle}</p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
               <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                 <Link
                   href="/current-openings"
                   className="inline-flex w-full items-center justify-center rounded-full bg-amber-500 px-8 py-3.5 text-sm font-semibold text-[#0a1628] shadow-lg shadow-amber-500/25 transition hover:bg-amber-400 sm:w-auto"
                 >
-                  {copy.ctaExplore}
+                  {effectiveCopy.ctaExplore}
                 </Link>
               </motion.div>
               <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
@@ -123,7 +147,7 @@ export function HeroCarousel({
                   href="/apply"
                   className="inline-flex w-full items-center justify-center rounded-full border border-white/25 bg-white/10 px-8 py-3.5 text-sm font-semibold text-white backdrop-blur-md transition hover:bg-white/15 sm:w-auto"
                 >
-                  {copy.ctaApply}
+                  {effectiveCopy.ctaApply}
                 </Link>
               </motion.div>
             </div>
@@ -143,7 +167,7 @@ export function HeroCarousel({
           <ChevronLeft className="h-5 w-5" />
         </button>
         <div className="flex gap-1.5">
-          {SLIDES.map((_, i) => (
+          {normalizedSlides.map((_, i) => (
             <button
               key={_.src}
               type="button"

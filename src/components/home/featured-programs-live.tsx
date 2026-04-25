@@ -8,6 +8,11 @@ import { FeaturedPrograms } from "./featured-programs";
 
 type Props = {
   initialOpenings: Opening[];
+  kicker?: string;
+  title?: string;
+  subtitle?: string;
+  ctaLabel?: string;
+  ctaHref?: string;
 };
 
 async function fetchPublishedPrograms(): Promise<Opening[] | null> {
@@ -27,7 +32,7 @@ async function fetchPublishedPrograms(): Promise<Opening[] | null> {
   return (data as ProgramRow[]).map(programRowToOpening);
 }
 
-export function FeaturedProgramsLive({ initialOpenings }: Props) {
+export function FeaturedProgramsLive({ initialOpenings, kicker, title, subtitle, ctaLabel, ctaHref }: Props) {
   const [openings, setOpenings] = useState(initialOpenings);
 
   useEffect(() => {
@@ -55,5 +60,7 @@ export function FeaturedProgramsLive({ initialOpenings }: Props) {
     };
   }, []);
 
-  return <FeaturedPrograms openings={openings} />;
+  return (
+    <FeaturedPrograms openings={openings} kicker={kicker} title={title} subtitle={subtitle} ctaLabel={ctaLabel} ctaHref={ctaHref} />
+  );
 }

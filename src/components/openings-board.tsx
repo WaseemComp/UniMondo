@@ -62,7 +62,7 @@ export function OpeningsBoard({ openings, featuredUniversities }: Props) {
       <section className="space-y-6">
         <div className="text-center lg:mb-2">
           <h2 className="font-[family-name:var(--font-heading)] text-2xl font-semibold text-[#0a1628] sm:text-3xl">
-            Featured Universities &amp; Programs
+            Universities &amp; Programs
           </h2>
           <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-zinc-600 sm:text-base">
             A curated selection of institutions where tradition meets innovation — each with pathways we help students
@@ -76,7 +76,7 @@ export function OpeningsBoard({ openings, featuredUniversities }: Props) {
       </section>
     ) : (
       <p className="rounded-lg border border-dashed border-zinc-200 bg-white p-6 text-center text-sm text-zinc-500">
-        Featured universities will appear here once they are published in the admin dashboard.
+        Universities will appear here once they are published in the admin dashboard.
       </p>
     );
 

@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { updateApplicationStatus } from "@/lib/persistence";
+import { getApplicationTypeByTrackingId } from "@/lib/persistence-admin";
+import { createSupabaseServerAuthClient } from "@/lib/supabase/server-auth";
+import { isAdminUser } from "@/lib/auth/admin";
+import { hasAdminPermission } from "@/lib/auth/permissions";
 import type { ReviewStatus } from "@/types/application";
 
 type Context = {
@@ -8,6 +12,14 @@ type Context = {
 
 export async function PATCH(request: NextRequest, context: Context) {
   try {
+    const supabase = await createSupabaseServerAuthClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user || !(await isAdminUser(user))) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
     const { trackingId } = await context.params;
     const body = (await request.json()) as { reviewStatus?: ReviewStatus };
 
@@ -19,6 +31,13 @@ export async function PATCH(request: NextRequest, context: Context) {
 
     if (!allowed.includes(body.reviewStatus)) {
       return NextResponse.json({ message: "Invalid review status." }, { status: 400 });
+    }
+
+    const appType = await getApplicationTypeByTrackingId(trackingId);
+    const isSub = appType === "work_with_us" || appType === "join_us";
+    const permKey = isSub ? "submissions.edit_status" : "applications.edit_status";
+    if (!(await hasAdminPermission(user, permKey))) {
+      return NextResponse.json({ message: "Forbidden" }, { status: 403 });
     }
 
     const updated = await updateApplicationStatus(trackingId, body.reviewStatus);

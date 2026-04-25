@@ -12,7 +12,41 @@ const BULLETS = [
   { icon: Sparkles, text: "Travel, culture, and networks that shape a global mindset." },
 ];
 
-export function WhyEurope() {
+export type WhyEuropeCopy = {
+  kicker?: string;
+  title?: string;
+  subtitle?: string;
+  quickFact1Label?: string;
+  quickFact1Value?: string;
+  quickFact2Label?: string;
+  quickFact2Value?: string;
+};
+
+export function WhyEurope({
+  copy = {
+    kicker: "Why Europe",
+    title: "A continent built for curious minds",
+    subtitle:
+      "From historic universities to cutting-edge labs, Europe blends academic depth with everyday adventure — trains to new cities on weekends, internships in global firms, and classmates from everywhere.",
+    quickFact1Label: "Quick fact",
+    quickFact1Value: "4000+ English-taught programs (EU/EEA)",
+    quickFact2Label: "Quick fact",
+    quickFact2Value: "Schengen mobility for study & travel",
+  },
+}: {
+  copy?: WhyEuropeCopy;
+}) {
+  const c = {
+    kicker: copy?.kicker ?? "GO GLOBAL. THINK BIGGER.",
+    title: copy?.title ?? "Your journey shouldn’t be limited by geography.",
+    subtitle:
+      copy?.subtitle ??
+      "The world’s best opportunities are not in one country — they’re everywhere. Studying abroad connects you to global education, international careers, and life-changing experiences that redefine your future.",
+    quickFact1Label: copy?.quickFact1Label ?? "Quick fact",
+    quickFact1Value: copy?.quickFact1Value ?? "4000+ English-taught programs (EU/EEA)",
+    quickFact2Label: copy?.quickFact2Label ?? "Quick fact",
+    quickFact2Value: copy?.quickFact2Value ?? "Schengen mobility for study & travel",
+  };
   const ref = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
     target: ref,
@@ -39,25 +73,24 @@ export function WhyEurope() {
         <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-400/90">Why Europe</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-400/90">{c.kicker}</p>
               <h2
                 id="why-europe-heading"
                 className="mt-3 font-[family-name:var(--font-heading)] text-3xl font-semibold tracking-tight text-white sm:text-4xl lg:text-5xl"
               >
-                A continent built for curious minds
+                {c.title}
               </h2>
               <p className="mt-5 text-lg leading-relaxed text-slate-300">
-                From historic universities to cutting-edge labs, Europe blends academic depth with everyday adventure —
-                trains to new cities on weekends, internships in global firms, and classmates from everywhere.
+                {c.subtitle}
               </p>
               <dl className="mt-8 grid gap-4 sm:grid-cols-2">
                 <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-sm">
-                  <dt className="text-xs uppercase tracking-wide text-amber-300/90">Quick fact</dt>
-                  <dd className="mt-1 text-sm font-medium text-white">4000+ English-taught programs (EU/EEA)</dd>
+                  <dt className="text-xs uppercase tracking-wide text-amber-300/90">{c.quickFact1Label}</dt>
+                  <dd className="mt-1 text-sm font-medium text-white">{c.quickFact1Value}</dd>
                 </div>
                 <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-sm">
-                  <dt className="text-xs uppercase tracking-wide text-amber-300/90">Quick fact</dt>
-                  <dd className="mt-1 text-sm font-medium text-white">Schengen mobility for study & travel</dd>
+                  <dt className="text-xs uppercase tracking-wide text-amber-300/90">{c.quickFact2Label}</dt>
+                  <dd className="mt-1 text-sm font-medium text-white">{c.quickFact2Value}</dd>
                 </div>
               </dl>
             </div>
