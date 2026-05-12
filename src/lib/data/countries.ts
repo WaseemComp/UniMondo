@@ -1,6 +1,7 @@
-import type { CountryDetail, RegionGroup } from "@/lib/unimondo-data";
+import { parseDestinationGuide } from "@/lib/destination-guide";
+import type { CountryDetail } from "@/lib/unimondo-data";
 import { countryDetails as staticCountries } from "@/lib/unimondo-data";
-import { isRegionGroup, parsePopularUnis } from "@/lib/cms/maps";
+import { normalizeDestinationRegion, parsePopularUnis } from "@/lib/cms/maps";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 /** Loads countries from Supabase when configured; otherwise static seed data. */
@@ -27,8 +28,8 @@ export async function getCountryDetails(): Promise<CountryDetail[]> {
 
   return rows.map((row: Record<string, unknown>) => {
     const rid = row.region_group_id as number;
-    const raw = regionLabelById.get(rid) ?? "Western Europe";
-    const regionGroup: RegionGroup = isRegionGroup(raw) ? raw : "Western Europe";
+    const raw = regionLabelById.get(rid);
+    const regionGroup = normalizeDestinationRegion(raw ?? undefined) || "Other regions";
     const popular = parsePopularUnis(row.popular_unis, (row.popular_universities as string[] | null) ?? null);
     const fallbackUnis = (row.popular_universities as string[]) ?? [];
     const why = ((row.why_study as string | null) ?? "").trim() || (row.why_study_there as string) || "";
@@ -36,6 +37,8 @@ export async function getCountryDetails(): Promise<CountryDetail[]> {
     const slug = ((row.slug as string | null) ?? "").trim();
     const flag = ((row.flag_emoji as string | null) ?? "").trim();
     const desc = ((row.description as string | null) ?? "").trim();
+
+    const dg = parseDestinationGuide(row.destination_guide);
 
     return {
       country: row.name as string,
@@ -48,6 +51,7 @@ export async function getCountryDetails(): Promise<CountryDetail[]> {
       slug: slug || undefined,
       flagEmoji: flag || undefined,
       description: desc || undefined,
+      destinationGuide: dg,
     } satisfies CountryDetail;
   });
 }

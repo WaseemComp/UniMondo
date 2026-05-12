@@ -6,7 +6,7 @@ import {
 } from "@/lib/featured-universities";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-/** Published spotlight universities for /current-openings. */
+/** Published spotlight universities for /destinations. */
 export async function getFeaturedUniversities(): Promise<FeaturedUniversity[]> {
   const supabase = createSupabaseServerClient();
   if (!supabase) {

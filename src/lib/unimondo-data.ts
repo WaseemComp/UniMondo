@@ -1,3 +1,5 @@
+import type { DestinationGuide } from "@/lib/destination-guide";
+
 export type RegionGroup =
   | "Western Europe"
   | "Southern Europe"
@@ -6,7 +8,8 @@ export type RegionGroup =
 
 export interface CountryDetail {
   country: string;
-  regionGroup: RegionGroup;
+  /** Resolved from CMS `region_groups.label` — may include non-European regions (e.g. North America). */
+  regionGroup: string;
   highlighted?: boolean;
   whyStudyThere: string;
   popularUniversities: string[];
@@ -15,6 +18,8 @@ export interface CountryDetail {
   slug?: string;
   flagEmoji?: string;
   description?: string;
+  /** Populated from `countries.destination_guide` when Supabase returns structured overrides. */
+  destinationGuide?: DestinationGuide;
 }
 
 export interface Opening {
@@ -30,6 +35,10 @@ export interface Opening {
   tuitionRange: string;
   logoUrl?: string | null;
   description?: string;
+  /** From CMS `programs.degree` when available. */
+  degreeLevel?: string;
+  /** Display hint when known (often English-taught for EU listings). */
+  languageOfInstruction?: string;
 }
 
 export const countryDetails: CountryDetail[] = [
@@ -155,6 +164,7 @@ export const countryDetails: CountryDetail[] = [
   },
 ];
 
+/** Preferred ordering for regions on `/destinations` when those regions appear in data. Extra CMS regions append after these. */
 export const regionGroups: RegionGroup[] = [
   "Western Europe",
   "Southern Europe",

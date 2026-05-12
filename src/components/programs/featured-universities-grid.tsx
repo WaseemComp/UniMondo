@@ -9,6 +9,7 @@ type Props = {
   universities: FeaturedUniversity[];
   /** First N cards use `priority` on hero images for LCP when above the fold. */
   eagerHeroCount?: number;
+  programsSectionId?: string;
 };
 
 function allowNextImageOptimization(src: string) {
@@ -25,7 +26,11 @@ function applyHref(uni: FeaturedUniversity) {
   return `/apply?country=${encodeURIComponent(uni.country)}&program=${encodeURIComponent(program)}`;
 }
 
-export function FeaturedUniversitiesGrid({ universities, eagerHeroCount = 3 }: Props) {
+export function FeaturedUniversitiesGrid({
+  universities,
+  eagerHeroCount = 3,
+  programsSectionId = "#program-results",
+}: Props) {
   return (
     <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
       {universities.map((uni, i) => (
@@ -108,10 +113,10 @@ export function FeaturedUniversitiesGrid({ universities, eagerHeroCount = 3 }: P
 
             <div className="mt-5 flex flex-col gap-2 sm:flex-row">
               <Link
-                href="#program-results"
+                href={programsSectionId}
                 className="inline-flex flex-1 items-center justify-center rounded-full border border-zinc-300 bg-white px-4 py-2.5 text-center text-sm font-semibold text-[#0a1628] transition hover:border-amber-400 hover:bg-amber-50/50"
               >
-                Explore all programs
+                Explore programs
               </Link>
               <Link
                 href={applyHref(uni)}

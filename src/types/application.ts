@@ -1,6 +1,6 @@
 export type ScreeningTag = "Eligible" | "Review Needed" | "Not Eligible";
 
-export type ReviewStatus = "Pending" | "Approved" | "Need More Info" | "Rejected";
+export type ReviewStatus = "Pending" | "Approved" | "Need More Info" | "Rejected" | "Completed";
 
 export type ApplicationType = "university" | "language_course" | "work_with_us" | "join_us";
 
@@ -66,6 +66,8 @@ export interface ApplicationPayload {
 export interface ApplicationRecord {
   trackingId: string;
   submittedAt: string;
+  /** Submission pipeline field from `applications.status` (e.g. submitted). */
+  pipelineStatus?: string;
   screeningTag: ScreeningTag;
   reviewStatus: ReviewStatus;
   /** Unified submissions system (defaults to university). */

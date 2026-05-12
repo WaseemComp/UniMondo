@@ -2,7 +2,16 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { CountryDetail } from "@/lib/unimondo-data";
-import { regionGroups } from "@/lib/unimondo-data";
+import { regionGroups as defaultRegionSectionOrder } from "@/lib/unimondo-data";
+
+function regionLabelsForCountries(countries: CountryDetail[]): string[] {
+  const present = [...new Set(countries.map((c) => c.regionGroup).filter(Boolean))];
+  const preferred = defaultRegionSectionOrder.filter((r) => present.includes(r));
+  const order = defaultRegionSectionOrder as readonly string[];
+  const extra = present.filter((r) => !order.includes(r));
+  extra.sort((a, b) => a.localeCompare(b));
+  return [...preferred, ...extra];
+}
 
 type Props = {
   initialCountry?: string;
@@ -16,6 +25,8 @@ export function DestinationsBrowser({ initialCountry, countries }: Props) {
   }, [initialCountry, countries]);
 
   const [activeCountry, setActiveCountry] = useState(initial);
+
+  const regionSections = useMemo(() => regionLabelsForCountries(countries), [countries]);
 
   useEffect(() => {
     setActiveCountry(initial);
@@ -45,7 +56,7 @@ export function DestinationsBrowser({ initialCountry, countries }: Props) {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        {regionGroups.map((group) => (
+        {regionSections.map((group) => (
           <section key={group} className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
             <h3 className="mb-3 text-sm font-semibold tracking-wide text-zinc-500 uppercase">{group}</h3>
             <div className="flex flex-wrap gap-2">

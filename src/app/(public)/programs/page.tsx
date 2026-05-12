@@ -1,6 +1,6 @@
-import { redirect } from "next/navigation";
+import { permanentRedirect } from "next/navigation";
 
-/** Canonical programs listing lives at /current-openings; /programs is a friendly alias. */
+/** Friendly alias — canonical program browsing is on /destinations */
 export default function ProgramsAliasPage() {
-  redirect("/current-openings");
+  permanentRedirect("/destinations");
 }

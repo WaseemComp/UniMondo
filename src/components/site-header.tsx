@@ -10,9 +10,8 @@ import { cn } from "@/lib/utils";
 
 const NAV = [
   { href: "/", key: "home" as const },
-  { href: "/current-openings", key: "featuredUniversities" as const },
+  { href: "/destinations", key: "destinations" as const },
   { href: "/courses", key: "languageCourses" as const },
-  { href: "/destinations", key: "countries" as const },
   { href: "/packages", key: "packages" as const },
   { href: "/about", key: "about" as const },
   { href: "/contact", key: "contact" as const },
@@ -23,8 +22,8 @@ function isNavActive(pathname: string, href: string) {
   if (href === "/") {
     return pathname === "/";
   }
-  if (href === "/current-openings") {
-    return pathname === "/current-openings" || pathname === "/programs";
+  if (href === "/destinations") {
+    return pathname === "/destinations" || pathname.startsWith("/destinations/");
   }
   return pathname === href || pathname.startsWith(`${href}/`);
 }

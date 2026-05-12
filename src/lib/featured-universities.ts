@@ -1,4 +1,4 @@
-/** Curated spotlight universities for /current-openings — CMS-backed with static fallback. */
+/** Curated spotlight universities for /destinations — CMS-backed with static fallback. */
 
 export type FeaturedProgramLine = {
   name: string;

@@ -21,7 +21,7 @@ export function FeaturedPrograms({
   title = "Universities and Programs",
   subtitle = "Hand-picked tracks from leading institutions — clear deadlines, transparent tuition bands, and counselor support.",
   ctaLabel = "See all openings",
-  ctaHref = "/current-openings",
+  ctaHref = "/destinations",
 }: Props) {
   const featured = openings.slice(0, 4);
   return (
@@ -111,7 +111,7 @@ export function FeaturedPrograms({
                   Apply now
                 </Link>
                 <Link
-                  href={"/current-openings"}
+                  href={"/destinations"}
                   className="inline-flex flex-1 items-center justify-center rounded-full border border-white/20 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10 sm:flex-none"
                 >
                   Details

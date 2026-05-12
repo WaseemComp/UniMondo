@@ -39,7 +39,10 @@ export async function updateSessionAndGuardAdmin(request: NextRequest) {
 
   if (path === "/admin/login" || path === "/admin/login/") {
     if (user && (await isAdminUser(user))) {
-      return NextResponse.redirect(new URL("/admin/dashboard", request.url));
+      const rawNext = request.nextUrl.searchParams.get("next")?.trim() ?? "";
+      const safeDest =
+        rawNext.startsWith("/admin") && !rawNext.includes("://") && !rawNext.includes("..") ? rawNext : "/admin/dashboard";
+      return NextResponse.redirect(new URL(safeDest, request.url));
     }
     if (user && !(await isAdminUser(user))) {
       return NextResponse.redirect(new URL("/?error=not_admin", request.url));

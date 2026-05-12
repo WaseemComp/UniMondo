@@ -95,6 +95,7 @@ export async function createApplicationWithDocuments(
     const record: ApplicationRecord = {
       trackingId: input.trackingId,
       submittedAt: input.submittedAt,
+      pipelineStatus: "submitted",
       screeningTag: input.screeningTag,
       reviewStatus: input.reviewStatus,
       applicationType,
@@ -215,6 +216,7 @@ export async function createApplicationWithDocuments(
   return {
     trackingId: input.trackingId,
     submittedAt: input.submittedAt,
+    pipelineStatus: "submitted",
     screeningTag: input.screeningTag,
     reviewStatus: input.reviewStatus,
     applicationType,
@@ -245,7 +247,7 @@ export async function getApplications(params?: {
 
   const qs = new URLSearchParams({
     select:
-      "tracking_id,submitted_at,screening_tag,review_status,application_type,payload,documents(file_url,file_name,category,description)",
+      "tracking_id,submitted_at,status,screening_tag,review_status,application_type,payload,documents(file_url,file_name,category,description)",
     order: "submitted_at.desc",
   });
 
@@ -274,6 +276,7 @@ export async function getApplications(params?: {
   const rows = (await response.json()) as Array<{
     tracking_id: string;
     submitted_at: string;
+    status: string;
     screening_tag: ApplicationRecord["screeningTag"];
     review_status: ApplicationRecord["reviewStatus"];
     application_type: ApplicationType | null;
@@ -291,12 +294,66 @@ export async function getApplications(params?: {
   return rows.map((row) => ({
     trackingId: row.tracking_id,
     submittedAt: row.submitted_at,
+    pipelineStatus: row.status ?? "submitted",
     screeningTag: row.screening_tag,
     reviewStatus: row.review_status,
     applicationType: row.application_type ?? "university",
     payload: row.payload,
     documents: (row.documents ?? []).map(mapDbDocumentRow),
   }));
+}
+
+export async function getApplicationRecordByTrackingId(trackingId: string): Promise<ApplicationRecord | null> {
+  if (!hasSupabase) {
+    return inMemoryApplications.find((item) => item.trackingId === trackingId) ?? null;
+  }
+
+  const qs = new URLSearchParams({
+    select:
+      "tracking_id,submitted_at,status,screening_tag,review_status,application_type,payload,documents(file_url,file_name,category,description)",
+    tracking_id: `eq.${trackingId}`,
+    limit: "1",
+  });
+
+  const response = await supabaseRequest(`/rest/v1/applications?${qs.toString()}`, {
+    method: "GET",
+  });
+
+  if (!response.ok) {
+    return null;
+  }
+
+  const rows = (await response.json()) as Array<{
+    tracking_id: string;
+    submitted_at: string;
+    status: string;
+    screening_tag: ApplicationRecord["screeningTag"];
+    review_status: ApplicationRecord["reviewStatus"];
+    application_type: ApplicationType | null;
+    payload: ApplicationPayload;
+    documents:
+      | Array<{
+          file_url: string;
+          file_name: string;
+          category: string;
+          description: string | null;
+        }>
+      | null;
+  }>;
+
+  const row = rows[0];
+  if (!row) return null;
+
+  return {
+    trackingId: row.tracking_id,
+    submittedAt: row.submitted_at,
+    pipelineStatus: row.status ?? "submitted",
+    screeningTag: row.screening_tag,
+    reviewStatus: row.review_status,
+    applicationType: row.application_type ?? "university",
+    payload: row.payload,
+    documents: (row.documents ?? []).map(mapDbDocumentRow),
+  };
 }
 
 export async function updateApplicationStatus(
@@ -324,6 +381,24 @@ export async function updateApplicationStatus(
       Prefer: "return=minimal",
     },
     body: JSON.stringify({ review_status: reviewStatus }),
+  });
+
+  return response.ok;
+}
+
+export async function deleteApplicationByTrackingId(trackingId: string): Promise<boolean> {
+  if (!hasSupabase) {
+    const index = inMemoryApplications.findIndex((item) => item.trackingId === trackingId);
+    if (index < 0) return false;
+    inMemoryApplications.splice(index, 1);
+    return true;
+  }
+
+  const response = await supabaseRequest(`/rest/v1/applications?tracking_id=eq.${encodeURIComponent(trackingId)}`, {
+    method: "DELETE",
+    headers: {
+      Prefer: "return=minimal",
+    },
   });
 
   return response.ok;

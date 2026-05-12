@@ -136,7 +136,7 @@ export function HeroCarousel({
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
               <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                 <Link
-                  href="/current-openings"
+                  href="/destinations"
                   className="inline-flex w-full items-center justify-center rounded-full bg-amber-500 px-8 py-3.5 text-sm font-semibold text-[#0a1628] shadow-lg shadow-amber-500/25 transition hover:bg-amber-400 sm:w-auto"
                 >
                   {effectiveCopy.ctaExplore}

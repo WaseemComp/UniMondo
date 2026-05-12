@@ -75,8 +75,9 @@ export async function saveProgram(input: unknown): Promise<{ ok: true } | { ok: 
     if (error) return { ok: false, error: error.message };
 
     revalidatePath("/");
-    revalidatePath("/current-openings");
+    revalidatePath("/destinations");
     revalidatePath("/admin/programs");
+    revalidatePath("/admin/destinations");
     revalidatePath("/admin/dashboard");
     return { ok: true };
   } catch (e) {
@@ -95,8 +96,9 @@ export async function deleteProgram(id: string): Promise<{ ok: true } | { ok: fa
     if (error) return { ok: false, error: error.message };
 
     revalidatePath("/");
-    revalidatePath("/current-openings");
+    revalidatePath("/destinations");
     revalidatePath("/admin/programs");
+    revalidatePath("/admin/destinations");
     revalidatePath("/admin/dashboard");
     return { ok: true };
   } catch (e) {

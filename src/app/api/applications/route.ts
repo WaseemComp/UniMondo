@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
 
     const statusParam = request.nextUrl.searchParams.get("status") as ReviewStatus | null;
     const typeParam = request.nextUrl.searchParams.get("type") as ApplicationType | null;
-    const allowedStatuses: ReviewStatus[] = ["Pending", "Approved", "Need More Info", "Rejected"];
+    const allowedStatuses: ReviewStatus[] = ["Pending", "Approved", "Need More Info", "Rejected", "Completed"];
     const allowedTypes: ApplicationType[] = ["university", "language_course", "work_with_us", "join_us"];
 
     const status = statusParam && allowedStatuses.includes(statusParam) ? statusParam : undefined;

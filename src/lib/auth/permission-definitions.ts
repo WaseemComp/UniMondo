@@ -117,6 +117,7 @@ export const PERMISSION_TREE: PermissionNode[] = [
     children: [
       { key: "applications.view", label: "View" },
       { key: "applications.edit_status", label: "Edit status" },
+      { key: "applications.delete", label: "Delete" },
     ],
   },
   {
@@ -125,6 +126,7 @@ export const PERMISSION_TREE: PermissionNode[] = [
     children: [
       { key: "submissions.view", label: "View" },
       { key: "submissions.edit_status", label: "Edit status" },
+      { key: "submissions.delete", label: "Delete" },
     ],
   },
   {

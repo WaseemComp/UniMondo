@@ -11,21 +11,22 @@ type Props = {
   initialCountry?: string;
 };
 
-function normalizeRegion(
-  raw: unknown,
-): {
-  label: string;
-} | null {
-  if (!raw) return null;
-  if (Array.isArray(raw)) {
-    const first = raw[0] as { label?: string } | undefined;
-    return first?.label ? { label: first.label } : null;
-  }
-  const o = raw as { label?: string };
-  return o.label ? { label: o.label } : null;
-}
+function mapRemoteRow(
+  row: Record<string, unknown>,
+  regionLabelById: Map<number, string>,
+): CountryDetail {
+  const rid = Number(row.region_group_id);
+  const labelFromId = Number.isFinite(rid) ? regionLabelById.get(rid) : undefined;
+  const join = row.region_groups as { label?: string } | { label?: string }[] | null | undefined;
+  const joinLabel =
+    join == null
+      ? undefined
+      : Array.isArray(join)
+        ? join[0]?.label
+        : join.label;
+  const region_groups =
+    labelFromId != null ? { label: labelFromId } : joinLabel ? { label: joinLabel } : null;
 
-function mapRemoteRow(row: Record<string, unknown>): CountryDetail {
   return countryRowToDetail({
     name: row.name as string,
     slug: (row.slug as string | null) ?? null,
@@ -39,7 +40,7 @@ function mapRemoteRow(row: Record<string, unknown>): CountryDetail {
     popular_unis: row.popular_unis,
     popular_universities: (row.popular_universities as string[] | null) ?? null,
     highlighted: (row.highlighted as boolean | null) ?? null,
-    region_groups: normalizeRegion(row.region_groups),
+    region_groups,
   });
 }
 
@@ -55,19 +56,25 @@ export function DestinationsLive({ initialCountries, initialCountry }: Props) {
     if (!supabase) return;
 
     const load = async () => {
-      const { data, error } = await supabase
-        .from("countries")
-        .select(
-          `
+      const [{ data: rgRows, error: rgErr }, { data, error }] = await Promise.all([
+        supabase.from("region_groups").select("id, label").order("sort_order", { ascending: true }),
+        supabase
+          .from("countries")
+          .select(
+            `
           name, slug, flag_emoji, description, why_study, why_study_there, living_cost, living_cost_approx,
-          visa_info, popular_unis, popular_universities, highlighted, sort_order,
+          visa_info, popular_unis, popular_universities, highlighted, sort_order, region_group_id,
           region_groups ( label )
         `,
-        )
-        .order("sort_order", { ascending: true });
+          )
+          .order("sort_order", { ascending: true }),
+      ]);
 
-      if (error || !data?.length) return;
-      setCountries(data.map((row: Record<string, unknown>) => mapRemoteRow(row)));
+      if (rgErr || error || !data?.length) return;
+      const regionLabelById = new Map<number, string>(
+        ((rgRows ?? []) as Array<{ id: number; label: string }>).map((r) => [r.id, r.label]),
+      );
+      setCountries(data.map((row: Record<string, unknown>) => mapRemoteRow(row, regionLabelById)));
     };
 
     const channel = supabase

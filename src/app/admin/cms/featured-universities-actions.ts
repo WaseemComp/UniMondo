@@ -99,8 +99,9 @@ export async function saveFeaturedUniversity(
     const { error } = await svc.from("featured_universities").upsert(row, { onConflict: "id" });
     if (error) return { ok: false, error: error.message };
 
-    revalidatePath("/current-openings");
+    revalidatePath("/destinations");
     revalidatePath("/admin/featured-universities");
+    revalidatePath("/admin/destinations");
     revalidatePath("/admin/dashboard");
     return { ok: true, id };
   } catch (e) {
@@ -120,8 +121,9 @@ export async function deleteFeaturedUniversity(
     const { error } = await svc.from("featured_universities").delete().eq("id", id);
     if (error) return { ok: false, error: error.message };
 
-    revalidatePath("/current-openings");
+    revalidatePath("/destinations");
     revalidatePath("/admin/featured-universities");
+    revalidatePath("/admin/destinations");
     revalidatePath("/admin/dashboard");
     return { ok: true };
   } catch (e) {

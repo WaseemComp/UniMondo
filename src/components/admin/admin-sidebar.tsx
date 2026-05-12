@@ -7,13 +7,10 @@ import { cn } from "@/lib/utils";
 import type { AdminAccessContext, AdminAreaPermission } from "@/lib/auth/admin";
 import {
   BookOpen,
-  FileText,
   Gift,
-  Globe,
   GraduationCap,
   Home,
   Inbox,
-  Landmark,
   LayoutDashboard,
   LogOut,
   Map,
@@ -21,9 +18,6 @@ import {
   Phone,
   ScrollText,
   Settings,
-  Sparkles,
-  UserCircle2,
-  Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -31,11 +25,19 @@ type NavItem =
   | { section: string }
   | { href: string; label: string; icon: LucideIcon; scope?: AdminAreaPermission; superOnly?: boolean };
 
+function destinationsNavActive(pathname: string): boolean {
+  return (
+    pathname === "/admin/destinations" ||
+    pathname.startsWith("/admin/destinations/") ||
+    pathname.startsWith("/admin/programs") ||
+    pathname.startsWith("/admin/featured-universities")
+  );
+}
+
 const NAV: NavItem[] = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/home", label: "Home", icon: Home, scope: "content" },
-  { href: "/admin/universities", label: "Universities", icon: Landmark, scope: "academic" },
-  { href: "/admin/countries", label: "Countries", icon: Globe, scope: "academic" },
+  { href: "/admin/destinations", label: "Destinations", icon: Map, scope: "academic" },
   { href: "/admin/packages", label: "Packages", icon: Gift, scope: "academic" },
   { href: "/admin/courses", label: "Language Courses", icon: BookOpen, scope: "academic" },
   { href: "/admin/about", label: "About", icon: ScrollText, scope: "content" },
@@ -79,9 +81,13 @@ export function AdminSidebar({ access }: Props) {
               href={item.href}
               className={cn(
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition",
-                pathname === item.href || pathname.startsWith(item.href + "/")
-                  ? "bg-amber-50 text-amber-900"
-                  : "text-zinc-700 hover:bg-zinc-50",
+                item.href === "/admin/destinations"
+                  ? destinationsNavActive(pathname)
+                    ? "bg-amber-50 text-amber-900"
+                    : "text-zinc-700 hover:bg-zinc-50"
+                  : pathname === item.href || pathname.startsWith(item.href + "/")
+                    ? "bg-amber-50 text-amber-900"
+                    : "text-zinc-700 hover:bg-zinc-50",
               )}
             >
               <item.icon className="h-4 w-4 shrink-0" />

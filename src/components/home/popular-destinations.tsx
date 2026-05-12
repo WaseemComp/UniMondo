@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
+import { slugifyCountryName } from "@/lib/destinations-utils";
 
 const FLAG: Record<string, string> = {
   Italy: "🇮🇹",
@@ -60,7 +61,7 @@ export function PopularDestinations({
     kicker: "Destinations",
     title: "Popular countries we cover",
     subtitle: "From Mediterranean campuses to Nordic innovation — find where your profile fits best.",
-    ctaLabel: "View all countries",
+    ctaLabel: "View all destinations",
     ctaHref: "/destinations",
   },
 }: {
@@ -70,7 +71,7 @@ export function PopularDestinations({
     kicker: copy?.kicker ?? "Destinations",
     title: copy?.title ?? "Popular countries we cover",
     subtitle: copy?.subtitle ?? "From Mediterranean campuses to Nordic innovation — find where your profile fits best.",
-    ctaLabel: copy?.ctaLabel ?? "View all countries",
+    ctaLabel: copy?.ctaLabel ?? "View all destinations",
     ctaHref: copy?.ctaHref ?? "/destinations",
   };
   return (
@@ -119,10 +120,10 @@ export function PopularDestinations({
                   <h3 className="font-[family-name:var(--font-heading)] text-xl font-semibold text-white">{d.country}</h3>
                   <p className="mt-1 line-clamp-2 text-sm text-slate-200">{d.blurb}</p>
                   <Link
-                    href={"/destinations"}
+                    href={`/destinations/${slugifyCountryName(d.country)}`}
                     className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-amber-300 hover:text-amber-200"
                   >
-                    Explore programs
+                    View destination
                     <ArrowRight className="h-4 w-4" />
                   </Link>
                 </div>

@@ -1,14 +1,12 @@
-import type { CountryDetail, Opening, RegionGroup } from "@/lib/unimondo-data";
+import type { CountryDetail, Opening } from "@/lib/unimondo-data";
 
-const REGION_LABELS: RegionGroup[] = [
-  "Western Europe",
-  "Southern Europe",
-  "Northern Europe",
-  "Central/Eastern Europe",
-];
-
-export function isRegionGroup(s: string): s is RegionGroup {
-  return (REGION_LABELS as string[]).includes(s);
+/** Use the region label stored in CMS; never remap unknown labels onto Western Europe. */
+export function normalizeDestinationRegion(raw: string | null | undefined): string {
+  if (raw == null) return "";
+  const t = raw.trim();
+  if (!t) return "";
+  const base = t.includes(" — ") ? t.split(" — ")[0]!.trim() : t;
+  return base || "";
 }
 
 export type ProgramRow = {
@@ -42,6 +40,13 @@ export function programRowToOpening(row: ProgramRow): Opening {
     typeof row.deadline === "string"
       ? row.deadline.slice(0, 10)
       : new Date(row.deadline).toISOString().slice(0, 10);
+  const rawDegree = row.degree?.trim();
+  const degreeLabel =
+    rawDegree?.toLowerCase() === "bachelor"
+      ? "Bachelor"
+      : rawDegree?.toLowerCase() === "master"
+        ? "Master"
+        : rawDegree || undefined;
   return {
     id: row.id,
     continent: row.continent ?? "Europe",
@@ -55,6 +60,8 @@ export function programRowToOpening(row: ProgramRow): Opening {
     tuitionRange: row.tuition_range,
     logoUrl: row.logo_url,
     description: row.description ?? "",
+    degreeLevel: degreeLabel,
+    languageOfInstruction: "English",
   };
 }
 
@@ -90,8 +97,8 @@ export function parsePopularUnis(raw: unknown, fallback: string[] | null): strin
 }
 
 export function countryRowToDetail(row: CountryRow): CountryDetail {
-  const rawLabel = row.region_groups?.label ?? "Western Europe";
-  const regionGroup: RegionGroup = isRegionGroup(rawLabel) ? rawLabel : "Western Europe";
+  const rawLabel = row.region_groups?.label;
+  const regionGroup = normalizeDestinationRegion(rawLabel) || "Other regions";
   const unis = parsePopularUnis(row.popular_unis, row.popular_universities);
   const why = row.why_study?.trim() || row.why_study_there || "";
   const living = row.living_cost?.trim() || row.living_cost_approx || "";

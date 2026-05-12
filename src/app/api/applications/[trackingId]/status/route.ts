@@ -27,7 +27,7 @@ export async function PATCH(request: NextRequest, context: Context) {
       return NextResponse.json({ message: "reviewStatus is required." }, { status: 400 });
     }
 
-    const allowed: ReviewStatus[] = ["Pending", "Approved", "Need More Info", "Rejected"];
+    const allowed: ReviewStatus[] = ["Pending", "Approved", "Need More Info", "Rejected", "Completed"];
 
     if (!allowed.includes(body.reviewStatus)) {
       return NextResponse.json({ message: "Invalid review status." }, { status: 400 });

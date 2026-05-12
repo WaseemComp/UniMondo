@@ -2,9 +2,8 @@
 
 export const siteNav = {
   home: "Home",
-  featuredUniversities: "Universities",
+  destinations: "Destinations",
   languageCourses: "Language Courses",
-  countries: "Countries",
   packages: "Our Packages",
   about: "About",
   contact: "Contact",

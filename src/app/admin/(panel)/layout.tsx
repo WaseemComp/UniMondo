@@ -1,4 +1,6 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
+import { AdminPortalNavigation } from "@/components/admin/admin-portal-navigation";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { getAdminAccess, isAdminUser } from "@/lib/auth/admin";
 import { createSupabaseServerAuthClient } from "@/lib/supabase/server-auth";
@@ -20,7 +22,22 @@ export default async function AdminPanelLayout({ children }: { children: React.R
     <div className="min-h-screen bg-zinc-100">
       <div className="mx-auto flex max-w-[1400px] flex-col lg:flex-row">
         <AdminSidebar access={access} />
-        <main className="min-h-screen flex-1 p-6 lg:p-10">{children}</main>
+        <main className="min-h-screen flex-1 p-6 lg:p-10">
+          <Suspense
+            fallback={
+              <div
+                className="mb-6 h-14 animate-pulse rounded-lg bg-zinc-200/80"
+                aria-hidden
+              />
+            }
+          >
+            <AdminPortalNavigation
+              showApplicationsShortcut={access.permissions.applications}
+              showCountriesShortcut={access.permissions.academic}
+            />
+          </Suspense>
+          {children}
+        </main>
       </div>
     </div>
   );

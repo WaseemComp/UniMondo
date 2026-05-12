@@ -43,7 +43,7 @@ export async function saveRegion(input: unknown): Promise<{ ok: true } | { ok: f
     }
 
     revalidatePath("/admin/data/regions");
-    revalidatePath("/admin/countries");
+    revalidatePath("/admin/destinations/countries");
     revalidatePath("/destinations");
     return { ok: true };
   } catch (e) {
@@ -67,7 +67,7 @@ export async function deleteRegion(id: number): Promise<{ ok: true } | { ok: fal
     }
 
     revalidatePath("/admin/data/regions");
-    revalidatePath("/admin/countries");
+    revalidatePath("/admin/destinations/countries");
     revalidatePath("/destinations");
     return { ok: true };
   } catch (e) {

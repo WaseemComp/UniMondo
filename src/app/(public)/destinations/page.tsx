@@ -1,28 +1,34 @@
-import { DestinationsLive } from "@/components/destinations/destinations-live";
-import { getCountryDetails } from "@/lib/data/countries";
+import type { Metadata } from "next";
+import { permanentRedirect } from "next/navigation";
+import { DestinationsUnified } from "@/components/destinations/destinations-unified";
+import { getDestinationsPageData } from "@/lib/data/destinations-page";
+import { countrySlug, findCountryBySlug, slugifyCountryName } from "@/lib/destinations-utils";
+
+export const revalidate = 60;
+
+export const metadata: Metadata = {
+  title: "Study Destinations & Universities | UniMondo",
+  description:
+    "Explore countries, universities, programs, tuition, living costs, scholarships, visa guidance, and intakes — all in one place.",
+};
 
 type Props = {
   searchParams: Promise<{ country?: string }>;
 };
 
-export const revalidate = 60;
-
 export default async function DestinationsPage({ searchParams }: Props) {
   const params = await searchParams;
-  const countries = await getCountryDetails();
+  const [countries, openings, featuredUniversities] = await getDestinationsPageData();
 
-  return (
-    <main className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-      <section className="mb-8">
-        <p className="text-sm font-semibold tracking-wide text-zinc-500 uppercase">Destinations</p>
-        <h1 className="mt-2 text-3xl font-bold text-zinc-900 sm:text-4xl">Study Destinations in Europe</h1>
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-zinc-700">
-          Explore destination insights by country and region with admissions-focused guidance for programs, living cost,
-          and student visa pathways.
-        </p>
-      </section>
+  const legacy = params.country?.trim();
+  if (legacy) {
+    const bySlug = findCountryBySlug(countries, slugifyCountryName(legacy));
+    const byName = countries.find((c) => c.country.toLowerCase() === legacy.toLowerCase());
+    const match = bySlug ?? byName;
+    if (match) {
+      permanentRedirect(`/destinations/${countrySlug(match)}`);
+    }
+  }
 
-      <DestinationsLive initialCountry={params.country} initialCountries={countries} />
-    </main>
-  );
+  return <DestinationsUnified countries={countries} openings={openings} featuredUniversities={featuredUniversities} />;
 }

@@ -33,7 +33,11 @@ export default function AdminSubmissionsIndexPage() {
           <h2 className="text-lg font-semibold text-zinc-900">Latest submissions</h2>
           <p className="mt-1 text-sm text-zinc-600">Work With Us and Join Us entries from the unified backend.</p>
         </div>
-        <AdminDashboard allowedTypes={["work_with_us", "join_us"]} defaultType="All" />
+        <AdminDashboard
+          allowedTypes={["work_with_us", "join_us"]}
+          defaultType="All"
+          detailBasePath="/admin/submissions/detail"
+        />
       </div>
     </div>
   );

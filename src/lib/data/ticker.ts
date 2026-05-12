@@ -15,7 +15,7 @@ export async function getTickerItems(): Promise<TickerItem[]> {
       {
         id: "2",
         message: "See new programs in Italy, Germany & Netherlands.",
-        href: "/current-openings",
+        href: "/destinations",
         sortOrder: 2,
       },
     ];

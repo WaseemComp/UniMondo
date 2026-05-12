@@ -200,7 +200,7 @@ export function FeaturedUniversitiesManager({ universities: initial }: Props) {
         <div>
           <h1 className="text-2xl font-bold text-zinc-900">Featured universities</h1>
           <p className="mt-1 text-sm text-zinc-600">
-            Manage the spotlight grid on <strong>Featured Universities &amp; Programs</strong> (/current-openings).
+            Manage the spotlight grid on <strong>Featured Universities &amp; Programs</strong> (/destinations).
             Upload hero and logo images, edit rankings and copy, or add institutions for any country.
           </p>
         </div>

@@ -37,7 +37,7 @@ export default async function AdminDashboardPage() {
   const cards = [
     { label: "Programs", value: programCount, href: "/admin/programs", icon: FileText },
     { label: "Packages", value: packageCount, href: "/admin/packages", icon: Gift },
-    { label: "Countries", value: countryCount, href: "/admin/countries", icon: Globe },
+    { label: "Destinations", value: countryCount, href: "/admin/destinations", icon: Globe },
     { label: "Blog posts", value: blogCount, href: "/admin/blogs", icon: Newspaper },
  ] as const;
 
