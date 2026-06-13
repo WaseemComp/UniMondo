@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { APPLICATION_ATTACHMENT_MAX_KB, attachmentExceedsMaxSize } from "@/lib/apply/constants";
 import { buildPayloadSnapshot } from "@/lib/apply/map-to-legacy";
 import { documentMetaListSchema, serverSubmitPayloadSchema } from "@/lib/apply/schema";
 import { triggerStudentEmail } from "@/lib/notifications";
@@ -102,6 +103,17 @@ export async function POST(request: NextRequest) {
     }
 
     const files = formData.getAll("documents").filter((entry): entry is File => entry instanceof File);
+
+    const oversized = files.filter((file) => attachmentExceedsMaxSize(file.size));
+    if (oversized.length) {
+      return NextResponse.json(
+        {
+          message: `Each attachment must be ${APPLICATION_ATTACHMENT_MAX_KB} KB or smaller.`,
+          files: oversized.map((file) => file.name),
+        },
+        { status: 400 }
+      );
+    }
 
     if (parsedMeta.data.length !== files.length) {
       return NextResponse.json(

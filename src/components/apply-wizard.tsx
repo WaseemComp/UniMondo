@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import {
+  APPLICATION_ATTACHMENT_MAX_KB,
+  attachmentExceedsMaxSize,
   DESTINATION_OPTIONS,
   DOCUMENT_CATEGORIES,
   DOCUMENT_CATEGORY_LABELS,
@@ -128,6 +130,7 @@ export function ApplyWizard({ packages, addOns, prefill }: Props) {
 
   const [step, setStep] = useState(1);
   const [pendingDocs, setPendingDocs] = useState<PendingDoc[]>([]);
+  const [docUploadError, setDocUploadError] = useState<string | null>(null);
   const [submission, setSubmission] = useState<SubmissionState>({ status: "idle" });
   const [packageStepError, setPackageStepError] = useState<string | null>(null);
 
@@ -211,13 +214,34 @@ export function ApplyWizard({ packages, addOns, prefill }: Props) {
 
   const appendFilesForCategory = (category: DocumentCategory, list: FileList | null) => {
     if (!list?.length) return;
-    const next: PendingDoc[] = Array.from(list).map((file) => ({
-      key: newDocKey(),
-      file,
-      category,
-      description: "",
-    }));
-    setPendingDocs((prev) => [...prev, ...next]);
+
+    const accepted: PendingDoc[] = [];
+    const rejected: string[] = [];
+
+    for (const file of Array.from(list)) {
+      if (attachmentExceedsMaxSize(file.size)) {
+        rejected.push(file.name);
+        continue;
+      }
+      accepted.push({
+        key: newDocKey(),
+        file,
+        category,
+        description: "",
+      });
+    }
+
+    if (rejected.length) {
+      setDocUploadError(
+        `${rejected.join(", ")} exceed${rejected.length === 1 ? "s" : ""} the ${APPLICATION_ATTACHMENT_MAX_KB} KB limit per file.`
+      );
+    } else {
+      setDocUploadError(null);
+    }
+
+    if (accepted.length) {
+      setPendingDocs((prev) => [...prev, ...accepted]);
+    }
   };
 
   const removePendingDoc = (key: string) => {
@@ -229,6 +253,15 @@ export function ApplyWizard({ packages, addOns, prefill }: Props) {
   };
 
   const onFinalSubmit = handleSubmit(async (values) => {
+    const oversized = pendingDocs.filter((doc) => attachmentExceedsMaxSize(doc.file.size));
+    if (oversized.length) {
+      setSubmission({
+        status: "error",
+        message: `Each attachment must be ${APPLICATION_ATTACHMENT_MAX_KB} KB or smaller. Remove or replace: ${oversized.map((doc) => doc.file.name).join(", ")}.`,
+      });
+      return;
+    }
+
     setSubmission({ status: "submitting" });
     try {
       const body = {
@@ -738,8 +771,11 @@ export function ApplyWizard({ packages, addOns, prefill }: Props) {
             <div className="space-y-6">
               <p className="text-sm text-zinc-600">
                 Upload documents by category. You can add multiple files per category. Accepted: PDF, images, Word
-                documents.
+                documents. Each file must be {APPLICATION_ATTACHMENT_MAX_KB} KB (2 MB) or smaller.
               </p>
+              {docUploadError ? (
+                <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{docUploadError}</p>
+              ) : null}
 
               {DOCUMENT_CATEGORIES.map((category) => (
                 <div key={category} className="rounded-xl border border-zinc-200 bg-zinc-50/50 p-4">

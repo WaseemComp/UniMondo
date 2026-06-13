@@ -1,3 +1,11 @@
+/** Maximum size per application attachment (2048 KB = 2 MB). */
+export const APPLICATION_ATTACHMENT_MAX_KB = 2048;
+export const APPLICATION_ATTACHMENT_MAX_BYTES = APPLICATION_ATTACHMENT_MAX_KB * 1024;
+
+export function attachmentExceedsMaxSize(sizeInBytes: number): boolean {
+  return sizeInBytes > APPLICATION_ATTACHMENT_MAX_BYTES;
+}
+
 export const DOCUMENT_CATEGORIES = [
   "educational_certificates",
   "language_certificates",
