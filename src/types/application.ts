@@ -74,4 +74,12 @@ export interface ApplicationRecord {
   applicationType?: ApplicationType;
   payload: ApplicationPayload;
   documents: UploadedDocument[];
+  /** Raw step data persisted in normalized DB columns (university applications). */
+  formData?: {
+    personalInfo: Record<string, unknown>;
+    academicInfo: Record<string, unknown>;
+    studyPreferences: Record<string, unknown>;
+    selectedPackageSlug: string | null;
+    selectedAddonIds: string[];
+  };
 }

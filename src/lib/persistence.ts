@@ -55,6 +55,59 @@ export type CreateApplicationInput = {
   documentItems: DocumentUploadItem[];
 };
 
+const APPLICATION_SELECT =
+  "tracking_id,submitted_at,status,screening_tag,review_status,application_type,payload,personal_info,academic_info,study_preferences,selected_package,selected_addons,documents(file_url,file_name,category,description)";
+
+function mapApplicationRow(row: {
+  tracking_id: string;
+  submitted_at: string;
+  status: string;
+  screening_tag: ApplicationRecord["screeningTag"];
+  review_status: ApplicationRecord["reviewStatus"];
+  application_type: ApplicationType | null;
+  payload: ApplicationPayload;
+  personal_info?: Record<string, unknown> | null;
+  academic_info?: Record<string, unknown> | null;
+  study_preferences?: Record<string, unknown> | null;
+  selected_package?: string | null;
+  selected_addons?: string[] | null;
+  documents:
+    | Array<{
+        file_url: string;
+        file_name: string;
+        category: string;
+        description: string | null;
+      }>
+    | null;
+}): ApplicationRecord {
+  const hasFormColumns =
+    row.personal_info != null ||
+    row.academic_info != null ||
+    row.study_preferences != null ||
+    row.selected_package != null ||
+    (row.selected_addons != null && row.selected_addons.length > 0);
+
+  return {
+    trackingId: row.tracking_id,
+    submittedAt: row.submitted_at,
+    pipelineStatus: row.status ?? "submitted",
+    screeningTag: row.screening_tag,
+    reviewStatus: row.review_status,
+    applicationType: row.application_type ?? "university",
+    payload: row.payload,
+    documents: (row.documents ?? []).map(mapDbDocumentRow),
+    formData: hasFormColumns
+      ? {
+          personalInfo: (row.personal_info ?? {}) as Record<string, unknown>,
+          academicInfo: (row.academic_info ?? {}) as Record<string, unknown>,
+          studyPreferences: (row.study_preferences ?? {}) as Record<string, unknown>,
+          selectedPackageSlug: row.selected_package ?? null,
+          selectedAddonIds: row.selected_addons ?? [],
+        }
+      : undefined,
+  };
+}
+
 function mapDbDocumentRow(d: {
   file_url: string;
   file_name: string;
@@ -246,8 +299,7 @@ export async function getApplications(params?: {
   }
 
   const qs = new URLSearchParams({
-    select:
-      "tracking_id,submitted_at,status,screening_tag,review_status,application_type,payload,documents(file_url,file_name,category,description)",
+    select: APPLICATION_SELECT,
     order: "submitted_at.desc",
   });
 
@@ -281,6 +333,11 @@ export async function getApplications(params?: {
     review_status: ApplicationRecord["reviewStatus"];
     application_type: ApplicationType | null;
     payload: ApplicationPayload;
+    personal_info?: Record<string, unknown> | null;
+    academic_info?: Record<string, unknown> | null;
+    study_preferences?: Record<string, unknown> | null;
+    selected_package?: string | null;
+    selected_addons?: string[] | null;
     documents:
       | Array<{
           file_url: string;
@@ -291,16 +348,7 @@ export async function getApplications(params?: {
       | null;
   }>;
 
-  return rows.map((row) => ({
-    trackingId: row.tracking_id,
-    submittedAt: row.submitted_at,
-    pipelineStatus: row.status ?? "submitted",
-    screeningTag: row.screening_tag,
-    reviewStatus: row.review_status,
-    applicationType: row.application_type ?? "university",
-    payload: row.payload,
-    documents: (row.documents ?? []).map(mapDbDocumentRow),
-  }));
+  return rows.map(mapApplicationRow);
 }
 
 export async function getApplicationRecordByTrackingId(trackingId: string): Promise<ApplicationRecord | null> {
@@ -309,8 +357,7 @@ export async function getApplicationRecordByTrackingId(trackingId: string): Prom
   }
 
   const qs = new URLSearchParams({
-    select:
-      "tracking_id,submitted_at,status,screening_tag,review_status,application_type,payload,documents(file_url,file_name,category,description)",
+    select: APPLICATION_SELECT,
     tracking_id: `eq.${trackingId}`,
     limit: "1",
   });
@@ -331,6 +378,11 @@ export async function getApplicationRecordByTrackingId(trackingId: string): Prom
     review_status: ApplicationRecord["reviewStatus"];
     application_type: ApplicationType | null;
     payload: ApplicationPayload;
+    personal_info?: Record<string, unknown> | null;
+    academic_info?: Record<string, unknown> | null;
+    study_preferences?: Record<string, unknown> | null;
+    selected_package?: string | null;
+    selected_addons?: string[] | null;
     documents:
       | Array<{
           file_url: string;
@@ -344,16 +396,7 @@ export async function getApplicationRecordByTrackingId(trackingId: string): Prom
   const row = rows[0];
   if (!row) return null;
 
-  return {
-    trackingId: row.tracking_id,
-    submittedAt: row.submitted_at,
-    pipelineStatus: row.status ?? "submitted",
-    screeningTag: row.screening_tag,
-    reviewStatus: row.review_status,
-    applicationType: row.application_type ?? "university",
-    payload: row.payload,
-    documents: (row.documents ?? []).map(mapDbDocumentRow),
-  };
+  return mapApplicationRow(row);
 }
 
 export async function updateApplicationStatus(

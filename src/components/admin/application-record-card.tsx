@@ -92,6 +92,20 @@ export function ApplicationRecordCard({
               ) : null}
             </p>
           ) : null}
+          <div className="mt-3 flex flex-wrap gap-2">
+            <a
+              href={`/api/applications/${encodeURIComponent(application.trackingId)}/export?type=pdf`}
+              className="rounded-full border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-950 hover:border-amber-500"
+            >
+              Application form (PDF)
+            </a>
+            <a
+              href={`/api/applications/${encodeURIComponent(application.trackingId)}/export?type=zip`}
+              className="rounded-full border border-zinc-300 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-800 hover:border-zinc-500"
+            >
+              All attachments (ZIP)
+            </a>
+          </div>
         </div>
         <div className="space-y-1 text-sm">
           <p>
@@ -164,6 +178,27 @@ export function ApplicationRecordCard({
               </p>
             </div>
           ) : null}
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Downloads</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <a
+                href={`/api/applications/${encodeURIComponent(application.trackingId)}/export?type=pdf`}
+                className="rounded-full border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-950 hover:border-amber-500"
+              >
+                Download application form (PDF)
+              </a>
+              <a
+                href={`/api/applications/${encodeURIComponent(application.trackingId)}/export?type=zip`}
+                className="rounded-full border border-zinc-300 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-800 hover:border-zinc-500"
+              >
+                Download all attachments (ZIP)
+              </a>
+            </div>
+            <p className="mt-2 text-xs text-zinc-500">
+              ZIP includes all uploaded files, package and add-on details, and the application form PDF named with the
+              tracking ID.
+            </p>
+          </div>
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Uploaded documents</p>
             {application.documents.length === 0 ? (
