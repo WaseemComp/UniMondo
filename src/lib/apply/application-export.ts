@@ -8,10 +8,18 @@ import {
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { ApplicationRecord, ApplicationType } from "@/types/application";
 
+type ExportLineItem = {
+  name: string;
+  priceFull: number;
+  priceInstallment: number | null;
+};
+
 type ExportContext = {
   packageName: string;
   packageSlug: string;
   addonNames: string[];
+  packageItem: ExportLineItem | null;
+  addonItems: ExportLineItem[];
 };
 
 const A4: [number, number] = [595.28, 841.89];
@@ -137,6 +145,78 @@ function drawLines(
   }
 }
 
+function formatUsdPrice(amount: number): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
+function startNewPage(writer: PdfWriter) {
+  writer.page = writer.doc.addPage(A4);
+  writer.y = writer.pageHeight - MARGIN;
+}
+
+function pricingTotals(context: ExportContext): { totalFull: number; totalInstallment: number | null } {
+  const totalFull =
+    (context.packageItem?.priceFull ?? 0) +
+    context.addonItems.reduce((sum, item) => sum + item.priceFull, 0);
+
+  const installmentValues = [
+    context.packageItem?.priceInstallment ?? null,
+    ...context.addonItems.map((item) => item.priceInstallment),
+  ];
+
+  if (!context.packageItem || installmentValues.some((value) => value == null)) {
+    return { totalFull, totalInstallment: null };
+  }
+
+  return {
+    totalFull,
+    totalInstallment: installmentValues.reduce<number>((sum, value) => sum + (value ?? 0), 0),
+  };
+}
+
+function drawPricingSummary(writer: PdfWriter, context: ExportContext) {
+  startNewPage(writer);
+
+  const lines: Array<[string, string] | string> = [];
+
+  if (context.packageItem) {
+    lines.push(["Support package", `${context.packageItem.name} — ${formatUsdPrice(context.packageItem.priceFull)}`]);
+    if (context.packageItem.priceInstallment != null) {
+      lines.push([
+        "Support package (installments)",
+        formatUsdPrice(context.packageItem.priceInstallment),
+      ]);
+    }
+  } else if (context.packageName && context.packageName !== "—") {
+    lines.push(["Support package", `${context.packageName} — price unavailable`]);
+  }
+
+  if (context.addonItems.length) {
+    for (const addon of context.addonItems) {
+      lines.push([`Add-on — ${addon.name}`, formatUsdPrice(addon.priceFull)]);
+      if (addon.priceInstallment != null) {
+        lines.push([`Add-on — ${addon.name} (installments)`, formatUsdPrice(addon.priceInstallment)]);
+      }
+    }
+  } else {
+    lines.push(["Add-ons", "None selected"]);
+  }
+
+  const { totalFull, totalInstallment } = pricingTotals(context);
+  if (context.packageItem || context.addonItems.length) {
+    lines.push(["Total amount due (full pay)", formatUsdPrice(totalFull)]);
+    if (totalInstallment != null) {
+      lines.push(["Total amount due (installments)", formatUsdPrice(totalInstallment)]);
+    }
+  }
+
+  drawSection(writer, "6. Pricing summary", lines);
+}
+
 function drawSection(writer: PdfWriter, title: string, lines: Array<[string, string] | string>) {
   drawLines(writer, [title], { bold: true, size: 12, gap: 6 });
   writer.y -= 2;
@@ -153,18 +233,62 @@ function drawSection(writer: PdfWriter, title: string, lines: Array<[string, str
   writer.y -= 8;
 }
 
-async function resolveAddonNames(addonIds: string[]): Promise<string[]> {
+async function resolvePackagePricing(
+  packageId: string | undefined,
+  packageSlug: string | undefined
+): Promise<ExportLineItem | null> {
+  const supabase = createSupabaseServerClient();
+  if (!supabase) return null;
+
+  let query = supabase.from("packages").select("name,price_full,price_installment");
+  if (packageId) {
+    query = query.eq("id", packageId);
+  } else if (packageSlug) {
+    query = query.eq("slug", packageSlug);
+  } else {
+    return null;
+  }
+
+  const { data, error } = await query.maybeSingle();
+  if (error || !data) return null;
+
+  return {
+    name: String(data.name),
+    priceFull: Number(data.price_full),
+    priceInstallment: data.price_installment == null ? null : Number(data.price_installment),
+  };
+}
+
+async function resolveAddonPricing(addonIds: string[]): Promise<ExportLineItem[]> {
   const uniqueIds = [...new Set(addonIds.filter(Boolean))];
   if (!uniqueIds.length) return [];
 
   const supabase = createSupabaseServerClient();
-  if (!supabase) return uniqueIds;
+  if (!supabase) {
+    return uniqueIds.map((id) => ({ name: id, priceFull: 0, priceInstallment: null }));
+  }
 
-  const { data, error } = await supabase.from("add_ons").select("id,name").in("id", uniqueIds);
-  if (error || !data?.length) return uniqueIds;
+  const { data, error } = await supabase
+    .from("add_ons")
+    .select("id,name,price_full,price_installment")
+    .in("id", uniqueIds);
 
-  const byId = new Map(data.map((row) => [String(row.id), String(row.name)]));
-  return uniqueIds.map((id) => byId.get(id) ?? id);
+  if (error || !data?.length) {
+    return uniqueIds.map((id) => ({ name: id, priceFull: 0, priceInstallment: null }));
+  }
+
+  const byId = new Map(
+    data.map((row) => [
+      String(row.id),
+      {
+        name: String(row.name),
+        priceFull: Number(row.price_full),
+        priceInstallment: row.price_installment == null ? null : Number(row.price_installment),
+      },
+    ])
+  );
+
+  return uniqueIds.map((id) => byId.get(id) ?? { name: id, priceFull: 0, priceInstallment: null });
 }
 
 async function buildExportContext(record: ApplicationRecord): Promise<ExportContext> {
@@ -174,12 +298,20 @@ async function buildExportContext(record: ApplicationRecord): Promise<ExportCont
     ...(record.formData?.selectedAddonIds ?? []),
   ];
 
-  const addonNames = await resolveAddonNames(addonIds);
+  const [packageItem, addonItems] = await Promise.all([
+    resolvePackagePricing(
+      packageSelection?.packageId,
+      packageSelection?.packageSlug || record.formData?.selectedPackageSlug || undefined
+    ),
+    resolveAddonPricing(addonIds),
+  ]);
 
   return {
-    packageName: packageSelection?.packageName || record.formData?.selectedPackageSlug || "—",
+    packageName: packageSelection?.packageName || packageItem?.name || record.formData?.selectedPackageSlug || "—",
     packageSlug: packageSelection?.packageSlug || record.formData?.selectedPackageSlug || "—",
-    addonNames,
+    addonNames: addonItems.map((item) => item.name),
+    packageItem,
+    addonItems,
   };
 }
 
@@ -192,15 +324,34 @@ function buildPackageSummary(record: ApplicationRecord, context: ExportContext):
     "Support package",
     `Name: ${context.packageName}`,
     `Slug: ${context.packageSlug}`,
-    "",
-    "Selected add-ons",
   ];
 
-  if (!context.addonNames.length) {
+  if (context.packageItem) {
+    lines.push(`Price (full pay): ${formatUsdPrice(context.packageItem.priceFull)}`);
+    if (context.packageItem.priceInstallment != null) {
+      lines.push(`Price (installments): ${formatUsdPrice(context.packageItem.priceInstallment)}`);
+    }
+  }
+
+  lines.push("", "Selected add-ons");
+
+  if (!context.addonItems.length) {
     lines.push("None");
   } else {
-    for (const name of context.addonNames) {
-      lines.push(`- ${name}`);
+    for (const addon of context.addonItems) {
+      lines.push(
+        `- ${addon.name}: ${formatUsdPrice(addon.priceFull)}${
+          addon.priceInstallment != null ? ` (installments ${formatUsdPrice(addon.priceInstallment)})` : ""
+        }`
+      );
+    }
+  }
+
+  const { totalFull, totalInstallment } = pricingTotals(context);
+  if (context.packageItem || context.addonItems.length) {
+    lines.push("", `Total amount due (full pay): ${formatUsdPrice(totalFull)}`);
+    if (totalInstallment != null) {
+      lines.push(`Total amount due (installments): ${formatUsdPrice(totalInstallment)}`);
     }
   }
 
@@ -425,6 +576,10 @@ export async function buildApplicationPdfBuffer(
         )
       : ["No files attached."]
   );
+
+  if (type === "university") {
+    drawPricingSummary(writer, exportContext);
+  }
 
   const pdfBytes = await writer.doc.save();
   return Buffer.from(pdfBytes);
