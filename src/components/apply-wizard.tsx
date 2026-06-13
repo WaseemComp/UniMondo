@@ -7,6 +7,7 @@ import { FormProvider, useForm } from "react-hook-form";
 import {
   APPLICATION_ATTACHMENT_MAX_KB,
   attachmentExceedsMaxSize,
+  formatOversizedAttachmentsPrompt,
   DESTINATION_OPTIONS,
   DOCUMENT_CATEGORIES,
   DOCUMENT_CATEGORY_LABELS,
@@ -216,11 +217,11 @@ export function ApplyWizard({ packages, addOns, prefill }: Props) {
     if (!list?.length) return;
 
     const accepted: PendingDoc[] = [];
-    const rejected: string[] = [];
+    const rejected: Array<{ name: string; sizeInBytes: number }> = [];
 
     for (const file of Array.from(list)) {
       if (attachmentExceedsMaxSize(file.size)) {
-        rejected.push(file.name);
+        rejected.push({ name: file.name, sizeInBytes: file.size });
         continue;
       }
       accepted.push({
@@ -232,9 +233,7 @@ export function ApplyWizard({ packages, addOns, prefill }: Props) {
     }
 
     if (rejected.length) {
-      setDocUploadError(
-        `${rejected.join(", ")} exceed${rejected.length === 1 ? "s" : ""} the ${APPLICATION_ATTACHMENT_MAX_KB} KB limit per file.`
-      );
+      setDocUploadError(formatOversizedAttachmentsPrompt(rejected));
     } else {
       setDocUploadError(null);
     }
@@ -255,10 +254,13 @@ export function ApplyWizard({ packages, addOns, prefill }: Props) {
   const onFinalSubmit = handleSubmit(async (values) => {
     const oversized = pendingDocs.filter((doc) => attachmentExceedsMaxSize(doc.file.size));
     if (oversized.length) {
-      setSubmission({
-        status: "error",
-        message: `Each attachment must be ${APPLICATION_ATTACHMENT_MAX_KB} KB or smaller. Remove or replace: ${oversized.map((doc) => doc.file.name).join(", ")}.`,
-      });
+      setDocUploadError(
+        formatOversizedAttachmentsPrompt(
+          oversized.map((doc) => ({ name: doc.file.name, sizeInBytes: doc.file.size }))
+        )
+      );
+      setStep(5);
+      setSubmission({ status: "idle" });
       return;
     }
 
@@ -293,13 +295,35 @@ export function ApplyWizard({ packages, addOns, prefill }: Props) {
         trackingId?: string;
         screeningTag?: string;
         message?: string;
-        issues?: unknown;
+        files?: string[];
       };
 
-      if (!response.ok || !data.trackingId || !data.screeningTag) {
-        const extra =
-          data.issues != null ? ` ${typeof data.issues === "string" ? data.issues : JSON.stringify(data.issues)}` : "";
-        throw new Error((data.message || "Failed to submit application.") + extra);
+      if (!response.ok) {
+        if (data.files?.length) {
+          setDocUploadError(
+            data.message ||
+              formatOversizedAttachmentsPrompt(data.files.map((name) => ({ name })))
+          );
+          setStep(5);
+          setSubmission({ status: "idle" });
+          return;
+        }
+
+        setSubmission({
+          status: "error",
+          message:
+            data.message ||
+            "We couldn't submit your application right now. Please review your details and try again.",
+        });
+        return;
+      }
+
+      if (!data.trackingId || !data.screeningTag) {
+        setSubmission({
+          status: "error",
+          message: "We couldn't submit your application right now. Please review your details and try again.",
+        });
+        return;
       }
 
       setSubmission({
@@ -307,10 +331,10 @@ export function ApplyWizard({ packages, addOns, prefill }: Props) {
         trackingId: data.trackingId,
         screeningTag: data.screeningTag,
       });
-    } catch (error) {
+    } catch {
       setSubmission({
         status: "error",
-        message: error instanceof Error ? error.message : "Unknown error occurred.",
+        message: "We couldn't submit your application right now. Please check your connection and try again.",
       });
     }
   });
@@ -788,7 +812,10 @@ export function ApplyWizard({ packages, addOns, prefill }: Props) {
                         multiple
                         className="hidden"
                         accept=".pdf,.doc,.docx,image/*"
-                        onChange={(e) => appendFilesForCategory(category, e.target.files)}
+                        onChange={(e) => {
+                          appendFilesForCategory(category, e.target.files);
+                          e.target.value = "";
+                        }}
                       />
                     </label>
                   </div>
@@ -799,16 +826,25 @@ export function ApplyWizard({ packages, addOns, prefill }: Props) {
                 <div className="space-y-3">
                   <p className="text-sm font-semibold text-zinc-900">Selected files</p>
                   <ul className="space-y-3">
-                    {pendingDocs.map((p) => (
+                    {pendingDocs.map((p) => {
+                      const tooLarge = attachmentExceedsMaxSize(p.file.size);
+                      return (
                       <li
                         key={p.key}
-                        className="rounded-lg border border-zinc-200 bg-white p-3 text-sm text-zinc-700 shadow-sm"
+                        className={`rounded-lg border p-3 text-sm shadow-sm ${
+                          tooLarge
+                            ? "border-red-300 bg-red-50 text-red-800"
+                            : "border-zinc-200 bg-white text-zinc-700"
+                        }`}
                       >
                         <div className="flex flex-wrap items-start justify-between gap-2">
                           <div>
                             <p className="font-medium text-zinc-900">{p.file.name}</p>
                             <p className="text-xs text-zinc-500">
                               {DOCUMENT_CATEGORY_LABELS[p.category]} · {Math.round(p.file.size / 1024)} KB
+                              {tooLarge
+                                ? ` · exceeds ${APPLICATION_ATTACHMENT_MAX_KB} KB limit — please reduce and re-attach`
+                                : ""}
                             </p>
                           </div>
                           <button
@@ -829,7 +865,8 @@ export function ApplyWizard({ packages, addOns, prefill }: Props) {
                           />
                         </label>
                       </li>
-                    ))}
+                      );
+                    })}
                   </ul>
                 </div>
               )}

@@ -6,6 +6,24 @@ export function attachmentExceedsMaxSize(sizeInBytes: number): boolean {
   return sizeInBytes > APPLICATION_ATTACHMENT_MAX_BYTES;
 }
 
+/** Friendly prompt shown when a single attachment exceeds the size limit. */
+export function formatOversizedAttachmentPrompt(fileName: string, sizeInBytes?: number): string {
+  const sizePart = sizeInBytes != null ? ` (${Math.round(sizeInBytes / 1024)} KB)` : "";
+  return `"${fileName}"${sizePart} is larger than ${APPLICATION_ATTACHMENT_MAX_KB} KB (2 MB). Please reduce its file size and attach it again. Your other form details are saved.`;
+}
+
+/** Friendly prompt when one or more attachments exceed the size limit. */
+export function formatOversizedAttachmentsPrompt(
+  files: Array<{ name: string; sizeInBytes?: number }>
+): string {
+  if (files.length === 1) {
+    return formatOversizedAttachmentPrompt(files[0].name, files[0].sizeInBytes);
+  }
+
+  const names = files.map((file) => file.name).join(", ");
+  return `These files are larger than ${APPLICATION_ATTACHMENT_MAX_KB} KB (2 MB): ${names}. Please reduce each file's size and attach them again. Your other form details are saved.`;
+}
+
 export const DOCUMENT_CATEGORIES = [
   "educational_certificates",
   "language_certificates",
