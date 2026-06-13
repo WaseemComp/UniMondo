@@ -53,6 +53,18 @@ function newDocKey() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+function parseOptionalNumber(value: unknown): number | undefined {
+  if (value === "" || value == null) return undefined;
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isNaN(parsed) ? undefined : parsed;
+}
+
+function parseRequiredNumber(value: unknown, fallback = 0): number {
+  if (value === "" || value == null) return fallback;
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isNaN(parsed) ? fallback : parsed;
+}
+
 export function ApplyWizard({ packages, addOns, prefill }: Props) {
   const prefilledCountry = prefill?.country?.trim() || DESTINATION_OPTIONS[0];
   const prefilledProgram = prefill?.program?.trim() || "";
@@ -108,7 +120,7 @@ export function ApplyWizard({ packages, addOns, prefill }: Props) {
     mode: "onTouched",
   });
 
-  const { handleSubmit, register, watch, setValue, trigger, reset, formState } = form;
+  const { handleSubmit, register, watch, setValue, getValues, trigger, reset, formState } = form;
 
   useEffect(() => {
     reset(defaultValues);
@@ -134,6 +146,13 @@ export function ApplyWizard({ packages, addOns, prefill }: Props) {
       const ok = await trigger("personalInfo");
       if (!ok) return;
     } else if (step === 2) {
+      const grade = getValues("academicInfo.gradeType");
+      if (grade === "percentage") {
+        setValue("academicInfo.obtainedGpa", undefined);
+        setValue("academicInfo.totalGpaScale", undefined);
+      } else {
+        setValue("academicInfo.obtainedPercentage", undefined);
+      }
       const ok = await trigger("academicInfo");
       if (!ok) return;
     } else if (step === 3) {
@@ -393,11 +412,28 @@ export function ApplyWizard({ packages, addOns, prefill }: Props) {
                 <p className="text-sm font-medium text-zinc-900">Result format</p>
                 <div className="mt-2 flex flex-wrap gap-4 text-sm text-zinc-700">
                   <label className="flex cursor-pointer items-center gap-2">
-                    <input type="radio" value="gpa" {...register("academicInfo.gradeType")} />
+                    <input
+                      type="radio"
+                      value="gpa"
+                      {...register("academicInfo.gradeType", {
+                        onChange: () => {
+                          setValue("academicInfo.obtainedPercentage", undefined);
+                        },
+                      })}
+                    />
                     GPA
                   </label>
                   <label className="flex cursor-pointer items-center gap-2">
-                    <input type="radio" value="percentage" {...register("academicInfo.gradeType")} />
+                    <input
+                      type="radio"
+                      value="percentage"
+                      {...register("academicInfo.gradeType", {
+                        onChange: () => {
+                          setValue("academicInfo.obtainedGpa", undefined);
+                          setValue("academicInfo.totalGpaScale", undefined);
+                        },
+                      })}
+                    />
                     Percentage
                   </label>
                 </div>
@@ -409,7 +445,7 @@ export function ApplyWizard({ packages, addOns, prefill }: Props) {
                     <input
                       type="number"
                       step="any"
-                      {...register("academicInfo.obtainedGpa", { valueAsNumber: true })}
+                      {...register("academicInfo.obtainedGpa", { setValueAs: parseOptionalNumber })}
                       className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2"
                     />
                   </Field>
@@ -418,7 +454,7 @@ export function ApplyWizard({ packages, addOns, prefill }: Props) {
                       type="number"
                       step="any"
                       placeholder="e.g. 4.0 or 5.0"
-                      {...register("academicInfo.totalGpaScale", { valueAsNumber: true })}
+                      {...register("academicInfo.totalGpaScale", { setValueAs: parseOptionalNumber })}
                       className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2"
                     />
                   </Field>
@@ -433,7 +469,7 @@ export function ApplyWizard({ packages, addOns, prefill }: Props) {
                   <input
                     type="number"
                     step="any"
-                    {...register("academicInfo.obtainedPercentage", { valueAsNumber: true })}
+                    {...register("academicInfo.obtainedPercentage", { setValueAs: parseOptionalNumber })}
                     className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2"
                   />
                 </Field>
@@ -443,7 +479,7 @@ export function ApplyWizard({ packages, addOns, prefill }: Props) {
                 <input
                   type="number"
                   step="0.5"
-                  {...register("academicInfo.ieltsScore", { valueAsNumber: true })}
+                  {...register("academicInfo.ieltsScore", { setValueAs: (v) => parseRequiredNumber(v, 0) })}
                   className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2"
                 />
               </Field>
