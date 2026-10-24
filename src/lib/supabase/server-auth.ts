@@ -5,9 +5,11 @@ import { cookies } from "next/headers";
 export async function createSupabaseServerAuthClient() {
   const cookieStore = await cookies();
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const anon =
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !anon) {
-    throw new Error("NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are required.");
+    throw new Error("NEXT_PUBLIC_SUPABASE_URL and Supabase public/anon key are required.");
   }
 
   return createServerClient(url, anon, {

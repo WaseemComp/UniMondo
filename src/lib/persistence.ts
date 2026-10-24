@@ -10,16 +10,20 @@ import type {
   UploadedDocument,
 } from "@/types/application";
 
+import { getSupabaseServerHeaders, getSupabaseServerSecretKey } from "@/lib/supabase/admin";
+
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const SUPABASE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || "documents";
 
-const hasSupabase = Boolean(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY);
+function hasSupabase(): boolean {
+  return Boolean(SUPABASE_URL && getSupabaseServerSecretKey());
+}
 
 const inMemoryApplications: ApplicationRecord[] = [];
 
 async function supabaseRequest(path: string, init: RequestInit): Promise<Response> {
-  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+  const serverKey = getSupabaseServerSecretKey();
+  if (!SUPABASE_URL || !serverKey) {
     throw new Error("Supabase environment variables are missing.");
   }
 
@@ -27,8 +31,7 @@ async function supabaseRequest(path: string, init: RequestInit): Promise<Respons
     ...init,
     headers: {
       "Content-Type": "application/json",
-      apikey: SUPABASE_SERVICE_ROLE_KEY,
-      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      ...getSupabaseServerHeaders(serverKey),
       ...(init.headers || {}),
     },
   });
@@ -134,7 +137,7 @@ export async function createApplicationWithDocuments(
   const uploadedDocs: UploadedDocument[] = [];
   const applicationType: ApplicationType = input.applicationType ?? "university";
 
-  if (!hasSupabase) {
+  if (!hasSupabase()) {
     for (const item of input.documentItems) {
       uploadedDocs.push({
         name: item.file.name,
@@ -205,15 +208,16 @@ export async function createApplicationWithDocuments(
     const safeName = `${Date.now()}-${item.file.name.replace(/\s+/g, "-")}`;
     const objectPath = `${input.trackingId}/${item.category}/${safeName}`;
 
+    const serverKey = getSupabaseServerSecretKey();
     const uploadResponse = await fetch(
       `${SUPABASE_URL}/storage/v1/object/${SUPABASE_BUCKET}/${objectPath}`,
       {
         method: "POST",
         headers: {
-          apikey: SUPABASE_SERVICE_ROLE_KEY as string,
-          Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-          "x-upsert": "false",
-          "Content-Type": item.file.type || "application/octet-stream",
+          ...getSupabaseServerHeaders(serverKey, {
+            "x-upsert": "false",
+            "Content-Type": item.file.type || "application/octet-stream",
+          }),
         },
         body: await item.file.arrayBuffer(),
       }
@@ -285,7 +289,7 @@ export async function getApplications(params?: {
   const status = params?.status;
   const type = params?.type;
 
-  if (!hasSupabase) {
+  if (!hasSupabase()) {
     if (!status && !type) {
       return inMemoryApplications;
     }
@@ -352,7 +356,7 @@ export async function getApplications(params?: {
 }
 
 export async function getApplicationRecordByTrackingId(trackingId: string): Promise<ApplicationRecord | null> {
-  if (!hasSupabase) {
+  if (!hasSupabase()) {
     return inMemoryApplications.find((item) => item.trackingId === trackingId) ?? null;
   }
 
@@ -403,7 +407,7 @@ export async function updateApplicationStatus(
   trackingId: string,
   reviewStatus: ReviewStatus
 ): Promise<boolean> {
-  if (!hasSupabase) {
+  if (!hasSupabase()) {
     const index = inMemoryApplications.findIndex((item) => item.trackingId === trackingId);
 
     if (index < 0) {
@@ -430,7 +434,7 @@ export async function updateApplicationStatus(
 }
 
 export async function deleteApplicationByTrackingId(trackingId: string): Promise<boolean> {
-  if (!hasSupabase) {
+  if (!hasSupabase()) {
     const index = inMemoryApplications.findIndex((item) => item.trackingId === trackingId);
     if (index < 0) return false;
     inMemoryApplications.splice(index, 1);

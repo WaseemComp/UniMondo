@@ -1,18 +1,18 @@
 import type { ApplicationType } from "@/types/application";
+import { getSupabaseServerHeaders, getSupabaseServerSecretKey } from "@/lib/supabase/admin";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 async function supabaseRequest(path: string, init: RequestInit): Promise<Response> {
-  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+  const serverKey = getSupabaseServerSecretKey();
+  if (!SUPABASE_URL || !serverKey) {
     throw new Error("Supabase environment variables are missing.");
   }
   return fetch(`${SUPABASE_URL}${path}`, {
     ...init,
     headers: {
       "Content-Type": "application/json",
-      apikey: SUPABASE_SERVICE_ROLE_KEY,
-      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      ...getSupabaseServerHeaders(serverKey),
       ...(init.headers || {}),
     },
   });
