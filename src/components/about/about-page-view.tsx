@@ -27,8 +27,8 @@ export function AboutPageView({ sections, team, partners }: Props) {
   const rest = sections.filter((s) => s.section_key !== "about_us");
 
   return (
-    <main className="bg-gradient-to-b from-slate-50 to-white">
-      <div className="relative overflow-hidden border-b border-slate-200/80 bg-[#0a1628]">
+    <main className="bg-[#F8F7F3]">
+      <div className="relative overflow-hidden border-b border-[#244B50] bg-[#1A2E3A]">
         <div className="pointer-events-none absolute inset-0 opacity-40">
           <Image
             src="https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=2000&q=70"
@@ -38,25 +38,25 @@ export function AboutPageView({ sections, team, partners }: Props) {
             sizes="100vw"
             priority
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#0a1628] via-[#0a1628]/95 to-[#0a1628]/85" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#1A2E3A] via-[#1A2E3A]/95 to-[#1A2E3A]/85" />
         </div>
-        <div className="relative mx-auto max-w-4xl px-4 py-14 sm:px-6 lg:px-8">
-          <p className="text-sm font-semibold tracking-wide text-amber-400/90 uppercase">About</p>
-          <h1 className="mt-2 font-[family-name:var(--font-heading)] text-3xl font-bold tracking-tight text-white sm:text-4xl">
+        <div className="relative mx-auto max-w-4xl px-4 py-16 sm:px-6 lg:px-8">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#C9AB76]">About UniMondo</p>
+          <h1 className="mt-2 font-[family-name:var(--font-editorial)] text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-5xl">
             {aboutUs?.title ?? "About UniMondo"}
           </h1>
           {aboutUs?.body ? (
-            <p className="mt-4 max-w-3xl text-sm leading-relaxed text-slate-200 sm:text-base">{aboutUs.body}</p>
+            <p className="mt-4 max-w-3xl text-sm leading-relaxed text-[#E6EEE8]/90 sm:text-base">{aboutUs.body}</p>
           ) : null}
         </div>
       </div>
 
-      <div className="mx-auto max-w-4xl space-y-12 px-4 py-12 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-4xl space-y-12 px-4 py-14 sm:px-6 lg:px-8">
         {rest.map((s) => (
           <Fragment key={s.section_key}>
-            <section className="scroll-mt-24">
-              <h2 className="font-[family-name:var(--font-heading)] text-2xl font-semibold text-[#0a1628]">{s.title}</h2>
-              <div className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-slate-700 sm:text-[15px]">{s.body}</div>
+            <section className="scroll-mt-24 rounded-xl border border-[#E2DFD8] bg-white p-6 sm:p-8 shadow-xs">
+              <h2 className="font-[family-name:var(--font-editorial)] text-2xl font-bold text-[#26343B] sm:text-3xl">{s.title}</h2>
+              <div className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-[#4D5F64] sm:text-[15px]">{s.body}</div>
             </section>
             {s.section_key === "values" && partners.length > 0 ? (
               <AboutPartnersShowcase partners={partners} />
@@ -65,9 +65,9 @@ export function AboutPageView({ sections, team, partners }: Props) {
         ))}
 
         {team.length === 0 ? (
-          <section className="scroll-mt-24">
-            <h2 className="font-[family-name:var(--font-heading)] text-2xl font-semibold text-[#0a1628]">Our Team</h2>
-            <p className="mt-2 text-sm text-slate-600">
+          <section className="scroll-mt-24 rounded-xl border border-[#E2DFD8] bg-white p-6 sm:p-8 shadow-xs">
+            <h2 className="font-[family-name:var(--font-editorial)] text-2xl font-bold text-[#26343B] sm:text-3xl">Our Team</h2>
+            <p className="mt-2 text-sm text-[#4D5F64]">
               The counselors and specialists behind your application — approachable, rigorous, and invested in outcomes.
             </p>
             <p className="mt-6 rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-8 text-center text-sm text-slate-600">

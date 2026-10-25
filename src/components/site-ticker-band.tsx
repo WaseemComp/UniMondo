@@ -61,15 +61,15 @@ export function SiteTickerBand({ initialSettings, initialItems }: Props) {
             {item.href ? (
               <Link
                 href={item.href}
-                className="font-medium text-amber-100/95 underline-offset-2 hover:text-white hover:underline"
+                className="font-medium text-[#E6EEE8] underline-offset-2 hover:text-white hover:underline transition"
               >
                 {item.message}
               </Link>
             ) : (
-              <span className="font-medium text-amber-100/95">{item.message}</span>
+              <span className="font-medium text-[#E6EEE8]">{item.message}</span>
             )}
             {idx < items.length - 1 ? (
-              <span className="ml-5 text-amber-500/55 sm:ml-8" aria-hidden>
+              <span className="ml-5 text-[#C9AB76] sm:ml-8 font-bold" aria-hidden>
                 ·
               </span>
             ) : null}
@@ -80,13 +80,13 @@ export function SiteTickerBand({ initialSettings, initialItems }: Props) {
 
     return (
       <div
-        className="relative overflow-hidden border-b border-amber-400/20 bg-gradient-to-r from-[#071225] via-[#0a1f42] to-[#071225]"
+        className="relative overflow-hidden border-b border-[#1D3E42] bg-[#244B50] text-[#E6EEE8]"
         role="region"
         aria-label="Site announcements"
       >
-        <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-[#071225] to-transparent" />
-        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-[#071225] to-transparent" />
-        <div className="unimondo-marquee-track py-2.5 text-[13px] font-medium tracking-wide sm:text-sm">
+        <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-12 bg-gradient-to-r from-[#244B50] to-transparent" />
+        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-12 bg-gradient-to-l from-[#244B50] to-transparent" />
+        <div className="unimondo-marquee-track py-2 text-[12.5px] font-medium tracking-wide sm:text-[13px]">
           <span className="inline-flex shrink-0 items-center">{segment("a")}</span>
           <span className="inline-flex shrink-0 items-center" aria-hidden>
             {segment("b")}
@@ -103,13 +103,13 @@ export function SiteTickerBand({ initialSettings, initialItems }: Props) {
 
   return (
     <div
-      className="relative overflow-hidden border-b border-amber-400/20 bg-gradient-to-r from-[#071225] via-[#0a1f42] to-[#071225]"
+      className="relative overflow-hidden border-b border-[#1D3E42] bg-[#244B50] text-[#E6EEE8]"
       role="region"
       aria-label="Site announcements"
     >
-      <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-[#071225] to-transparent" />
-      <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-[#071225] to-transparent" />
-      <div className="unimondo-marquee-track py-2.5 text-[13px] font-medium tracking-wide text-amber-100/95 sm:text-sm">
+      <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-12 bg-gradient-to-r from-[#244B50] to-transparent" />
+      <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-12 bg-gradient-to-l from-[#244B50] to-transparent" />
+      <div className="unimondo-marquee-track py-2 text-[12.5px] font-medium tracking-wide text-[#E6EEE8] sm:text-[13px]">
         <span className="inline-flex shrink-0 items-center px-10">{text}</span>
         <span className="inline-flex shrink-0 items-center px-10" aria-hidden>
           {text}

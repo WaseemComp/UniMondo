@@ -1,8 +1,16 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { ApplyWizard } from "@/components/apply-wizard";
 import { getPublishedAddOns, getPublishedPackages } from "@/lib/data/study-pricing";
 
+export const metadata: Metadata = {
+  title: "Apply Online — European University Admissions | UniMondo",
+  description:
+    "Submit your European study application with UniMondo. Structured 6-step guided application for bachelors, masters, and language courses in Europe.",
+};
+
 export default async function ApplyPage({
+
   searchParams,
 }: {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;

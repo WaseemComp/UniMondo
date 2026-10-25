@@ -1,9 +1,17 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { getPublishedBlogs } from "@/lib/data/blogs";
 
 export const revalidate = 60;
 
+export const metadata: Metadata = {
+  title: "European Study Guides & Admissions Insights | UniMondo Blog",
+  description:
+    "Expert articles, visa guides, scholarship strategies, and student experience insights for studying across European universities.",
+};
+
 export default async function BlogPage() {
+
   const posts = await getPublishedBlogs();
 
   return (

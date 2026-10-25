@@ -178,33 +178,33 @@ export function DestinationsUnified({ countries, openings, featuredUniversities 
 
   return (
     <div className="min-w-0">
-      <section id="destinations-hero" className="relative overflow-hidden border-b border-white/10 bg-[#0a1628]">
+      <section id="destinations-hero" className="relative overflow-hidden border-b border-[#244B50] bg-[#1A2E3A]">
         <div
           className="pointer-events-none absolute inset-0 opacity-90"
           style={{
             background:
-              "radial-gradient(ellipse 120% 80% at 20% 20%, rgba(212, 175, 55, 0.12), transparent 50%), radial-gradient(ellipse 100% 60% at 80% 100%, rgba(30, 58, 95, 0.55), transparent 45%), linear-gradient(165deg, #0a1628 0%, #132a4a 48%, #0d1f38 100%)",
+              "radial-gradient(ellipse 120% 80% at 20% 20%, rgba(201, 171, 118, 0.15), transparent 50%), radial-gradient(ellipse 100% 60% at 80% 100%, rgba(36, 75, 80, 0.6), transparent 45%), linear-gradient(165deg, #1A2E3A 0%, #244B50 50%, #15252F 100%)",
           }}
         />
         <div className="relative mx-auto max-w-7xl px-4 py-14 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
-          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-amber-400/90">UniMondo Destinations</p>
-          <h1 className="mt-4 max-w-4xl font-[family-name:var(--font-heading)] text-3xl font-semibold leading-tight tracking-tight text-white sm:text-4xl lg:text-5xl">
+          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[#C9AB76]">UniMondo Destinations</p>
+          <h1 className="mt-4 max-w-4xl font-[family-name:var(--font-editorial)] text-3xl font-bold leading-tight tracking-tight text-white sm:text-4xl lg:text-5xl">
             Study Destinations &amp; Universities
           </h1>
-          <p className="mt-5 max-w-3xl text-base leading-relaxed text-slate-300 sm:text-lg">
+          <p className="mt-5 max-w-3xl text-base leading-relaxed text-[#E6EEE8]/90 sm:text-lg">
             Explore countries, universities, programs, tuition fees, living costs, scholarships, visa guidance, and
             available intakes — all in one place.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <a
               href="#destination-filters"
-              className="inline-flex rounded-full bg-amber-500 px-5 py-2.5 text-sm font-semibold text-[#0a1628] shadow-md transition hover:bg-amber-400"
+              className="inline-flex rounded-lg bg-[#C9AB76] px-5 py-2.5 text-sm font-semibold text-[#1A2E3A] shadow-md shadow-black/20 transition hover:bg-[#B8996A]"
             >
               Explore destinations
             </a>
             <Link
               href="/apply"
-              className="inline-flex rounded-full border border-white/25 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10"
+              className="inline-flex rounded-lg border border-white/25 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10"
             >
               Start application
             </Link>
@@ -216,18 +216,18 @@ export function DestinationsUnified({ countries, openings, featuredUniversities 
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by country, university, program, intake, or field of study"
-              className="w-full rounded-xl border border-white/15 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-slate-400 backdrop-blur-md focus:border-amber-400/50 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
+              className="w-full rounded-lg border border-white/20 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/60 focus:border-[#C9AB76] focus:outline-none focus:ring-2 focus:ring-[#C9AB76]/40"
             />
           </label>
         </div>
       </section>
 
-      <section id="destination-filters" className="scroll-mt-24 border-b border-zinc-200 bg-white py-8">
+      <section id="destination-filters" className="scroll-mt-24 border-b border-[#E2DFD8] bg-white py-8">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <h2 className="text-center font-[family-name:var(--font-heading)] text-xl font-semibold text-[#0a1628] sm:text-2xl">
+          <h2 className="text-center font-[family-name:var(--font-editorial)] text-2xl font-bold text-[#26343B] sm:text-3xl">
             Find your destination
           </h2>
-          <p className="mx-auto mt-2 max-w-2xl text-center text-sm text-zinc-600">
+          <p className="mx-auto mt-2 max-w-2xl text-center text-sm text-[#4D5F64]">
             Narrow down by geography and program preferences. Filters apply to destination cards and program listings.
           </p>
           <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
@@ -264,13 +264,13 @@ export function DestinationsUnified({ countries, openings, featuredUniversities 
         </div>
       </section>
 
-      <section id="destination-cards" className="scroll-mt-24 bg-zinc-50/90 py-14 sm:py-16">
+      <section id="destination-cards" className="scroll-mt-24 bg-[#F8F7F3] py-14 sm:py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mb-10 text-center">
-            <h2 className="font-[family-name:var(--font-heading)] text-2xl font-semibold text-[#0a1628] sm:text-3xl">
+            <h2 className="font-[family-name:var(--font-editorial)] text-3xl font-bold text-[#26343B] sm:text-4xl">
               Choose a destination
             </h2>
-            <p className="mx-auto mt-3 max-w-2xl text-sm text-zinc-600 sm:text-base">
+            <p className="mx-auto mt-3 max-w-2xl text-sm text-[#4D5F64] sm:text-base">
               Start with a country — then review universities, published intakes, and costs in one scroll.
             </p>
           </div>
@@ -485,19 +485,19 @@ function DestinationDetailSection({
           <span className="text-zinc-800">{country.country}</span>
         </nav>
 
-        <header className="mb-12 border-b border-zinc-100 pb-10">
-          <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Destination guide</p>
-          <h2 className="mt-2 font-[family-name:var(--font-heading)] text-3xl font-semibold text-[#0a1628] sm:text-4xl">
+        <header className="mb-12 border-b border-[#E2DFD8] pb-10">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#7D673A]">Destination guide</p>
+          <h2 className="mt-2 font-[family-name:var(--font-editorial)] text-3xl font-bold text-[#26343B] sm:text-4xl">
             {country.flagEmoji ? <span className="mr-2">{country.flagEmoji}</span> : null}
             Study in {country.country}
           </h2>
-          <p className="mt-3 max-w-3xl text-sm leading-relaxed text-zinc-600 sm:text-base">{country.description ?? country.whyStudyThere}</p>
+          <p className="mt-3 max-w-3xl text-sm leading-relaxed text-[#4D5F64] sm:text-base">{country.description ?? country.whyStudyThere}</p>
         </header>
 
         <div className="grid gap-10 lg:grid-cols-3">
           <div className="space-y-10 lg:col-span-2">
-            <section className="rounded-2xl border border-zinc-200 bg-zinc-50/50 p-6">
-              <h3 className="font-[family-name:var(--font-heading)] text-lg font-semibold text-[#0a1628]">A. Overview</h3>
+            <section className="rounded-xl border border-[#E2DFD8] bg-[#F8F7F3] p-6">
+              <h3 className="font-[family-name:var(--font-editorial)] text-xl font-bold text-[#26343B]">A. Overview</h3>
               <div className="mt-4 space-y-4 text-sm leading-relaxed text-zinc-700">
                 <div>
                   <p className="font-semibold text-zinc-900">Why study in {country.country}</p>

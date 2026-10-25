@@ -61,10 +61,10 @@ export function OpeningsBoard({ openings, featuredUniversities }: Props) {
     featuredUniversities.length > 0 ? (
       <section className="space-y-6">
         <div className="text-center lg:mb-2">
-          <h2 className="font-[family-name:var(--font-heading)] text-2xl font-semibold text-[#0a1628] sm:text-3xl">
+          <h2 className="font-[family-name:var(--font-editorial)] text-3xl font-bold text-[#26343B] sm:text-4xl">
             Universities &amp; Programs
           </h2>
-          <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-zinc-600 sm:text-base">
+          <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-[#4D5F64] sm:text-base">
             A curated selection of institutions where tradition meets innovation — each with pathways we help students
             navigate from admission to arrival.
           </p>
@@ -75,17 +75,17 @@ export function OpeningsBoard({ openings, featuredUniversities }: Props) {
         />
       </section>
     ) : (
-      <p className="rounded-lg border border-dashed border-zinc-200 bg-white p-6 text-center text-sm text-zinc-500">
+      <p className="rounded-xl border border-dashed border-[#E2DFD8] bg-white p-6 text-center text-sm text-[#4D5F64]">
         Universities will appear here once they are published in the admin dashboard.
       </p>
     );
 
   const programsIntro = (
-    <div className="flex flex-col gap-2 border-b border-zinc-200 pb-6">
-      <h2 className="font-[family-name:var(--font-heading)] text-2xl font-semibold text-[#0a1628] sm:text-3xl">
+    <div className="flex flex-col gap-2 border-b border-[#E2DFD8] pb-6">
+      <h2 className="font-[family-name:var(--font-editorial)] text-2xl font-bold text-[#26343B] sm:text-3xl">
         {isFiltered ? "Programs matching your filters" : "Browse all programs"}
       </h2>
-      <p className="max-w-3xl text-sm leading-relaxed text-zinc-600 sm:text-base">
+      <p className="max-w-3xl text-sm leading-relaxed text-[#4D5F64] sm:text-base">
         {isFiltered
           ? "Refine intake and geography above, then apply with pre-filled destination details."
           : "Live listings for upcoming intakes — filter by geography and intake, then apply with pre-filled destination details."}
@@ -98,27 +98,27 @@ export function OpeningsBoard({ openings, featuredUniversities }: Props) {
       {filtered.map((opening) => (
         <article
           key={opening.id}
-          className="flex h-full flex-col rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm"
+          className="flex h-full flex-col rounded-xl border border-[#E2DFD8] bg-white p-5 shadow-sm transition hover:shadow-md"
         >
           <div className="mb-3 flex items-center gap-3">
-            <div className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-zinc-900 text-xs font-bold text-white">
+            <div className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-[#E2DFD8] bg-[#E6EEE8] text-xs font-bold text-[#244B50]">
               {opening.logoText}
             </div>
             <div>
-              <p className="text-xs font-semibold tracking-wide text-zinc-500 uppercase">{opening.country}</p>
-              <p className="text-sm text-zinc-700">{opening.university}</p>
+              <p className="text-xs font-semibold tracking-wide text-[#7D673A] uppercase">{opening.country}</p>
+              <p className="text-sm font-medium text-[#26343B]">{opening.university}</p>
             </div>
           </div>
 
-          <h3 className="text-base font-semibold text-zinc-900">{opening.programName}</h3>
-          <p className="mt-2 text-sm text-zinc-600">Intake: {opening.intake}</p>
-          <p className="text-sm text-zinc-600">Deadline: {opening.deadline}</p>
-          <p className="text-sm text-zinc-600">Tuition: {opening.tuitionRange}</p>
+          <h3 className="text-base font-semibold text-[#26343B]">{opening.programName}</h3>
+          <p className="mt-2 text-sm text-[#4D5F64]">Intake: {opening.intake}</p>
+          <p className="text-sm text-[#4D5F64]">Deadline: {opening.deadline}</p>
+          <p className="text-sm font-medium text-[#7D673A]">Tuition: {opening.tuitionRange}</p>
 
           <div className="mt-5">
             <Link
               href={`/apply?country=${encodeURIComponent(opening.country)}&program=${encodeURIComponent(opening.programName)}`}
-              className="inline-flex rounded-full bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-700"
+              className="inline-flex rounded-lg bg-[#244B50] px-4 py-2 text-xs font-semibold text-white shadow-xs transition hover:bg-[#1D3E42]"
             >
               Apply Now
             </Link>

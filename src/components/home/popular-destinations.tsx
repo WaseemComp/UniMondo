@@ -75,19 +75,19 @@ export function PopularDestinations({
     ctaHref: copy?.ctaHref ?? "/destinations",
   };
   return (
-    <section className="bg-slate-50 py-20 sm:py-28">
+    <section className="bg-[#F8F7F3] py-20 sm:py-28">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#0a1628]/70">{c.kicker}</p>
-            <h2 className="mt-2 font-[family-name:var(--font-heading)] text-3xl font-semibold tracking-tight text-[#0a1628] sm:text-4xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#7D673A]">{c.kicker}</p>
+            <h2 className="mt-2 font-[family-name:var(--font-editorial)] text-3xl font-bold tracking-tight text-[#26343B] sm:text-4xl">
               {c.title}
             </h2>
-            <p className="mt-3 max-w-xl text-slate-600">{c.subtitle}</p>
+            <p className="mt-3 max-w-xl text-[#4D5F64]">{c.subtitle}</p>
           </div>
           <Link
             href={c.ctaHref}
-            className="inline-flex items-center gap-2 text-sm font-semibold text-amber-700 hover:text-amber-600"
+            className="inline-flex items-center gap-2 text-sm font-semibold text-[#244B50] hover:text-[#1D3E42] transition"
           >
             {c.ctaLabel}
             <ArrowRight className="h-4 w-4" />
@@ -102,29 +102,29 @@ export function PopularDestinations({
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.05 }}
-              className="relative min-w-[280px] flex-1 overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm sm:min-w-0"
+              className="relative min-w-[280px] flex-1 overflow-hidden rounded-xl border border-[#E2DFD8] bg-white shadow-sm transition hover:shadow-md sm:min-w-0"
             >
               <div className="relative aspect-[16/11] w-full">
                 <Image
                   src={d.img}
                   alt={`${d.country} — European study destination`}
                   fill
-                  className="object-cover"
+                  className="object-cover transition duration-300 hover:scale-105"
                   sizes="(max-width:768px) 85vw, 33vw"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0a1628]/90 via-[#0a1628]/20 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#1A2E3A]/90 via-[#1A2E3A]/25 to-transparent" />
                 <span className="absolute left-4 top-4 text-3xl drop-shadow-md" role="img" aria-hidden>
                   {FLAG[d.country]}
                 </span>
-                <div className="absolute bottom-0 left-0 right-0 p-4">
-                  <h3 className="font-[family-name:var(--font-heading)] text-xl font-semibold text-white">{d.country}</h3>
-                  <p className="mt-1 line-clamp-2 text-sm text-slate-200">{d.blurb}</p>
+                <div className="absolute bottom-0 left-0 right-0 p-5">
+                  <h3 className="font-[family-name:var(--font-editorial)] text-2xl font-bold text-white">{d.country}</h3>
+                  <p className="mt-1 line-clamp-2 text-sm text-[#E6EEE8]/90">{d.blurb}</p>
                   <Link
                     href={`/destinations/${slugifyCountryName(d.country)}`}
-                    className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-amber-300 hover:text-amber-200"
+                    className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-[#C9AB76] hover:text-white transition"
                   >
                     View destination
-                    <ArrowRight className="h-4 w-4" />
+                    <ArrowRight className="h-3.5 w-3.5" />
                   </Link>
                 </div>
               </div>

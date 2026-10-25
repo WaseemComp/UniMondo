@@ -33,13 +33,14 @@ export function SiteHeader() {
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0a1628]/92 backdrop-blur-xl">
+    <header className="sticky top-0 z-50 border-b border-[#E2DFD8]/80 bg-[#F8F7F3]/92 backdrop-blur-xl transition-colors duration-200">
       <div className="mx-auto flex w-full max-w-screen-2xl items-center justify-between gap-3 px-3 py-3 sm:px-4 lg:px-6">
         <Link
           href="/"
-          className="shrink-0 font-[family-name:var(--font-heading)] text-lg font-semibold tracking-tight text-white sm:text-xl"
+          className="shrink-0 font-[family-name:var(--font-editorial)] text-2xl font-bold tracking-tight text-[#244B50] sm:text-2xl transition hover:opacity-90"
         >
-          <span className="text-amber-400">Uni</span>Mondo
+          <span>Uni</span>
+          <span className="text-[#8A7345]">Mondo</span>
         </Link>
 
         <nav className="hidden min-w-0 flex-1 items-center justify-center gap-1 lg:flex" aria-label="Main">
@@ -48,8 +49,10 @@ export function SiteHeader() {
               key={`${item.href}-${item.key}`}
               href={item.href}
               className={cn(
-                "whitespace-nowrap rounded-full px-2.5 py-2 text-[12px] font-semibold tracking-wide transition xl:px-3 xl:text-[13px]",
-                isNavActive(pathname, item.href) ? "bg-white/10 text-amber-300" : "text-slate-300 hover:bg-white/5 hover:text-white",
+                "whitespace-nowrap rounded-lg px-2.5 py-1.5 text-[13px] font-medium tracking-normal transition xl:px-3",
+                isNavActive(pathname, item.href)
+                  ? "bg-[#244B50]/10 text-[#244B50] font-semibold"
+                  : "text-[#4D5F64] hover:bg-[#E6EEE8]/70 hover:text-[#244B50]",
               )}
             >
               {siteNav[item.key]}
@@ -57,16 +60,16 @@ export function SiteHeader() {
           ))}
         </nav>
 
-        <div className="hidden shrink-0 items-center gap-2 sm:flex">
+        <div className="hidden shrink-0 items-center gap-2.5 sm:flex">
           <Link
             href="/#eligibility"
-            className="rounded-full border border-amber-500/40 px-3 py-2 text-xs font-semibold text-amber-200 transition hover:bg-amber-500/10 lg:px-4 lg:text-sm"
+            className="rounded-lg border border-[#244B50]/25 bg-white/60 px-3.5 py-2 text-xs font-semibold text-[#244B50] transition hover:bg-[#E6EEE8]/50 hover:border-[#244B50]/40 lg:px-4 lg:text-sm"
           >
             {siteNav.freeEligibilityCheck}
           </Link>
           <Link
             href="/apply"
-            className="rounded-full bg-amber-500 px-3 py-2 text-xs font-semibold text-[#0a1628] shadow-md shadow-amber-500/20 transition hover:bg-amber-400 lg:px-4 lg:text-sm"
+            className="rounded-lg bg-[#244B50] px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-[#1D3E42] lg:px-4 lg:text-sm"
           >
             {siteNav.startApplication}
           </Link>
@@ -74,7 +77,7 @@ export function SiteHeader() {
 
         <button
           type="button"
-          className="rounded-lg p-2 text-white lg:hidden"
+          className="rounded-lg p-2 text-[#244B50] hover:bg-[#E6EEE8]/60 transition lg:hidden"
           onClick={() => setOpen((o) => !o)}
           aria-expanded={open}
           aria-label={open ? "Close menu" : "Open menu"}
@@ -89,8 +92,8 @@ export function SiteHeader() {
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.25 }}
-            className="overflow-hidden border-t border-white/10 bg-[#071020] lg:hidden"
+            transition={{ duration: 0.22 }}
+            className="overflow-hidden border-t border-[#E2DFD8] bg-[#F8F7F3] shadow-xl lg:hidden"
           >
             <nav className="flex flex-col gap-1 px-4 py-4" aria-label="Mobile">
               {NAV.map((item) => (
@@ -98,25 +101,32 @@ export function SiteHeader() {
                   key={`m-${item.href}-${item.key}`}
                   href={item.href}
                   onClick={() => setOpen(false)}
-                  className="rounded-lg px-3 py-3 text-base font-medium text-slate-200 hover:bg-white/5"
+                  className={cn(
+                    "rounded-lg px-3 py-2.5 text-base font-medium transition",
+                    isNavActive(pathname, item.href)
+                      ? "bg-[#244B50]/10 text-[#244B50] font-semibold"
+                      : "text-[#26343B] hover:bg-[#E6EEE8]/70",
+                  )}
                 >
                   {siteNav[item.key]}
                 </Link>
               ))}
-              <Link
-                href="/#eligibility"
-                onClick={() => setOpen(false)}
-                className="mt-2 rounded-full border border-amber-500/40 px-4 py-3 text-center text-sm font-semibold text-amber-200"
-              >
-                {siteNav.freeEligibilityCheck}
-              </Link>
-              <Link
-                href="/apply"
-                onClick={() => setOpen(false)}
-                className="rounded-full bg-amber-500 px-4 py-3 text-center text-sm font-semibold text-[#0a1628]"
-              >
-                {siteNav.startApplication}
-              </Link>
+              <div className="mt-3 flex flex-col gap-2 pt-2 border-t border-[#E2DFD8]">
+                <Link
+                  href="/#eligibility"
+                  onClick={() => setOpen(false)}
+                  className="rounded-lg border border-[#244B50]/30 bg-white px-4 py-2.5 text-center text-sm font-semibold text-[#244B50]"
+                >
+                  {siteNav.freeEligibilityCheck}
+                </Link>
+                <Link
+                  href="/apply"
+                  onClick={() => setOpen(false)}
+                  className="rounded-lg bg-[#244B50] px-4 py-2.5 text-center text-sm font-semibold text-white shadow-sm"
+                >
+                  {siteNav.startApplication}
+                </Link>
+              </div>
             </nav>
           </motion.div>
         ) : null}
