@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, useInView } from "framer-motion";
-import { BarChart3, HeartHandshake, Plane, ShieldCheck, Sparkles, Trophy } from "lucide-react";
+import { BarChart3, Compass, HeartHandshake, Plane, ShieldCheck, Sparkles } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 const FEATURES = [
@@ -16,10 +16,11 @@ const FEATURES = [
     body: "Document packs, embassy prep, and finance checks that reduce surprises.",
   },
   {
-    icon: Trophy,
-    title: "High Success Rate",
+    icon: Compass,
+    title: "Application Guidance",
     body: "Structured processes that keep applications on track across institutions.",
   },
+
   {
     icon: HeartHandshake,
     title: "Full Student Care",

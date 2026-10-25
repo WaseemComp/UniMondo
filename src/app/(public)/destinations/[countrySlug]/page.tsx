@@ -16,7 +16,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const countries = await getCountryDetails();
   const c = findCountryBySlug(countries, countrySlug);
   if (!c) {
-    return { title: "Destination | UniMondo" };
+    return {
+      title: "Destination | UniMondo",
+      alternates: {
+        canonical: `/destinations/${countrySlug}`,
+      },
+    };
   }
   const desc =
     c.description?.trim() ||
@@ -24,8 +29,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: `Study in ${c.country} | UniMondo Destinations`,
     description: desc,
+    alternates: {
+      canonical: `/destinations/${countrySlug}`,
+    },
+    openGraph: {
+      title: `Study in ${c.country} | UniMondo Destinations`,
+      description: desc,
+      url: `/destinations/${countrySlug}`,
+    },
   };
 }
+
 
 export default async function DestinationCountryPage({ params }: Props) {
   const { countrySlug } = await params;
