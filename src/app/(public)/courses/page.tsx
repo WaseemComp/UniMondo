@@ -5,7 +5,11 @@ export const metadata: Metadata = {
   title: "Language Preparation Courses | UniMondo",
   description:
     "Master IELTS, TOEFL, German (Goethe/TestDaF), Italian, and French with UniMondo's dedicated exam preparation and embassy interview coaching.",
+  alternates: {
+    canonical: "/courses",
+  },
 };
+
 
 export default function CoursesPage() {
   const t = coursesPageCopy;

@@ -10,7 +10,11 @@ export const metadata: Metadata = {
   title: "Study Destinations & Universities | UniMondo",
   description:
     "Explore countries, universities, programs, tuition, living costs, scholarships, visa guidance, and intakes — all in one place.",
+  alternates: {
+    canonical: "/destinations",
+  },
 };
+
 
 type Props = {
   searchParams: Promise<{ country?: string }>;

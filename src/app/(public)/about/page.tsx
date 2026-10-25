@@ -8,7 +8,11 @@ export const metadata: Metadata = {
   title: "About Us — European Educational Excellence | UniMondo",
   description:
     "Learn about UniMondo's mission, expert educational counseling team, accredited European university partners, and verified student success stories.",
+  alternates: {
+    canonical: "/about",
+  },
 };
+
 
 export default async function AboutPage() {
   const [sections, team, partners] = await Promise.all([getAboutSections(), getTeamMembers(), getAboutPartners()]);

@@ -8,17 +8,20 @@ export const metadata: Metadata = {
   title: "European Study Guides & Admissions Insights | UniMondo Blog",
   description:
     "Expert articles, visa guides, scholarship strategies, and student experience insights for studying across European universities.",
+  alternates: {
+    canonical: "/blog",
+  },
 };
 
 export default async function BlogPage() {
-
   const posts = await getPublishedBlogs();
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-16 sm:px-6 lg:px-8">
-      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">Blog</p>
-      <h1 className="mt-3 font-[family-name:var(--font-heading)] text-3xl font-semibold text-[#0a1628]">Guides & updates</h1>
-      <p className="mt-4 text-slate-600">Admissions tips, visa notes, and student life in Europe.</p>
+      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#C9AB76]">Blog & Insights</p>
+      <h1 className="mt-3 font-[family-name:var(--font-editorial)] text-4xl font-normal text-[#244B50]">Guides & updates</h1>
+      <p className="mt-4 text-[#4D5F64]">Admissions tips, visa notes, and student life in Europe.</p>
+
 
       {!posts.length ? (
         <p className="mt-10 text-sm text-slate-500">New articles are on the way.{" "}

@@ -7,7 +7,11 @@ export const metadata: Metadata = {
   title: "Apply Online — European University Admissions | UniMondo",
   description:
     "Submit your European study application with UniMondo. Structured 6-step guided application for bachelors, masters, and language courses in Europe.",
+  alternates: {
+    canonical: "/apply",
+  },
 };
+
 
 export default async function ApplyPage({
 

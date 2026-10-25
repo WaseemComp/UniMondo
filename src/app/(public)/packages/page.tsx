@@ -9,7 +9,11 @@ export const metadata: Metadata = {
   title: "Our Packages | UniMondo",
   description:
     "Transparent UniMondo support packages for European admissions — from consultation to visa-ready guidance.",
+  alternates: {
+    canonical: "/packages",
+  },
 };
+
 
 export default async function StudyPackagesPage() {
   const [packages, addOns] = await Promise.all([getPublishedPackages(), getPublishedAddOns()]);

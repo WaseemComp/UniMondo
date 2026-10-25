@@ -74,11 +74,7 @@ export function WhyUniMondo({
   kicker = "Why UniMondo",
   title = "Built for ambitious students who expect clarity",
   subtitle = "We combine European admissions know-how with human support — so you can focus on your future, not the paperwork maze.",
-  stats = [
-    { value: 150, suffix: "+", label: "Students guided to Europe" },
-    { value: 95, suffix: "%", label: "Visa success (rolling cohort)" },
-    { value: 12, suffix: "+", label: "Destination countries" },
-  ],
+  stats = [],
 }: {
   kicker?: string;
   title?: string;
@@ -86,6 +82,7 @@ export function WhyUniMondo({
   stats?: WhyUniMondoStat[];
 }) {
   const validStats = (stats || []).filter((s) => s && typeof s.value === "number" && s.value > 0);
+
 
   return (
     <section className="relative overflow-hidden bg-[#E6EEE8]/40 py-20 sm:py-28 border-y border-[#E2DFD8]/70">

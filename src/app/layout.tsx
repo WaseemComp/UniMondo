@@ -3,9 +3,7 @@ import { DM_Sans, Instrument_Serif } from "next/font/google";
 import { Toaster } from "sonner";
 import "./globals.css";
 
-const siteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL ||
-  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.unimondo.uk";
 
 const dmSans = DM_Sans({
   variable: "--font-sans",
@@ -22,6 +20,9 @@ const instrumentSerif = Instrument_Serif({
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
+  alternates: {
+    canonical: siteUrl,
+  },
   title: {
     default: "UniMondo | European University Admissions & Guidance",
     template: "%s | UniMondo",
@@ -67,8 +68,16 @@ const jsonLd = {
       name: "UniMondo",
       url: siteUrl,
       logo: `${siteUrl}/android-chrome-512x512.png`,
-      description: "Student-focused education consultancy for Europe admissions.",
+      description: "Student-focused education consultancy for European university admissions and visa guidance.",
+      email: "info@unimondo.uk",
+      telephone: "+218922211990",
       sameAs: ["https://www.linkedin.com/company/unimondo"],
+      address: {
+        "@type": "PostalAddress",
+        streetAddress: "Tripoli Tower, Suit 22, Block A, Floor 47",
+        addressLocality: "Tripoli",
+        addressCountry: "LY",
+      },
     },
     {
       "@type": "WebSite",
@@ -81,6 +90,7 @@ const jsonLd = {
     },
   ],
 };
+
 
 export default async function RootLayout({
   children,
