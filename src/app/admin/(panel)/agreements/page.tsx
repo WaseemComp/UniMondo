@@ -1,7 +1,8 @@
+import { AgreementActions } from "@/components/admin/agreements/agreement-actions";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createSupabaseServerAuthClient } from "@/lib/supabase/server-auth";
-import { isAdminUser } from "@/lib/auth/admin";
+import { isAdminUser, isSuperAdmin } from "@/lib/auth/admin";
 import { getAgreementsList } from "@/lib/agreements/persistence";
 import { FileDown, FilePlus, FileText, Printer } from "lucide-react";
 import { formatForeignAmount } from "@/lib/agreements/financials";
@@ -19,6 +20,7 @@ export default async function AgreementsListPage() {
   }
 
   const agreements = await getAgreementsList();
+  const isSuper = await isSuperAdmin(user);
 
   return (
     <div className="space-y-6">
@@ -117,15 +119,7 @@ export default async function AgreementsListPage() {
                         ) : null}
                       </td>
                       <td className="whitespace-nowrap px-5 py-4">
-                        <span
-                          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                            agr.status === "finalized"
-                              ? "bg-teal-50 text-teal-800"
-                              : "bg-zinc-100 text-zinc-700"
-                          }`}
-                        >
-                          {agr.status === "finalized" ? "Finalized" : "Draft"}
-                        </span>
+                        <AgreementActions agreement={agr} isSuper={isSuper} />
                       </td>
                       <td className="whitespace-nowrap px-5 py-4 text-xs text-zinc-500">
                         {agr.agreementDate || new Date(agr.createdAt).toLocaleDateString()}
@@ -143,15 +137,16 @@ export default async function AgreementsListPage() {
                             title="Download Word (.docx)"
                             className="rounded-lg border border-amber-300 bg-amber-50 p-1.5 text-amber-900 hover:bg-amber-100 transition"
                           >
-                            <FileDown className="h-4 w-4" />
+                            <FileDown className="h-4 w-4" /><span className="sr-only">Download Word</span>
                           </a>
                           <a
                             href={`/api/admin/agreements/${agr.id}/export?format=pdf`}
                             title="Download PDF"
                             className="rounded-lg bg-[#244B50] p-1.5 text-white hover:bg-[#1a383c] transition"
                           >
-                            <FileText className="h-4 w-4" />
+                            <FileText className="h-4 w-4" /><span className="sr-only">Download PDF</span>
                           </a>
+                          <Link href={`/admin/agreements/${agr.id}/revisions`} className="rounded-lg border border-zinc-200 px-2.5 py-1.5">History</Link>
                           <Link
                             href={`/admin/agreements/${agr.id}/print`}
                             target="_blank"

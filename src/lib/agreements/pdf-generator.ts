@@ -1,6 +1,6 @@
+import { consultantWording, studentWording, engagementWording } from "./wording";
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
 import type { AgreementRecord } from "../../types/agreement";
-import { CURRENCY_DECIMALS } from "../../types/agreement";
 import { formatForeignAmount } from "./financials";
 
 /**
@@ -132,7 +132,7 @@ export async function generateAgreementPdf(record: AgreementRecord): Promise<Buf
   }
 
   function drawSectionHeading(title: string) {
-    checkNewPage(24);
+    checkNewPage(record.financials.pricingVersion === 2 ? 90 : 24);
     drawParagraph(title, { font: fontBold, fontSize: 10, lineHeight: 13, spaceAfter: 4 });
   }
 
@@ -177,20 +177,10 @@ export async function generateAgreementPdf(record: AgreementRecord): Promise<Buf
 
   drawParagraph("This Agreement is entered into between:", { fontSize: 9.5, lineHeight: 12.5, spaceAfter: 4 });
 
-  const consultantLine =
-    `(1) ${record.consultantEntityName}, registration number ${record.consultantRegNumber}` +
-    (record.consultantAddress ? `, with its address at ${record.consultantAddress}` : "") +
-    `, acting through its duly authorised representative, ${record.repName || "__________________"}, ` +
-    `${record.repDesignation || "__________________"}, hereinafter referred to as the \u201cConsultant\u201d; and`;
+  const consultantLine = `(1) ${consultantWording(record)}`;
   drawParagraph(consultantLine, { fontSize: 9.5, lineHeight: 12.5, spaceAfter: 4 });
 
-  const studentLine =
-    `(2) ${fin.pricingVersion === 2 && record.studentTitle ? `${record.studentTitle} ` : ""}${record.studentFullName || "__________________"}, ${fin.pricingVersion === 2 ? record.studentRelationship || "son/daughter of" : "son/daughter of"} ` +
-    `${record.studentParentGuardian || "__________________"}, holding ${fin.pricingVersion === 2 ? record.studentIdType || "CNIC/Passport" : "CNIC/Passport"} No. ` +
-    `${record.studentCnicPassport || "__________________"}, residing at ` +
-    `${record.studentAddress || "__________________"}, email ` +
-    `${record.studentEmail || "__________________"}, telephone ` +
-    `${record.studentPhone || "__________________"}, hereinafter referred to as the \u201cStudent\u201d.`;
+  const studentLine = `(2) ${studentWording(record)}`;
   drawParagraph(studentLine, { fontSize: 9.5, lineHeight: 12.5, spaceAfter: 4 });
 
   drawParagraph(
@@ -198,11 +188,7 @@ export async function generateAgreementPdf(record: AgreementRecord): Promise<Buf
     { fontSize: 9.5, lineHeight: 12.5, spaceAfter: 5 }
   );
 
-  const engagementText =
-    `Following preliminary assessment, the Student engages UniMondo for educational consultancy ` +
-    `and university admission assistance concerning ${record.degreeLevel || "__________________"}, ` +
-    `${record.fieldOfStudy || "__________________"}, ${record.preferredDestination || "__________________"} ` +
-    `and the ${record.academicYearIntake || "__________________"}. The Parties agree as follows.`;
+  const engagementText = engagementWording(record);
   drawParagraph(engagementText, { fontSize: 9.5, lineHeight: 12.5, spaceAfter: 8 });
 
   // ── 2. SCOPE OF EDUCATIONAL SERVICES ────────────────────────────────────────
@@ -228,11 +214,6 @@ export async function generateAgreementPdf(record: AgreementRecord): Promise<Buf
   );
 
   // Exchange rate line (italic)
-  const rateText = isNonEur && fin.agreedExchangeRate
-    ? `Agreed exchange rate: 1 EUR = ${currency} ${fin.agreedExchangeRate.toLocaleString("en", { minimumFractionDigits: CURRENCY_DECIMALS[currency], maximumFractionDigits: fin.pricingVersion === 2 ? 12 : CURRENCY_DECIMALS[currency] })}, as mutually agreed on ${fin.exchangeRateDate || record.agreementDate || "____ / ____ / ______"}. Applicable only where payment is in ${currency}.`
-    : `Agreed exchange rate: 1 EUR = ${currency} N/A, as mutually agreed on N/A. Applicable only where payment is in ${currency}.`;
-  drawParagraph(rateText, { font: fontItalic, fontSize: 9, lineHeight: 12, spaceAfter: 6 });
-
   // Table 2: Fees
   const colWidths = fin.pricingVersion === 2 ? [270, 60, 181.2] : [190, 60, 130, 131.2];
   const rowHeight = 17;
@@ -388,7 +369,7 @@ export async function generateAgreementPdf(record: AgreementRecord): Promise<Buf
     { left: "FOR UNIMONDO", right: "FOR THE STUDENT", bold: true },
     { left: "Signature: ____________________________________", right: "Signature: ____________________________________" },
     { left: `Name: ${record.repName || "_______________________________________"}`, right: `Name: ${record.studentFullName || "_______________________________________"}` },
-    { left: `Designation: ${record.repDesignation || "__________________________________"}`, right: `${fin.pricingVersion === 2 ? record.studentIdType || "CNIC/Passport" : "CNIC/Passport"}: ${record.studentCnicPassport || "_______________________________"}` },
+    { left: record.repDesignation ? `Designation: ${record.repDesignation}` : "", right: `${fin.pricingVersion === 2 ? record.studentIdType || "CNIC/Passport" : "CNIC/Passport"}: ${record.studentCnicPassport || "_______________________________"}` },
     { left: `Date: ${record.repDate || record.agreementDate || "________________________________________"}`, right: `Date: ${record.studentSignatureDate || record.agreementDate || "_______________________________________"}` },
   ];
 

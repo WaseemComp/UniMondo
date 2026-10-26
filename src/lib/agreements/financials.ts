@@ -1,3 +1,4 @@
+import { calendarDate, validCalendarDate } from "./dates";
 import type { AgreementFinancials, AgreementFormInput, DiscountType, PaymentCurrency } from "../../types/agreement";
 import { CURRENCY_DECIMALS } from "../../types/agreement";
 
@@ -66,15 +67,26 @@ export function requiresAgreementPricingApproval(input: AgreementFormInput, exis
   const protectedPricing = Number(input.discountValue) > 0 || Number(existing?.discountValue || 0) > 0
     || input.pricingMode === "custom" || existing?.pricingMode === "custom";
   if (!protectedPricing) return false;
-  if (!existing || input.status === "finalized" || input.pricingMode === "custom") return true;
+  if (!existing) return true;
+  if (agreementPricingUnchanged(input, existing)) return false;
   const next = calculateAgreementFinancials(input);
   return (["pricingMode", "customGrossFee", "paymentCurrency", "agreedExchangeRate", "exchangeRateDate",
     "discountType", "discountValue", "grossFee", "discountEUR", "discountForeign", "netFeeEUR", "netFeeForeign"] as const)
     .some(key => (next[key] ?? null) !== (existing[key] ?? null));
 }
 
+export function agreementPricingUnchanged(input: AgreementFormInput, existing: AgreementFinancials): boolean {
+  return ((input.pricingMode || "reference") === (existing.pricingMode || "reference")
+    && (input.pricingMode !== "custom" || Number(input.customGrossFee) === Number(existing.customGrossFee))
+    && input.paymentCurrency === existing.paymentCurrency
+    && Number(input.agreedExchangeRate || 0) === Number(existing.agreedExchangeRate || 0)
+    && calendarDate(input.exchangeRateDate) === calendarDate(existing.exchangeRateDate)
+    && input.discountType === existing.discountType && Number(input.discountValue) === existing.discountValue);
+
+}
+
 /** Validate pricing before saving drafts as well as final agreements. */
-export function validateAgreementPricing(input: AgreementFormInput): ValidationError[] {
+export function validateAgreementPricing(input: AgreementFormInput, complete = false): ValidationError[] {
   const errors: ValidationError[] = [];
   if (input.status != null && !["draft", "finalized"].includes(input.status)) errors.push({ field: "status", message: "Select a valid agreement status." });
   if (!input.referenceNumber?.trim()) errors.push({ field: "referenceNumber", message: "Agreement reference number is required." });
@@ -88,8 +100,11 @@ export function validateAgreementPricing(input: AgreementFormInput): ValidationE
   const value = Number(input.discountValue);
   if (!Number.isFinite(value) || value < 0 || (input.discountType === "percentage" && value > 100)) errors.push({ field: "discountValue", message: "Enter a valid discount." });
   if (input.pricingMode === "custom" && (!Number.isFinite(Number(input.customGrossFee)) || Number(input.customGrossFee) <= 0)) errors.push({ field: "customGrossFee", message: "Enter a positive custom gross fee." });
-  if (input.paymentCurrency !== "EUR" && (!Number.isFinite(Number(input.agreedExchangeRate)) || Number(input.agreedExchangeRate) <= 0 || !input.exchangeRateDate?.trim())) errors.push({ field: "agreedExchangeRate", message: "Confirm a positive exchange rate and its date." });
-  if (!errors.length) {
+  if (input.paymentCurrency !== "EUR" && (complete || (input.agreedExchangeRate != null && input.agreedExchangeRate !== "")) && (!Number.isFinite(Number(input.agreedExchangeRate)) || Number(input.agreedExchangeRate) <= 0 || (complete && !input.exchangeRateDate?.trim()))) errors.push({ field: "agreedExchangeRate", message: "Confirm a positive exchange rate and its date." });
+  for (const field of ["agreementDate", "exchangeRateDate", "repDate", "studentSignatureDate"] as const) {
+    if (input[field] && !validCalendarDate(input[field])) errors.push({ field, message: "Enter a valid calendar date." });
+  }
+  if (!errors.length && (input.paymentCurrency === "EUR" || Number(input.agreedExchangeRate) > 0 || input.pricingMode === "custom")) {
     const fin = calculateAgreementFinancials(input);
     if (!fin.grossFee || fin.grossFee <= 0) errors.push({ field: "customGrossFee", message: "Gross fee must be positive at the selected currency precision." });
     if (!Number.isSafeInteger(Math.round((fin.grossFee || 0) * 10 ** CURRENCY_DECIMALS[input.paymentCurrency]))) errors.push({ field: "customGrossFee", message: "Fee is too large." });
@@ -104,88 +119,16 @@ export type ValidationError = {
 };
 
 export function validateAgreementForExport(input: AgreementFormInput): ValidationError[] {
-  const errors: ValidationError[] = validateAgreementPricing(input);
-
-  if (!input.referenceNumber?.trim()) {
-    errors.push({ field: "referenceNumber", message: "Agreement reference number is required." });
+  const errors: ValidationError[] = validateAgreementPricing(input, true);
+  // Contact, consultant registration/address, guardian, intake and signature dates are optional.
+  const required = {
+    agreementDate: "Agreement date", studentFullName: "Student full legal name",
+    studentCnicPassport: "Student identification number", degreeLevel: "Degree level",
+    fieldOfStudy: "Field of study", preferredDestination: "Preferred destination", repName: "UniMondo representative name",
+  } as const;
+  for (const [field, label] of Object.entries(required)) {
+    if (!String(input[field as keyof AgreementFormInput] || "").trim()) errors.push({ field, message: `${label} is required before finalization or export.` });
   }
-  if (!input.agreementDate?.trim()) {
-    errors.push({ field: "agreementDate", message: "Agreement date is required." });
-  }
-
-  // Consultant
-  if (!input.consultantEntityName?.trim()) {
-    errors.push({ field: "consultantEntityName", message: "Consultant entity name is required." });
-  }
-  if (!input.consultantRegNumber?.trim()) {
-    errors.push({ field: "consultantRegNumber", message: "Consultant registration number is required." });
-  }
-  if (!input.consultantAddress?.trim()) {
-    errors.push({ field: "consultantAddress", message: "Consultant address is required." });
-  }
-
-  // Student
-  if (!input.studentFullName?.trim()) {
-    errors.push({ field: "studentFullName", message: "Student full legal name is required." });
-  }
-  if (!input.studentParentGuardian?.trim()) {
-    errors.push({ field: "studentParentGuardian", message: "Parent or guardian name is required." });
-  }
-  if (!input.studentCnicPassport?.trim()) {
-    errors.push({ field: "studentCnicPassport", message: "Student CNIC or Passport number is required." });
-  }
-  if (!input.studentAddress?.trim()) {
-    errors.push({ field: "studentAddress", message: "Student address is required." });
-  }
-  if (!input.studentEmail?.trim()) {
-    errors.push({ field: "studentEmail", message: "Student email is required." });
-  }
-  if (!input.studentPhone?.trim()) {
-    errors.push({ field: "studentPhone", message: "Student contact number is required." });
-  }
-
-  // Engagement
-  if (!input.degreeLevel?.trim()) {
-    errors.push({ field: "degreeLevel", message: "Degree level is required." });
-  }
-  if (!input.fieldOfStudy?.trim()) {
-    errors.push({ field: "fieldOfStudy", message: "Field of study is required." });
-  }
-  if (!input.preferredDestination?.trim()) {
-    errors.push({ field: "preferredDestination", message: "Preferred destination is required." });
-  }
-  if (!input.academicYearIntake?.trim()) {
-    errors.push({ field: "academicYearIntake", message: "Academic year or intake is required." });
-  }
-
-  // Representatives
-  if (!input.repName?.trim()) {
-    errors.push({ field: "repName", message: "UniMondo representative name is required." });
-  }
-  if (!input.repDesignation?.trim()) {
-    errors.push({ field: "repDesignation", message: "UniMondo representative designation is required." });
-  }
-
-  // Non-EUR currencies require a manually agreed exchange rate
-  if (input.paymentCurrency !== "EUR") {
-    const rate =
-      typeof input.agreedExchangeRate === "number"
-        ? input.agreedExchangeRate
-        : parseFloat(String(input.agreedExchangeRate || "0"));
-    if (!Number.isFinite(rate) || rate <= 0) {
-      errors.push({
-        field: "agreedExchangeRate",
-        message: `A positive EUR/${input.paymentCurrency} exchange rate is required for export.`,
-      });
-    }
-    if (!input.exchangeRateDate?.trim()) {
-      errors.push({
-        field: "exchangeRateDate",
-        message: "Exchange rate agreement date is required for non-EUR payments.",
-      });
-    }
-  }
-
   return errors;
 }
 

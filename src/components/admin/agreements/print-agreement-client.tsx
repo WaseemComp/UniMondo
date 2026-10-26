@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import type { AgreementRecord } from "@/types/agreement";
-import { CURRENCY_DECIMALS } from "@/types/agreement";
+import { consultantWording, studentWording, engagementWording } from "@/lib/agreements/wording";
 import { formatForeignAmount } from "@/lib/agreements/financials";
 import { Printer, X } from "lucide-react";
 
@@ -18,28 +18,13 @@ export function PrintAgreementClient({ agreement }: Props) {
   const fin = agreement.financials;
   const isNonEur = fin.paymentCurrency !== "EUR";
   const currency = fin.paymentCurrency;
-  const dec = CURRENCY_DECIMALS[currency];
   const fmtF = (v: number) => formatForeignAmount(v, currency);
-  const fmtRate = (r: number) =>
-    r.toLocaleString("en", { minimumFractionDigits: dec, maximumFractionDigits: fin.pricingVersion === 2 ? 12 : dec });
-
   const refText = agreement.referenceNumber.startsWith("UM/")
     ? agreement.referenceNumber
     : `UM/${agreement.referenceNumber}`;
 
-  const consultantLine =
-    `${agreement.consultantEntityName}, registration number ${agreement.consultantRegNumber}` +
-    (agreement.consultantAddress ? `, with its address at ${agreement.consultantAddress}` : "") +
-    `, acting through its duly authorised representative, ${agreement.repName || "__________________"}, ` +
-    `${agreement.repDesignation || "__________________"}, hereinafter referred to as the \u201cConsultant\u201d; and`;
-
-  const studentLine =
-    `${fin.pricingVersion === 2 && agreement.studentTitle ? `${agreement.studentTitle} ` : ""}${agreement.studentFullName || "__________________"}, ${fin.pricingVersion === 2 ? agreement.studentRelationship || "son/daughter of" : "son/daughter of"} ` +
-    `${agreement.studentParentGuardian || "__________________"}, holding ${fin.pricingVersion === 2 ? agreement.studentIdType || "CNIC/Passport" : "CNIC/Passport"} No. ` +
-    `${agreement.studentCnicPassport || "__________________"}, residing at ` +
-    `${agreement.studentAddress || "__________________"}, email ` +
-    `${agreement.studentEmail || "__________________"}, telephone ` +
-    `${agreement.studentPhone || "__________________"}, hereinafter referred to as the \u201cStudent\u201d.`;
+  const consultantLine = consultantWording(agreement);
+  const studentLine = studentWording(agreement);
 
   const instalment1 = fin.pricingVersion === 2 ? `${currency} ${fmtF(isNonEur ? fin.firstInstalmentForeign ?? 0 : fin.firstInstalmentEUR)}` : isNonEur && fin.firstInstalmentForeign != null
     ? `EUR ${(fin.pricingVersion === 2 ? formatForeignAmount(fin.firstInstalmentEUR, "EUR") : fin.firstInstalmentEUR.toLocaleString())} / ${currency} ${fmtF(fin.firstInstalmentForeign)}`
@@ -122,13 +107,7 @@ export function PrintAgreementClient({ agreement }: Props) {
               The Consultant and the Student are each referred to individually as a &ldquo;Party&rdquo; and
               collectively as the &ldquo;Parties&rdquo;.
             </p>
-            <p>
-              Following preliminary assessment, the Student engages UniMondo for educational consultancy and
-              university admission assistance concerning {agreement.degreeLevel || "__________________"},{" "}
-              {agreement.fieldOfStudy || "__________________"},{" "}
-              {agreement.preferredDestination || "__________________"} and the{" "}
-              {agreement.academicYearIntake || "__________________"}. The Parties agree as follows.
-            </p>
+            <p>{engagementWording(agreement)}</p>
           </div>
 
           {/* 2. SCOPE OF EDUCATIONAL SERVICES */}
@@ -154,12 +133,6 @@ export function PrintAgreementClient({ agreement }: Props) {
               delegated authority. The discounted net amount entered below shall be the final agreed fee upon
               signature.
             </p>
-            <p className="italic text-[12px] mb-3">
-              {isNonEur && fin.agreedExchangeRate
-                ? `Agreed exchange rate: 1 EUR = ${currency} ${fmtRate(fin.agreedExchangeRate)}, as mutually agreed on ${fin.exchangeRateDate || agreement.agreementDate || "____ / ____ / ______"}. Applicable only where payment is in ${currency}.`
-                : `Agreed exchange rate: 1 EUR = ${currency} N/A, as mutually agreed on N/A. Applicable only where payment is in ${currency}.`}
-            </p>
-
             {/* Table 2: Fees */}
             {fin.pricingVersion === 2 ? <table className="w-full border-collapse border border-black text-[12.5px] mb-2">
               <thead><tr>{["Particulars", "Discount %", currency].map(label => <th key={label} className="border border-black p-1.5 text-left">{label}</th>)}</tr></thead>
@@ -341,7 +314,7 @@ export function PrintAgreementClient({ agreement }: Props) {
                 <td className="py-2.5">Name: {agreement.studentFullName || "_______________________________________"}</td>
               </tr>
               <tr>
-                <td className="py-2.5">Designation: {agreement.repDesignation || "__________________________________"}</td>
+                <td className="py-2.5">{agreement.repDesignation ? `Designation: ${agreement.repDesignation}` : ""}</td>
                 <td className="py-2.5">{fin.pricingVersion === 2 ? agreement.studentIdType || "CNIC/Passport" : "CNIC/Passport"}: {agreement.studentCnicPassport || "_______________________________"}</td>
               </tr>
               <tr>

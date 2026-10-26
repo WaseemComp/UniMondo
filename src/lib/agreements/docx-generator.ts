@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import JSZip from "jszip";
 import type { AgreementRecord } from "../../types/agreement";
-import { CURRENCY_DECIMALS } from "../../types/agreement";
+import { consultantWording, studentWording, engagementWording } from "./wording";
 import { formatForeignAmount } from "./financials";
 
 /**
@@ -15,7 +15,7 @@ import { formatForeignAmount } from "./financials";
  * - Parties clause updated to numbered format with new wording.
  * - Third-instalment unmatched parenthesis corrected.
  * - Stamp box replaced with blank space + line placeholder + small label.
- * - Full multi-currency exchange-rate line.
+ * - Exchange-rate metadata remains internal.
  * - Preserves blank signature lines.
  */
 export async function generateAgreementDocx(record: AgreementRecord): Promise<Buffer> {
@@ -65,61 +65,20 @@ export async function generateAgreementDocx(record: AgreementRecord): Promise<Bu
   xml = xml.replace("UM/__________________", `UM/${refText}`);
   xml = xml.replace("Date: _________________", `Date: ${record.agreementDate || "_________________"}`);
 
-  // 4. Parties clause: replace old wording with numbered format
-  //    Match the consulting party placeholder
-  const consultantDetails =
-    `${record.consultantEntityName}, registration number ${record.consultantRegNumber}` +
-    (record.consultantAddress ? `, with its address at ${record.consultantAddress}` : "") +
-    `, acting through its duly authorised representative, ${record.repName || "__________________"}, ${record.repDesignation || "__________________"}, hereinafter referred to as the \u201cConsultant\u201d; and`;
-
-  // Replace the old single-paragraph consultant placeholder
-  xml = xml.replace(
-    "UniMondo, acting through its duly authorised representative on behalf of [registered legal entity, registration number and address] (\u201cConsultant\u201d)",
-    `UniMondo — (1) ${consultantDetails}`
-  );
-  // Fallback plain-quotes version
-  xml = xml.replace(
-    'UniMondo, acting through its duly authorised representative on behalf of [registered legal entity, registration number and address] ("Consultant")',
-    `UniMondo \u2014 (1) ${consultantDetails}`
-  );
-
-  // 5. Student details in parties clause
-  xml = xml.replace("[full legal name]", `(2) ${record.studentFullName || "__________________"}`);
-  xml = xml.replace("[parent/guardian]", record.studentParentGuardian || "__________________");
-  xml = xml.replace(
-    "holding CNIC/Passport No. [number]",
-    `holding CNIC/Passport No. ${record.studentCnicPassport || "__________________"}`
-  );
-  xml = xml.replace(
-    "residing at [address]",
-    `residing at ${record.studentAddress || "__________________"}`
-  );
-  xml = xml.replace("email [email]", `email ${record.studentEmail || "__________________"}`);
-  xml = xml.replace("contact [number]", `telephone ${record.studentPhone || "__________________"}, hereinafter referred to as the \u201cStudent\u201d`);
-
-  // 6. Educational engagement details
-  xml = xml.replace("[degree level]", record.degreeLevel || "__________________");
-  xml = xml.replace("[field of study]", record.fieldOfStudy || "__________________");
-  xml = xml.replace("[preferred destination]", record.preferredDestination || "__________________");
-  xml = xml.replace("[academic year/intake]", record.academicYearIntake || "__________________");
-
-  // 7. Exchange rate line (generalised for all non-EUR currencies)
+  // Replace whole controlled paragraphs: Word splits some placeholders across runs.
+  const setParagraph = (id: string, text: string) => {
+    const pattern = new RegExp(`(<w:p[^>]*w14:paraId="${id}"[^>]*>)([\\s\\S]*?)(<\\/w:p>)`);
+    xml = xml.replace(pattern, (_match, open: string, body: string, close: string) => {
+      const properties = body.match(/<w:pPr>[\s\S]*?<\/w:pPr>/)?.[0] || "";
+      return `${open}${properties}<w:r><w:t xml:space="preserve">${text}</w:t></w:r>${close}`;
+    });
+  };
+  setParagraph("0283EE34", `This Agreement is entered into between: (1) ${consultantWording(record)} (2) ${studentWording(record)} The Consultant and the Student are each referred to individually as a “Party” and collectively as the “Parties”.`);
+  setParagraph("1A55FCB0", engagementWording(record));
+  // Remove the full explanatory paragraph, including split-run Word placeholders.
+  xml = xml.replace(/<w:p[^>]*w14:paraId="64AA1854"[^>]*>[\s\S]*?<\/w:p>/, "");
   const isNonEur = record.financials.paymentCurrency !== "EUR";
   const currency = record.financials.paymentCurrency;
-  const dec = CURRENCY_DECIMALS[currency];
-  const rateFormatted = record.financials.agreedExchangeRate != null
-    ? record.financials.agreedExchangeRate.toLocaleString("en", { minimumFractionDigits: dec, maximumFractionDigits: record.financials.pricingVersion === 2 ? 12 : dec })
-    : "N/A";
-  const rateDate = record.financials.exchangeRateDate || record.agreementDate || "____ / ____ / ______";
-
-  const newRateLine = isNonEur && record.financials.agreedExchangeRate
-    ? `Agreed exchange rate: 1 EUR = ${currency} ${rateFormatted}, as mutually agreed on ${rateDate}. Applicable only where payment is in ${currency}.`
-    : `Agreed exchange rate: 1 EUR = ${currency} N/A, as mutually agreed on N/A. Applicable only where payment is in ${currency}.`;
-
-  xml = xml.replace(
-    "Agreed exchange rate: 1 EUR = PKR __________, as mutually agreed on ____ / ____ / ______. Applicable only where payment is in PKR.",
-    newRateLine
-  );
 
   // 8. Correct third-instalment unmatched parenthesis
   xml = xml.replace(
@@ -158,13 +117,6 @@ export async function generateAgreementDocx(record: AgreementRecord): Promise<Bu
   if (fin.pricingVersion === 2) {
     // Word may split placeholders across runs; replace the controlled paragraph
     // contents while retaining paragraph layout instead of matching plain XML text.
-    const setParagraph = (id: string, text: string) => {
-      const pattern = new RegExp(`(<w:p[^>]*w14:paraId="${id}"[^>]*>)([\\s\\S]*?)(<\\/w:p>)`);
-      xml = xml.replace(pattern, (_match, open: string, body: string, close: string) => {
-        const properties = body.match(/<w:pPr>[\s\S]*?<\/w:pPr>/)?.[0] || "";
-        return `${open}${properties}<w:r><w:t xml:space="preserve">${text}</w:t></w:r>${close}`;
-      });
-    };
     const contractAmount = (eur: number, foreign: number | null) => fmtF(isNonEur ? foreign ?? 0 : eur);
     const cell = (value: string) => `<w:tc><w:tcPr><w:tcW w:w="3000" w:type="dxa"/></w:tcPr><w:p><w:r><w:rPr><w:sz w:val="20"/></w:rPr><w:t>${value}</w:t></w:r></w:p></w:tc>`;
     const rows = [
@@ -176,7 +128,6 @@ export async function generateAgreementDocx(record: AgreementRecord): Promise<Bu
     const table = `<w:tbl><w:tblPr><w:tblW w:w="0" w:type="auto"/><w:tblBorders>${["top", "left", "bottom", "right", "insideH", "insideV"].map(side => `<w:${side} w:val="single" w:sz="4"/>`).join("")}</w:tblBorders></w:tblPr>${rows.map(row => `<w:tr>${row.map(cell).join("")}</w:tr>`).join("")}</w:tbl>`;
     xml = xml.replace(/<w:tbl>[\s\S]*?<\/w:tbl>/g, original => original.includes('w14:paraId="307BA910"') ? table : original);
     xml = xml.replace("Mr./Ms. (2)", `(2) ${record.studentTitle || ""}`).replace("son/daughter of", record.studentRelationship || "son/daughter of").replace("holding CNIC/Passport No.", `holding ${record.studentIdType || "CNIC/Passport"} No.`);
-    setParagraph("64AA1854", newRateLine);
     setParagraph("59B152CA", "Official Stamp of UniMondo");
     for (const id of ["29DC4BEB", "0F455465", "35FDDC09", "7D6CB3A5"]) {
       xml = xml.replace(new RegExp(`<w:p[^>]*w14:paraId="${id}"[^>]*>[\\s\\S]*?<\\/w:p>`), "");
@@ -211,7 +162,7 @@ export async function generateAgreementDocx(record: AgreementRecord): Promise<Bu
   );
   xml = xml.replace(
     "Designation: __________________________________",
-    `Designation: ${record.repDesignation || "__________________________________"}`
+    `Designation: ${record.repDesignation || ""}`
   );
   xml = xml.replace(
     "CNIC/Passport: _______________________________",
@@ -232,6 +183,7 @@ export async function generateAgreementDocx(record: AgreementRecord): Promise<Bu
     "Official Stamp of UniMondo"
   );
 
+  if (!record.repDesignation) setParagraph("2768A9E6", "");
   if (fin.pricingVersion === 2) {
     xml = xml.replace("CNIC/Passport:", `${record.studentIdType || "CNIC/Passport"}:`);
     xml = xml.replace("; and, and (2)", "; and (2)").replace("“Student” (“Student”)", "“Student”");

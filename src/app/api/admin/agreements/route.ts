@@ -1,9 +1,10 @@
+import { agreementInput } from "@/lib/agreements/input";
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerAuthClient } from "@/lib/supabase/server-auth";
 import { isAdminUser, isSuperAdmin } from "@/lib/auth/admin";
 import { hasAdminPermission } from "@/lib/auth/permissions";
 import { AgreementPersistenceError, getAgreementsList, saveAgreement } from "@/lib/agreements/persistence";
-import { requiresAgreementPricingApproval, validateAgreementPricing, validateAgreementForExport } from "@/lib/agreements/financials";
+import { requiresAgreementPricingApproval, validateAgreementPricing } from "@/lib/agreements/financials";
 import type { AgreementFormInput } from "@/types/agreement";
 
 export async function GET() {
@@ -38,8 +39,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    const body = (await request.json()) as AgreementFormInput;
-    const errors = body.status === "finalized" ? validateAgreementForExport(body) : validateAgreementPricing(body);
+    const body = agreementInput((await request.json()) as AgreementFormInput);
+    if (body.status && body.status !== "draft") return NextResponse.json({ message: "Create a draft, then manage status from Agreements." }, { status: 403 });
+    body.status = "draft";
+    const errors = validateAgreementPricing(body);
     if (errors.length) return NextResponse.json({ message: errors[0].message, errors }, { status: 400 });
 
     if (requiresAgreementPricingApproval(body)) {
@@ -53,7 +56,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const agreement = await saveAgreement({ ...body, id: undefined }, user.email || undefined);
+    const agreement = await saveAgreement({ ...body, id: undefined }, user.email || user.id);
     return NextResponse.json({ agreement }, { status: 201 });
   } catch (error) {
     return NextResponse.json(

@@ -69,6 +69,9 @@ export type AgreementFinancials = {
 
 export type AgreementRecord = {
   id: string;
+  version?: number;
+  revisionNumber?: number;
+  hasDraftRevision?: boolean;
   referenceNumber: string;
   templateVersion: string;
   applicationId?: string | null;
@@ -112,6 +115,7 @@ export type AgreementRecord = {
 };
 
 export type AgreementFormInput = {
+  version?: number;
   referenceNumber: string;
   agreementDate: string;
   applicationId?: string | null;

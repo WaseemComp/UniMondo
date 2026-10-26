@@ -6,3 +6,5 @@ export async function createSupabaseServerAuthClient() {
 export async function isAdminUser(user) { return Boolean(user?.admin); }
 export async function isSuperAdmin(user) { return Boolean(user?.super); }
 export async function hasAdminPermission(user) { return Boolean(user?.discount); }
+
+export function useRouter() { return { push() {}, refresh() {} }; }
