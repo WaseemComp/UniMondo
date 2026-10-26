@@ -21,7 +21,7 @@ export function PrintAgreementClient({ agreement }: Props) {
   const dec = CURRENCY_DECIMALS[currency];
   const fmtF = (v: number) => formatForeignAmount(v, currency);
   const fmtRate = (r: number) =>
-    r.toLocaleString("en", { minimumFractionDigits: dec, maximumFractionDigits: dec });
+    r.toLocaleString("en", { minimumFractionDigits: dec, maximumFractionDigits: fin.pricingVersion === 2 ? 12 : dec });
 
   const refText = agreement.referenceNumber.startsWith("UM/")
     ? agreement.referenceNumber
@@ -34,22 +34,22 @@ export function PrintAgreementClient({ agreement }: Props) {
     `${agreement.repDesignation || "__________________"}, hereinafter referred to as the \u201cConsultant\u201d; and`;
 
   const studentLine =
-    `${agreement.studentFullName || "__________________"}, son/daughter of ` +
-    `${agreement.studentParentGuardian || "__________________"}, holding CNIC/Passport No. ` +
+    `${fin.pricingVersion === 2 && agreement.studentTitle ? `${agreement.studentTitle} ` : ""}${agreement.studentFullName || "__________________"}, ${fin.pricingVersion === 2 ? agreement.studentRelationship || "son/daughter of" : "son/daughter of"} ` +
+    `${agreement.studentParentGuardian || "__________________"}, holding ${fin.pricingVersion === 2 ? agreement.studentIdType || "CNIC/Passport" : "CNIC/Passport"} No. ` +
     `${agreement.studentCnicPassport || "__________________"}, residing at ` +
     `${agreement.studentAddress || "__________________"}, email ` +
     `${agreement.studentEmail || "__________________"}, telephone ` +
     `${agreement.studentPhone || "__________________"}, hereinafter referred to as the \u201cStudent\u201d.`;
 
-  const instalment1 = isNonEur && fin.firstInstalmentForeign != null
-    ? `EUR ${fin.firstInstalmentEUR.toLocaleString()} / ${currency} ${fmtF(fin.firstInstalmentForeign)}`
-    : `EUR ${fin.firstInstalmentEUR.toLocaleString()}`;
-  const instalment2 = isNonEur && fin.secondInstalmentForeign != null
-    ? `EUR ${fin.secondInstalmentEUR.toLocaleString()} / ${currency} ${fmtF(fin.secondInstalmentForeign)}`
-    : `EUR ${fin.secondInstalmentEUR.toLocaleString()}`;
-  const instalment3 = isNonEur && fin.thirdInstalmentForeign != null
-    ? `EUR ${fin.thirdInstalmentEUR.toLocaleString()} / ${currency} ${fmtF(fin.thirdInstalmentForeign)}`
-    : `EUR ${fin.thirdInstalmentEUR.toLocaleString()}`;
+  const instalment1 = fin.pricingVersion === 2 ? `${currency} ${fmtF(isNonEur ? fin.firstInstalmentForeign ?? 0 : fin.firstInstalmentEUR)}` : isNonEur && fin.firstInstalmentForeign != null
+    ? `EUR ${(fin.pricingVersion === 2 ? formatForeignAmount(fin.firstInstalmentEUR, "EUR") : fin.firstInstalmentEUR.toLocaleString())} / ${currency} ${fmtF(fin.firstInstalmentForeign)}`
+    : `EUR ${(fin.pricingVersion === 2 ? formatForeignAmount(fin.firstInstalmentEUR, "EUR") : fin.firstInstalmentEUR.toLocaleString())}`;
+  const instalment2 = fin.pricingVersion === 2 ? `${currency} ${fmtF(isNonEur ? fin.secondInstalmentForeign ?? 0 : fin.secondInstalmentEUR)}` : isNonEur && fin.secondInstalmentForeign != null
+    ? `EUR ${(fin.pricingVersion === 2 ? formatForeignAmount(fin.secondInstalmentEUR, "EUR") : fin.secondInstalmentEUR.toLocaleString())} / ${currency} ${fmtF(fin.secondInstalmentForeign)}`
+    : `EUR ${(fin.pricingVersion === 2 ? formatForeignAmount(fin.secondInstalmentEUR, "EUR") : fin.secondInstalmentEUR.toLocaleString())}`;
+  const instalment3 = fin.pricingVersion === 2 ? `${currency} ${fmtF(isNonEur ? fin.thirdInstalmentForeign ?? 0 : fin.thirdInstalmentEUR)}` : isNonEur && fin.thirdInstalmentForeign != null
+    ? `EUR ${(fin.pricingVersion === 2 ? formatForeignAmount(fin.thirdInstalmentEUR, "EUR") : fin.thirdInstalmentEUR.toLocaleString())} / ${currency} ${fmtF(fin.thirdInstalmentForeign)}`
+    : `EUR ${(fin.pricingVersion === 2 ? formatForeignAmount(fin.thirdInstalmentEUR, "EUR") : fin.thirdInstalmentEUR.toLocaleString())}`;
 
   return (
     <div className="min-h-screen bg-zinc-100 py-6 print:bg-white print:p-0 print:m-0">
@@ -150,8 +150,7 @@ export function PrintAgreementClient({ agreement }: Props) {
             <h3 className="font-bold text-[13.5px] uppercase mb-1.5">3. PROFESSIONAL FEE AND AUTHORISED DISCOUNT</h3>
             <p className="mb-2">
               The Parties agree that UniMondo&apos;s educational consultancy services shall be provided against a
-              professional service fee. The base consultancy fee is EUR 1,000, or an agreed equivalent in the
-              selected payment currency. The authorised UniMondo administrator may approve a discount within
+              professional service fee. {fin.pricingVersion === 2 ? "The agreed gross consultancy fee, authorised discount and net consultancy fee are set out below in the selected payment currency." : "The base consultancy fee is EUR 1,000, or an agreed equivalent in the selected payment currency."} The authorised UniMondo administrator may approve a discount within
               delegated authority. The discounted net amount entered below shall be the final agreed fee upon
               signature.
             </p>
@@ -162,7 +161,14 @@ export function PrintAgreementClient({ agreement }: Props) {
             </p>
 
             {/* Table 2: Fees */}
-            <table className="w-full border-collapse border border-black text-[12.5px] mb-2">
+            {fin.pricingVersion === 2 ? <table className="w-full border-collapse border border-black text-[12.5px] mb-2">
+              <thead><tr>{["Particulars", "Discount %", currency].map(label => <th key={label} className="border border-black p-1.5 text-left">{label}</th>)}</tr></thead>
+              <tbody>{[
+                ["Gross consultancy fee", "—", fmtF(fin.grossFee ?? 0)],
+                ["Authorised discount", fin.discountType === "amount" ? "n/a" : `${fin.discountPercent}%`, fmtF(isNonEur ? fin.discountForeign ?? 0 : fin.discountEUR)],
+                ["Net consultancy fee", "—", fmtF(isNonEur ? fin.netFeeForeign ?? 0 : fin.netFeeEUR)],
+              ].map(row => <tr key={row[0]}>{row.map((value, index) => <td key={index} className="border border-black p-1.5">{value}</td>)}</tr>)}</tbody>
+            </table> : (            <table className="w-full border-collapse border border-black text-[12.5px] mb-2">
               <thead>
                 <tr className="bg-zinc-100 font-bold">
                   <th className="border border-black p-1.5 text-left w-[40%]">Particulars</th>
@@ -175,17 +181,17 @@ export function PrintAgreementClient({ agreement }: Props) {
                 <tr>
                   <td className="border border-black p-1.5">Consultancy Fee:</td>
                   <td className="border border-black p-1.5 text-center">n/a</td>
-                  <td className="border border-black p-1.5 text-right underline">1,000/-</td>
+                  <td className="border border-black p-1.5 text-right underline">{fin.pricingVersion === 2 ? formatForeignAmount(fin.grossFeeEUR ?? 1000, "EUR") : "1,000"}/-</td>
                   <td className="border border-black p-1.5 text-right underline">
                     {isNonEur && fin.agreedExchangeRate
-                      ? `${fmtF(fin.baseFeeEUR * fin.agreedExchangeRate)}/-`
+                      ? `${fmtF(fin.grossFee ?? fin.baseFeeEUR * fin.agreedExchangeRate)}/-`
                       : "\u2014"}
                   </td>
                 </tr>
                 <tr>
                   <td className="border border-black p-1.5">Discount:</td>
-                  <td className="border border-black p-1.5 text-center underline">{fin.discountPercent}%</td>
-                  <td className="border border-black p-1.5 text-right underline">{fin.discountEUR.toLocaleString()}/-</td>
+                  <td className="border border-black p-1.5 text-center underline">{fin.pricingVersion === 2 && fin.discountType === "amount" ? "n/a" : `${fin.discountPercent}%`}</td>
+                  <td className="border border-black p-1.5 text-right underline">{(fin.pricingVersion === 2 ? formatForeignAmount(fin.discountEUR, "EUR") : fin.discountEUR.toLocaleString())}/-</td>
                   <td className="border border-black p-1.5 text-right underline">
                     {isNonEur && fin.discountForeign != null ? `${fmtF(fin.discountForeign)}/-` : "\u2014"}
                   </td>
@@ -193,13 +199,14 @@ export function PrintAgreementClient({ agreement }: Props) {
                 <tr className="font-bold">
                   <td className="border border-black p-1.5">Net Consultancy Fee:</td>
                   <td className="border border-black p-1.5 text-center">n/a</td>
-                  <td className="border border-black p-1.5 text-right underline">{fin.netFeeEUR.toLocaleString()}/-</td>
+                  <td className="border border-black p-1.5 text-right underline">{(fin.pricingVersion === 2 ? formatForeignAmount(fin.netFeeEUR, "EUR") : fin.netFeeEUR.toLocaleString())}/-</td>
                   <td className="border border-black p-1.5 text-right underline">
                     {isNonEur && fin.netFeeForeign != null ? `${fmtF(fin.netFeeForeign)}/-` : "\u2014"}
                   </td>
                 </tr>
               </tbody>
-            </table>
+            </table>)}
+
           </div>
 
           {/* 4. FIXED THREE-INSTALMENT PAYMENT SCHEDULE */}
@@ -335,7 +342,7 @@ export function PrintAgreementClient({ agreement }: Props) {
               </tr>
               <tr>
                 <td className="py-2.5">Designation: {agreement.repDesignation || "__________________________________"}</td>
-                <td className="py-2.5">CNIC/Passport: {agreement.studentCnicPassport || "_______________________________"}</td>
+                <td className="py-2.5">{fin.pricingVersion === 2 ? agreement.studentIdType || "CNIC/Passport" : "CNIC/Passport"}: {agreement.studentCnicPassport || "_______________________________"}</td>
               </tr>
               <tr>
                 <td className="py-2.5">Date: {agreement.repDate || agreement.agreementDate || "________________________________________"}</td>

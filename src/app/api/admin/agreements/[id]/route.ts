@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerAuthClient } from "@/lib/supabase/server-auth";
 import { isAdminUser, isSuperAdmin } from "@/lib/auth/admin";
 import { hasAdminPermission } from "@/lib/auth/permissions";
-import { deleteAgreement, getAgreementById, saveAgreement } from "@/lib/agreements/persistence";
+import { AgreementPersistenceError, deleteAgreement, getAgreementById, saveAgreement } from "@/lib/agreements/persistence";
+import { requiresAgreementPricingApproval, validateAgreementPricing, validateAgreementForExport } from "@/lib/agreements/financials";
 import type { AgreementFormInput } from "@/types/agreement";
 
 type Props = {
@@ -30,7 +31,7 @@ export async function GET(_request: NextRequest, { params }: Props) {
   } catch (error) {
     return NextResponse.json(
       { message: error instanceof Error ? error.message : "Failed to load agreement." },
-      { status: 500 }
+      { status: error instanceof AgreementPersistenceError ? error.status : 500 }
     );
   }
 }
@@ -52,13 +53,13 @@ export async function PUT(request: NextRequest, { params }: Props) {
       return NextResponse.json({ message: "Agreement not found." }, { status: 404 });
     }
 
+    if (existing.status === "finalized") return NextResponse.json({ message: "Finalized agreements are read-only." }, { status: 409 });
+
     const body = (await request.json()) as AgreementFormInput;
+    const errors = body.status === "finalized" ? validateAgreementForExport(body) : validateAgreementPricing(body);
+    if (errors.length) return NextResponse.json({ message: errors[0].message, errors }, { status: 400 });
 
-    const discountVal = typeof body.discountValue === "number" ? body.discountValue : parseFloat(String(body.discountValue || "0"));
-    const existingDiscountVal = existing.financials.discountValue;
-
-    // If discount is being changed or introduced, enforce administrative authority
-    if (discountVal > 0 && discountVal !== existingDiscountVal) {
+    if (requiresAgreementPricingApproval(body, existing.financials)) {
       const isSuper = await isSuperAdmin(user);
       const hasDiscountPerm = await hasAdminPermission(user, "agreements.discount");
       if (!isSuper && !hasDiscountPerm) {
@@ -69,12 +70,12 @@ export async function PUT(request: NextRequest, { params }: Props) {
       }
     }
 
-    const updated = await saveAgreement({ ...body, id }, user.email || undefined);
+    const updated = await saveAgreement({ ...body, id }, user.email || undefined, existing.updatedAt);
     return NextResponse.json({ agreement: updated });
   } catch (error) {
     return NextResponse.json(
       { message: error instanceof Error ? error.message : "Failed to update agreement." },
-      { status: 500 }
+      { status: error instanceof AgreementPersistenceError ? error.status : 500 }
     );
   }
 }
@@ -91,12 +92,14 @@ export async function DELETE(_request: NextRequest, { params }: Props) {
     }
 
     const { id } = await params;
+    const existing = await getAgreementById(id);
+    if (existing?.status === "finalized") return NextResponse.json({ message: "Finalized agreements cannot be deleted." }, { status: 409 });
     await deleteAgreement(id);
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json(
       { message: error instanceof Error ? error.message : "Failed to delete agreement." },
-      { status: 500 }
+      { status: error instanceof AgreementPersistenceError ? error.status : 500 }
     );
   }
 }

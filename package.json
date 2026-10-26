@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "seed:admin": "node --env-file=.env.local scripts/create-admin-user.mjs"
+    "seed:admin": "node --env-file=.env.local scripts/create-admin-user.mjs",
+    "test:agreements": "node scripts/run-agreement-tests.mjs suite",
+    "test:agreements:regressions": "node scripts/run-agreement-tests.mjs regressions"
   },
   "dependencies": {
     "@base-ui/react": "^1.3.0",
@@ -39,6 +41,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.1",
+    "jiti": "^2.7.0",
     "sharp": "^0.34.5",
     "tailwindcss": "^4",
     "to-ico": "^1.1.5",

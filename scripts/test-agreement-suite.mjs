@@ -1,6 +1,11 @@
 import assert from "node:assert";
 import fs from "node:fs";
-import { calculateAgreementFinancials, validateAgreementForExport } from "../src/lib/agreements/financials.ts";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { PDFDocument } from "pdf-lib";
+import { PrintAgreementClient } from "../src/components/admin/agreements/print-agreement-client.tsx";
+import { calculateAgreementFinancials, calculateLegacyAgreementFinancials, formatForeignAmount, validateAgreementPricing, validateAgreementForExport } from "../src/lib/agreements/financials.ts";
+import { mapRowToRecord } from "../src/lib/agreements/persistence.ts";
 import { generateAgreementDocx } from "../src/lib/agreements/docx-generator.ts";
 import { generateAgreementPdf } from "../src/lib/agreements/pdf-generator.ts";
 
@@ -32,7 +37,7 @@ async function runTests() {
   assert.strictEqual(finB.discountEUR, 137);
   assert.strictEqual(finB.netFeeEUR, 863);
   const totalB = finB.firstInstalmentEUR + finB.secondInstalmentEUR + finB.thirdInstalmentEUR;
-  assert.strictEqual(totalB, 863, `Expected total to equal 863, got ${totalB}`);
+  assert.strictEqual(Math.round(totalB * 100), 86300, `Expected total to equal 863, got ${totalB}`);
   console.log("✓ Case B passed: EUR odd amount discount exact totals match net fee (€863 = " + finB.firstInstalmentEUR + " + " + finB.secondInstalmentEUR + " + " + finB.thirdInstalmentEUR + ")");
 
   // Case C: PKR payment at 305 PKR/EUR with 15% discount
@@ -46,11 +51,11 @@ async function runTests() {
   assert.strictEqual(finC.baseFeeEUR, 1000);
   assert.strictEqual(finC.discountEUR, 150);
   assert.strictEqual(finC.netFeeEUR, 850);
-  assert.strictEqual(finC.discountPKR, 45750);
-  assert.strictEqual(finC.netFeePKR, 259250);
-  const totalC_PKR = finC.firstInstalmentPKR + finC.secondInstalmentPKR + finC.thirdInstalmentPKR;
-  assert.strictEqual(totalC_PKR, finC.netFeePKR, `Expected PKR total ${finC.netFeePKR}, got ${totalC_PKR}`);
-  console.log("✓ Case C passed: PKR payment with exchange rate 305 (PKR " + finC.netFeePKR + " = " + finC.firstInstalmentPKR + " + " + finC.secondInstalmentPKR + " + " + finC.thirdInstalmentPKR + ")");
+  assert.strictEqual(finC.discountForeign, 45750);
+  assert.strictEqual(finC.netFeeForeign, 259250);
+  const totalC_PKR = finC.firstInstalmentForeign + finC.secondInstalmentForeign + finC.thirdInstalmentForeign;
+  assert.strictEqual(totalC_PKR, finC.netFeeForeign, `Expected PKR total ${finC.netFeeForeign}, got ${totalC_PKR}`);
+  console.log("✓ Case C passed: PKR payment with exchange rate 305 (PKR " + finC.netFeeForeign + " = " + finC.firstInstalmentForeign + " + " + finC.secondInstalmentForeign + " + " + finC.thirdInstalmentForeign + ")");
 
   console.log("\n=== 2. TESTING WORD (.DOCX) GENERATION ENGINE ===");
   const testRecord = {
@@ -62,12 +67,12 @@ async function runTests() {
     consultantEntityName: "UniMondo Ltd",
     consultantRegNumber: "14829023",
     consultantAddress: "Tripoli Tower, Suit 22, Block A, Floor 47, Tripoli, Libya",
-    studentFullName: "Syed Muhammad Daniyal",
-    studentParentGuardian: "Syed Tariq Mahmood",
-    studentCnicPassport: "42101-9988776-5",
-    studentAddress: "Apartment 4B, Gulberg Heights, Lahore, Pakistan",
+    studentFullName: "TEST STUDENT ALPHA",
+    studentParentGuardian: "TEST GUARDIAN ALPHA",
+    studentCnicPassport: "TEST-ID-0001",
+    studentAddress: "TEST ADDRESS ONLY",
     studentEmail: "daniyal.test@example.com",
-    studentPhone: "+92 321 8877665",
+    studentPhone: "TEST-PHONE-0001",
     degreeLevel: "Master of Science",
     fieldOfStudy: "Artificial Intelligence and Robotics",
     preferredDestination: "Germany",
@@ -102,8 +107,8 @@ async function runTests() {
 
   // Check reference, student name, and consultant entity
   assert(docXml.includes("UM/2026/89412"), "DOCX must contain agreement reference");
-  assert(docXml.includes("Syed Muhammad Daniyal"), "DOCX must contain student name");
-  assert(docXml.includes("UniMondo Ltd, Reg. No. 14829023"), "DOCX must contain consultant entity and reg number");
+  assert(docXml.includes("TEST STUDENT ALPHA"), "DOCX must contain student name");
+  assert(docXml.includes("UniMondo Ltd, registration number 14829023"), "DOCX must contain consultant entity and reg number");
   console.log("✓ DOCX contains student name, consultant details, and agreement reference");
 
   // Check signature lines preserved blank
@@ -122,16 +127,84 @@ async function runTests() {
   console.log("✓ PDF has valid %PDF- header and renders Times New Roman typography with 0.7-inch margins");
 
   console.log("\n=== 4. TESTING EXPORT VALIDATION ===");
-  const incompleteInput = { ...testRecord, studentFullName: "" };
+  const incompleteInput = { ...testRecord, ...finC, studentFullName: "" };
   const valErrors = validateAgreementForExport(incompleteInput);
   assert(valErrors.length > 0, "Incomplete draft must fail export validation");
   assert(valErrors.some(e => e.field === "studentFullName"), "Must identify missing studentFullName");
   console.log("✓ Validation properly catches missing required fields for export while allowing drafts");
 
+  for (const currency of ["EUR", "PKR", "LYD", "TND", "TRY", "USD", "BDT"]) {
+    const precision = ["LYD", "TND"].includes(currency) ? 3 : 2;
+    const factor = 10 ** precision;
+    for (const mode of ["reference", "custom"]) {
+      for (const discountType of ["percentage", "amount"]) {
+        const result = calculateAgreementFinancials({ paymentCurrency: currency, agreedExchangeRate: 3.123456, exchangeRateDate: "26 October 2026", pricingMode: mode, customGrossFee: 1234.567, discountType, discountValue: discountType === "amount" ? 12.345 : 7.125 });
+        const gross = result.grossFee;
+        const net = currency === "EUR" ? result.netFeeEUR : result.netFeeForeign;
+        const discount = currency === "EUR" ? result.discountEUR : result.discountForeign;
+        const instalments = currency === "EUR" ? [result.firstInstalmentEUR, result.secondInstalmentEUR, result.thirdInstalmentEUR] : [result.firstInstalmentForeign, result.secondInstalmentForeign, result.thirdInstalmentForeign];
+        assert.equal(Math.round(gross * factor) - Math.round(discount * factor), Math.round(net * factor));
+        assert.equal(Math.round(result.grossFeeEUR * 100) - Math.round(result.discountEUR * 100), Math.round(result.netFeeEUR * 100));
+        assert.equal(instalments.reduce((sum, amount) => sum + Math.round(amount * factor), 0), Math.round(net * factor));
+        assert.equal(Math.round(instalments[0] * factor), Math.round(net * factor * .3));
+        assert.equal(Math.round(instalments[1] * factor), Math.round(net * factor * .4));
+      }
+    }
+    const custom = calculateAgreementFinancials({paymentCurrency: currency, agreedExchangeRate: 3.123456, exchangeRateDate: "26 October 2026", pricingMode: "custom", customGrossFee: 1234.567, discountType: "amount", discountValue: 12.345});
+    const customRecord = {...testRecord, studentTitle: "Ms.", studentRelationship: "daughter of", studentIdType: "Other ID", studentFullName: "Student & Family <Example>", financials: custom};
+    const customZip = await JSZip.loadAsync(await generateAgreementDocx(customRecord));
+    const customXml = await customZip.file("word/document.xml").async("text");
+    const text = customXml.replace(/<[^>]*>/g, "");
+    assert(text.includes("Ms. Student &amp; Family &lt;Example&gt;"));
+    assert(text.includes("daughter of"));
+    assert(text.includes("Other ID No."));
+    assert(text.includes(`Other ID: ${testRecord.studentCnicPassport}`), "Selected ID label must retain the repeated identification number");
+    if (currency !== "EUR") assert(!/EUR [0-9]/.test(text), "New agreements must not show a second EUR payable amount");
+    assert(!text.includes("FIELD KEY") && !text.includes("IMPLEMENTATION NOTES"));
+    assert(text.includes("The agreed gross consultancy fee, authorised discount and net consultancy fee are set out below in the selected payment currency."));
+    assert(!text.includes("The base consultancy fee is EUR 1,000"));
+    assert(!text.includes("1,000/-"));
+    assert(text.includes(currency));
+    if (currency !== "EUR") assert(text.includes(`1 EUR = ${currency} 3.123456`), "Word must populate rates across split XML runs");
+    assert(!text.includes("__________, as mutually agreed"));
+    assert(text.includes("First Instalment — 30%: "));
+    assert(!customXml.includes("w:highlight"));
+    for (let section = 1; section <= 8; section++) assert(text.includes(`${section}. `));
+    const pdf = await generateAgreementPdf(customRecord);
+    assert.equal(pdf.subarray(0, 5).toString(), "%PDF-");
+    assert((await PDFDocument.load(pdf)).getPageCount() >= 2);
+    const printHtml = renderToStaticMarkup(createElement(PrintAgreementClient, { agreement: customRecord }));
+    assert(printHtml.includes("The agreed gross consultancy fee"));
+    assert(!printHtml.includes("The base consultancy fee is EUR 1,000"));
+    assert(printHtml.includes(formatForeignAmount(custom.grossFee, currency)));
+    assert(printHtml.includes(formatForeignAmount(currency === "EUR" ? custom.netFeeEUR : custom.netFeeForeign, currency)));
+    if (currency === "TND") {
+      fs.writeFileSync("/tmp/UniMondo_Custom_TND_Test.docx", await generateAgreementDocx(customRecord));
+      fs.writeFileSync("/tmp/UniMondo_Custom_TND_Test.pdf", pdf);
+    }
+  }
+  assert.equal(calculateAgreementFinancials({paymentCurrency: "EUR", pricingMode: "custom", customGrossFee: 1.005, discountType: "amount", discountValue: 0}).grossFee, 1.01);
+  const snapshot = {...finC, netFeeForeign: 123.45};
+  assert.deepEqual(mapRowToRecord({id: "saved", payload: {...testRecord, financials: snapshot}, payment_currency: "USD", agreed_exchange_rate: 999}).financials, snapshot, "Stored snapshots must never be recalculated");
+  const legacy = calculateLegacyAgreementFinancials({paymentCurrency: "EUR", discountType: "amount", discountValue: 137.25});
+  assert.equal(legacy.discountEUR, 137, "Historical whole-EUR rounding must remain unchanged");
+  assert.equal(mapRowToRecord({id: "legacy", payment_currency: "EUR", discount_type: "amount", discount_value: 137.25}).financials.netFeeEUR, 863);
+  for (const invalid of [
+    {...incompleteInput, paymentCurrency: "XYZ"},
+    {...incompleteInput, discountValue: -1},
+    {...incompleteInput, discountValue: Infinity},
+    {...incompleteInput, discountType: "percentage", discountValue: 101},
+    {...incompleteInput, discountType: "amount", discountValue: 999999},
+    {...incompleteInput, pricingMode: "custom", customGrossFee: 0},
+    {...incompleteInput, agreedExchangeRate: 0},
+  ]) assert(validateAgreementPricing(invalid).length);
+  const legacyZip = await JSZip.loadAsync(await generateAgreementDocx({...testRecord, financials: legacy}));
+  assert((await legacyZip.file("word/document.xml").async("text")).includes("The base consultancy fee is EUR 1,000"));
+  console.log("✓ Stored snapshots, historical rounding/wording and invalid pricing validation passed");
+
+  console.log("✓ Seven currencies: reference/custom gross, fixed/percentage discounts, precision, instalment totals and exports passed");
+
   console.log("\nALL AGREEMENT SUITE TESTS PASSED SUCCESSFULLY!");
 }
 
-runTests().catch(err => {
-  console.error("Test failed:", err);
-  process.exit(1);
-});
+await runTests();

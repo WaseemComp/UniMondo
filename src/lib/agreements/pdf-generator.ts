@@ -76,7 +76,7 @@ export async function generateAgreementPdf(record: AgreementRecord): Promise<Buf
     const spaceAfter = options.spaceAfter ?? 6;
 
     if (options.boldPrefix) {
-      const prefixWidth = fontBold.widthOfTextAtSize(options.boldPrefix, fontSize);
+      const prefixWidth = fontBold.widthOfTextAtSize(options.boldPrefix + (record.financials.pricingVersion === 2 ? " " : ""), fontSize);
       const restLines = wrapText(text, font, fontSize, CONTENT_WIDTH - prefixWidth);
 
       checkNewPage(Math.max(1, restLines.length) * lineHeight + spaceAfter);
@@ -185,8 +185,8 @@ export async function generateAgreementPdf(record: AgreementRecord): Promise<Buf
   drawParagraph(consultantLine, { fontSize: 9.5, lineHeight: 12.5, spaceAfter: 4 });
 
   const studentLine =
-    `(2) ${record.studentFullName || "__________________"}, son/daughter of ` +
-    `${record.studentParentGuardian || "__________________"}, holding CNIC/Passport No. ` +
+    `(2) ${fin.pricingVersion === 2 && record.studentTitle ? `${record.studentTitle} ` : ""}${record.studentFullName || "__________________"}, ${fin.pricingVersion === 2 ? record.studentRelationship || "son/daughter of" : "son/daughter of"} ` +
+    `${record.studentParentGuardian || "__________________"}, holding ${fin.pricingVersion === 2 ? record.studentIdType || "CNIC/Passport" : "CNIC/Passport"} No. ` +
     `${record.studentCnicPassport || "__________________"}, residing at ` +
     `${record.studentAddress || "__________________"}, email ` +
     `${record.studentEmail || "__________________"}, telephone ` +
@@ -221,7 +221,7 @@ export async function generateAgreementPdf(record: AgreementRecord): Promise<Buf
   drawSectionHeading("3. PROFESSIONAL FEE AND AUTHORISED DISCOUNT");
   drawParagraph(
     "The Parties agree that UniMondo\u2019s educational consultancy services shall be provided against a professional " +
-    "service fee. The base consultancy fee is EUR 1,000, or an agreed equivalent in the selected payment currency. " +
+    "service fee. " + (fin.pricingVersion === 2 ? "The agreed gross consultancy fee, authorised discount and net consultancy fee are set out below in the selected payment currency. " : "The base consultancy fee is EUR 1,000, or an agreed equivalent in the selected payment currency. ") +
     "The authorised UniMondo administrator may approve a discount within delegated authority. The discounted net " +
     "amount entered below shall be the final agreed fee upon signature.",
     { fontSize: 9.5, lineHeight: 12.5, spaceAfter: 4 }
@@ -229,22 +229,27 @@ export async function generateAgreementPdf(record: AgreementRecord): Promise<Buf
 
   // Exchange rate line (italic)
   const rateText = isNonEur && fin.agreedExchangeRate
-    ? `Agreed exchange rate: 1 EUR = ${currency} ${fin.agreedExchangeRate.toLocaleString("en", { minimumFractionDigits: CURRENCY_DECIMALS[currency], maximumFractionDigits: CURRENCY_DECIMALS[currency] })}, as mutually agreed on ${fin.exchangeRateDate || record.agreementDate || "____ / ____ / ______"}. Applicable only where payment is in ${currency}.`
+    ? `Agreed exchange rate: 1 EUR = ${currency} ${fin.agreedExchangeRate.toLocaleString("en", { minimumFractionDigits: CURRENCY_DECIMALS[currency], maximumFractionDigits: fin.pricingVersion === 2 ? 12 : CURRENCY_DECIMALS[currency] })}, as mutually agreed on ${fin.exchangeRateDate || record.agreementDate || "____ / ____ / ______"}. Applicable only where payment is in ${currency}.`
     : `Agreed exchange rate: 1 EUR = ${currency} N/A, as mutually agreed on N/A. Applicable only where payment is in ${currency}.`;
   drawParagraph(rateText, { font: fontItalic, fontSize: 9, lineHeight: 12, spaceAfter: 6 });
 
   // Table 2: Fees
-  const colWidths = [190, 60, 130, 131.2];
+  const colWidths = fin.pricingVersion === 2 ? [270, 60, 181.2] : [190, 60, 130, 131.2];
   const rowHeight = 17;
   const baseForeignAmt = isNonEur && fin.agreedExchangeRate
-    ? `${fmt(fin.baseFeeEUR * fin.agreedExchangeRate)}/-`
+    ? `${fmt(fin.grossFee ?? fin.baseFeeEUR * fin.agreedExchangeRate)}/-`
     : "\u2014";
-  const tableRows = [
+  const tableRows = fin.pricingVersion === 2 ? [
+    ["Particulars", "%", currency],
+    ["Gross consultancy fee", "n/a", fmt(fin.grossFee ?? 0)],
+    ["Authorised discount", fin.discountType === "amount" ? "n/a" : `${fin.discountPercent}%`, fmt(isNonEur ? fin.discountForeign ?? 0 : fin.discountEUR)],
+    ["Net consultancy fee", "n/a", fmt(isNonEur ? fin.netFeeForeign ?? 0 : fin.netFeeEUR)],
+  ] : [
     ["Particulars", "%", "EUR", currency],
-    ["Consultancy Fee:", "n/a", "1,000/-", baseForeignAmt],
-    ["Discount:", `${fin.discountPercent}%`, `${fin.discountEUR.toLocaleString()}/-`,
+    ["Consultancy Fee:", "n/a", fin.pricingVersion === 2 ? `${formatForeignAmount(fin.grossFeeEUR ?? 1000, "EUR")}/-` : "1,000/-", baseForeignAmt],
+    ["Discount:", fin.pricingVersion === 2 && fin.discountType === "amount" ? "n/a" : `${fin.discountPercent}%`, `${(fin.pricingVersion === 2 ? formatForeignAmount(fin.discountEUR, "EUR") : fin.discountEUR.toLocaleString())}/-`,
       isNonEur && fin.discountForeign != null ? `${fmt(fin.discountForeign)}/-` : "\u2014"],
-    ["Net Consultancy Fee:", "n/a", `${fin.netFeeEUR.toLocaleString()}/-`,
+    ["Net Consultancy Fee:", "n/a", `${(fin.pricingVersion === 2 ? formatForeignAmount(fin.netFeeEUR, "EUR") : fin.netFeeEUR.toLocaleString())}/-`,
       isNonEur && fin.netFeeForeign != null ? `${fmt(fin.netFeeForeign)}/-` : "\u2014"],
   ];
 
@@ -281,8 +286,8 @@ export async function generateAgreementPdf(record: AgreementRecord): Promise<Buf
   // ── 4. FIXED THREE-INSTALMENT PAYMENT SCHEDULE ───────────────────────────────
   drawSectionHeading("4. FIXED THREE-INSTALMENT PAYMENT SCHEDULE");
 
-  const i1EurStr = `EUR ${fin.firstInstalmentEUR.toLocaleString()}`;
-  const i1Str = isNonEur && fin.firstInstalmentForeign != null
+  const i1EurStr = `EUR ${(fin.pricingVersion === 2 ? formatForeignAmount(fin.firstInstalmentEUR, "EUR") : fin.firstInstalmentEUR.toLocaleString())}`;
+  const i1Str = fin.pricingVersion === 2 ? `${currency} ${fmt(isNonEur ? fin.firstInstalmentForeign ?? 0 : fin.firstInstalmentEUR)}` : isNonEur && fin.firstInstalmentForeign != null
     ? `${i1EurStr} / ${currency} ${fmt(fin.firstInstalmentForeign)}`
     : i1EurStr;
   drawParagraph(
@@ -290,8 +295,8 @@ export async function generateAgreementPdf(record: AgreementRecord): Promise<Buf
     { fontSize: 9.5, lineHeight: 12.5, spaceAfter: 3 }
   );
 
-  const i2EurStr = `EUR ${fin.secondInstalmentEUR.toLocaleString()}`;
-  const i2Str = isNonEur && fin.secondInstalmentForeign != null
+  const i2EurStr = `EUR ${(fin.pricingVersion === 2 ? formatForeignAmount(fin.secondInstalmentEUR, "EUR") : fin.secondInstalmentEUR.toLocaleString())}`;
+  const i2Str = fin.pricingVersion === 2 ? `${currency} ${fmt(isNonEur ? fin.secondInstalmentForeign ?? 0 : fin.secondInstalmentEUR)}` : isNonEur && fin.secondInstalmentForeign != null
     ? `${i2EurStr} / ${currency} ${fmt(fin.secondInstalmentForeign)}`
     : i2EurStr;
   drawParagraph(
@@ -299,8 +304,8 @@ export async function generateAgreementPdf(record: AgreementRecord): Promise<Buf
     { fontSize: 9.5, lineHeight: 12.5, spaceAfter: 3 }
   );
 
-  const i3EurStr = `EUR ${fin.thirdInstalmentEUR.toLocaleString()}`;
-  const i3Str = isNonEur && fin.thirdInstalmentForeign != null
+  const i3EurStr = `EUR ${(fin.pricingVersion === 2 ? formatForeignAmount(fin.thirdInstalmentEUR, "EUR") : fin.thirdInstalmentEUR.toLocaleString())}`;
+  const i3Str = fin.pricingVersion === 2 ? `${currency} ${fmt(isNonEur ? fin.thirdInstalmentForeign ?? 0 : fin.thirdInstalmentEUR)}` : isNonEur && fin.thirdInstalmentForeign != null
     ? `${i3EurStr} / ${currency} ${fmt(fin.thirdInstalmentForeign)}`
     : i3EurStr;
   drawParagraph(
@@ -329,9 +334,11 @@ export async function generateAgreementPdf(record: AgreementRecord): Promise<Buf
     { boldPrefix: "Student cancellation after admission:", fontSize: 9, lineHeight: 12, spaceAfter: 12 }
   );
 
-  // ─── PAGE 2 ─────────────────────────────────────────────────────────────────
-  currentPage = doc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
-  currentY = PAGE_HEIGHT - MARGIN;
+  // Preserve historical pagination; new agreements flow continuously.
+  if (fin.pricingVersion !== 2) {
+    currentPage = doc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+    currentY = PAGE_HEIGHT - MARGIN;
+  }
 
   // ── 6. DISCLAIMERS, EXCLUSIONS AND UNDERTAKINGS ──────────────────────────────
   drawSectionHeading("6. DISCLAIMERS, EXCLUSIONS AND UNDERTAKINGS");
@@ -376,16 +383,16 @@ export async function generateAgreementPdf(record: AgreementRecord): Promise<Buf
 
   // Signature table (2 columns, no borders)
   const halfW = CONTENT_WIDTH / 2;
-  const sigRowH = 22;
+  const sigRowH = fin.pricingVersion === 2 ? 20 : 22;
   const sigRows: { left: string; right: string; bold?: boolean }[] = [
     { left: "FOR UNIMONDO", right: "FOR THE STUDENT", bold: true },
     { left: "Signature: ____________________________________", right: "Signature: ____________________________________" },
     { left: `Name: ${record.repName || "_______________________________________"}`, right: `Name: ${record.studentFullName || "_______________________________________"}` },
-    { left: `Designation: ${record.repDesignation || "__________________________________"}`, right: `CNIC/Passport: ${record.studentCnicPassport || "_______________________________"}` },
+    { left: `Designation: ${record.repDesignation || "__________________________________"}`, right: `${fin.pricingVersion === 2 ? record.studentIdType || "CNIC/Passport" : "CNIC/Passport"}: ${record.studentCnicPassport || "_______________________________"}` },
     { left: `Date: ${record.repDate || record.agreementDate || "________________________________________"}`, right: `Date: ${record.studentSignatureDate || record.agreementDate || "_______________________________________"}` },
   ];
 
-  checkNewPage(sigRows.length * sigRowH + 80);
+  checkNewPage(sigRows.length * sigRowH + (fin.pricingVersion === 2 ? 70 : 80));
   let sigY = currentY;
   sigRows.forEach((row) => {
     const f = row.bold ? fontBold : fontRegular;
@@ -393,11 +400,11 @@ export async function generateAgreementPdf(record: AgreementRecord): Promise<Buf
     currentPage.drawText(row.right, { x: MARGIN + halfW, y: sigY - 14, font: f, size: 9.5, color: rgb(0, 0, 0) });
     sigY -= sigRowH;
   });
-  currentY = sigY - 20;
+  currentY = sigY - (fin.pricingVersion === 2 ? 12 : 20);
 
   // ── Stamp area — blank space, horizontal rule, small label ──────────────────
-  checkNewPage(80);
-  currentY -= 50; // blank space for physical stamp
+  checkNewPage(fin.pricingVersion === 2 ? 60 : 80);
+  currentY -= fin.pricingVersion === 2 ? 40 : 50; // blank space for physical stamp
 
   currentPage.drawLine({
     start: { x: MARGIN, y: currentY },

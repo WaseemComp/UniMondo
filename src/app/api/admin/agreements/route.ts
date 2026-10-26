@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerAuthClient } from "@/lib/supabase/server-auth";
 import { isAdminUser, isSuperAdmin } from "@/lib/auth/admin";
 import { hasAdminPermission } from "@/lib/auth/permissions";
-import { getAgreementsList, saveAgreement } from "@/lib/agreements/persistence";
+import { AgreementPersistenceError, getAgreementsList, saveAgreement } from "@/lib/agreements/persistence";
+import { requiresAgreementPricingApproval, validateAgreementPricing, validateAgreementForExport } from "@/lib/agreements/financials";
 import type { AgreementFormInput } from "@/types/agreement";
 
 export async function GET() {
@@ -21,7 +22,7 @@ export async function GET() {
   } catch (error) {
     return NextResponse.json(
       { message: error instanceof Error ? error.message : "Failed to load agreements." },
-      { status: 500 }
+      { status: error instanceof AgreementPersistenceError ? error.status : 500 }
     );
   }
 }
@@ -38,10 +39,10 @@ export async function POST(request: NextRequest) {
     }
 
     const body = (await request.json()) as AgreementFormInput;
+    const errors = body.status === "finalized" ? validateAgreementForExport(body) : validateAgreementPricing(body);
+    if (errors.length) return NextResponse.json({ message: errors[0].message, errors }, { status: 400 });
 
-    // Check discount permissions if discount is being applied
-    const discountVal = typeof body.discountValue === "number" ? body.discountValue : parseFloat(String(body.discountValue || "0"));
-    if (discountVal > 0) {
+    if (requiresAgreementPricingApproval(body)) {
       const isSuper = await isSuperAdmin(user);
       const hasDiscountPerm = await hasAdminPermission(user, "agreements.discount");
       if (!isSuper && !hasDiscountPerm) {
@@ -52,12 +53,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const agreement = await saveAgreement(body, user.email || undefined);
+    const agreement = await saveAgreement({ ...body, id: undefined }, user.email || undefined);
     return NextResponse.json({ agreement }, { status: 201 });
   } catch (error) {
     return NextResponse.json(
       { message: error instanceof Error ? error.message : "Failed to save agreement." },
-      { status: 500 }
+      { status: error instanceof AgreementPersistenceError ? error.status : 500 }
     );
   }
 }

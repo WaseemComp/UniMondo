@@ -53,6 +53,8 @@ export async function GET(request: NextRequest, { params }: Props) {
       fieldOfStudy: agreement.fieldOfStudy,
       preferredDestination: agreement.preferredDestination,
       academicYearIntake: agreement.academicYearIntake,
+      pricingMode: agreement.financials.pricingMode,
+      customGrossFee: agreement.financials.customGrossFee,
       paymentCurrency: agreement.financials.paymentCurrency,
       agreedExchangeRate: agreement.financials.agreedExchangeRate,
       exchangeRateDate: agreement.financials.exchangeRateDate,

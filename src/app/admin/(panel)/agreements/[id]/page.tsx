@@ -3,6 +3,7 @@ import { createSupabaseServerAuthClient } from "@/lib/supabase/server-auth";
 import { isAdminUser, isSuperAdmin } from "@/lib/auth/admin";
 import { hasAdminPermission } from "@/lib/auth/permissions";
 import { getAgreementById } from "@/lib/agreements/persistence";
+import { getAgreementRepresentatives } from "@/lib/agreements/representatives";
 import { AgreementForm } from "@/components/admin/agreements/agreement-form";
 
 type Props = {
@@ -36,6 +37,9 @@ export default async function EditAgreementPage({ params }: Props) {
         initialData={agreement}
         applicationId={agreement.applicationId}
         canEditDiscount={canEditDiscount}
+        representatives={await getAgreementRepresentatives(user)}
+        representativeDesignation={String(user.user_metadata?.designation || "Authorised representative")}
+        representativeName={String(user.user_metadata?.full_name || user.email || "UniMondo Admissions Team")}
       />
     </div>
   );

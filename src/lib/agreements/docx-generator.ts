@@ -31,6 +31,12 @@ export async function generateAgreementDocx(record: AgreementRecord): Promise<Bu
   if (!docXmlFile) throw new Error("Invalid DOCX: missing word/document.xml");
 
   let xml = await docXmlFile.async("text");
+  // Escape user data before interpolating it into Word XML.
+  const escapeXml = (value: string) => value.replace(/&/g, "&amp;").replace(/\$/g, "&#36;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  record = Object.fromEntries(Object.entries(record).map(([key, value]) => [key, typeof value === "string" ? escapeXml(value) : value])) as AgreementRecord;
+
+
+  record.financials = { ...record.financials, exchangeRateDate: record.financials.exchangeRateDate ? escapeXml(record.financials.exchangeRateDate) : null };
 
   // 1. Set all four margins to exactly 0.7 inches (1008 dxa)
   xml = xml.replace(
@@ -102,7 +108,7 @@ export async function generateAgreementDocx(record: AgreementRecord): Promise<Bu
   const currency = record.financials.paymentCurrency;
   const dec = CURRENCY_DECIMALS[currency];
   const rateFormatted = record.financials.agreedExchangeRate != null
-    ? record.financials.agreedExchangeRate.toLocaleString("en", { minimumFractionDigits: dec, maximumFractionDigits: dec })
+    ? record.financials.agreedExchangeRate.toLocaleString("en", { minimumFractionDigits: dec, maximumFractionDigits: record.financials.pricingVersion === 2 ? 12 : dec })
     : "N/A";
   const rateDate = record.financials.exchangeRateDate || record.agreementDate || "____ / ____ / ______";
 
@@ -141,14 +147,52 @@ export async function generateAgreementDocx(record: AgreementRecord): Promise<Bu
   const fmtF = (v: number) => formatForeignAmount(v, currency);
 
   const baseForeignAmt = isNonEur && fin.agreedExchangeRate
-    ? `${fmtF(fin.baseFeeEUR * fin.agreedExchangeRate)}/-`
+    ? `${fmtF(fin.grossFee ?? fin.baseFeeEUR * fin.agreedExchangeRate)}/-`
     : "\u2014";
-  const discountPct = `${fin.discountPercent}%`;
-  const discountEur = `${fin.discountEUR.toLocaleString()}/-`;
+  const discountPct = fin.pricingVersion === 2 && fin.discountType === "amount" ? "n/a" : `${fin.discountPercent}%`;
+  const discountEur = `${(fin.pricingVersion === 2 ? formatForeignAmount(fin.discountEUR, "EUR") : fin.discountEUR.toLocaleString())}/-`;
   const discountFgn = isNonEur && fin.discountForeign != null ? `${fmtF(fin.discountForeign)}/-` : "\u2014";
-  const netEur = `${fin.netFeeEUR.toLocaleString()}/-`;
+  const netEur = `${(fin.pricingVersion === 2 ? formatForeignAmount(fin.netFeeEUR, "EUR") : fin.netFeeEUR.toLocaleString())}/-`;
   const netFgn = isNonEur && fin.netFeeForeign != null ? `${fmtF(fin.netFeeForeign)}/-` : "\u2014";
 
+  if (fin.pricingVersion === 2) {
+    // Word may split placeholders across runs; replace the controlled paragraph
+    // contents while retaining paragraph layout instead of matching plain XML text.
+    const setParagraph = (id: string, text: string) => {
+      const pattern = new RegExp(`(<w:p[^>]*w14:paraId="${id}"[^>]*>)([\\s\\S]*?)(<\\/w:p>)`);
+      xml = xml.replace(pattern, (_match, open: string, body: string, close: string) => {
+        const properties = body.match(/<w:pPr>[\s\S]*?<\/w:pPr>/)?.[0] || "";
+        return `${open}${properties}<w:r><w:t xml:space="preserve">${text}</w:t></w:r>${close}`;
+      });
+    };
+    const contractAmount = (eur: number, foreign: number | null) => fmtF(isNonEur ? foreign ?? 0 : eur);
+    const cell = (value: string) => `<w:tc><w:tcPr><w:tcW w:w="3000" w:type="dxa"/></w:tcPr><w:p><w:r><w:rPr><w:sz w:val="20"/></w:rPr><w:t>${value}</w:t></w:r></w:p></w:tc>`;
+    const rows = [
+      ["Particulars", "Discount %", currency],
+      ["Gross consultancy fee", "—", fmtF(fin.grossFee ?? 0)],
+      ["Authorised discount", discountPct, contractAmount(fin.discountEUR, fin.discountForeign)],
+      ["Net consultancy fee", "—", contractAmount(fin.netFeeEUR, fin.netFeeForeign)],
+    ];
+    const table = `<w:tbl><w:tblPr><w:tblW w:w="0" w:type="auto"/><w:tblBorders>${["top", "left", "bottom", "right", "insideH", "insideV"].map(side => `<w:${side} w:val="single" w:sz="4"/>`).join("")}</w:tblBorders></w:tblPr>${rows.map(row => `<w:tr>${row.map(cell).join("")}</w:tr>`).join("")}</w:tbl>`;
+    xml = xml.replace(/<w:tbl>[\s\S]*?<\/w:tbl>/g, original => original.includes('w14:paraId="307BA910"') ? table : original);
+    xml = xml.replace("Mr./Ms. (2)", `(2) ${record.studentTitle || ""}`).replace("son/daughter of", record.studentRelationship || "son/daughter of").replace("holding CNIC/Passport No.", `holding ${record.studentIdType || "CNIC/Passport"} No.`);
+    setParagraph("64AA1854", newRateLine);
+    setParagraph("59B152CA", "Official Stamp of UniMondo");
+    for (const id of ["29DC4BEB", "0F455465", "35FDDC09", "7D6CB3A5"]) {
+      xml = xml.replace(new RegExp(`<w:p[^>]*w14:paraId="${id}"[^>]*>[\\s\\S]*?<\\/w:p>`), "");
+    }
+
+    xml = xml.replace("The base consultancy fee is EUR 1,000, or an agreed PKR equivalent.", "The agreed gross consultancy fee, authorised discount and net consultancy fee are set out below in the selected payment currency.");
+    xml = xml.replace("1,000/-", `${formatForeignAmount(fin.grossFeeEUR ?? 1000, "EUR")}/-`);
+    xml = xml.replace(/(<w:p[^>]*w14:paraId="24D2A444"[\s\S]*?<w:t[^>]*>)PKR(<\/w:t>)/, `$1${currency}$2`);
+    const amounts = [fin.firstInstalmentEUR, fin.secondInstalmentEUR, fin.thirdInstalmentEUR];
+    const foreign = [fin.firstInstalmentForeign, fin.secondInstalmentForeign, fin.thirdInstalmentForeign];
+    ["First Instalment — 30%", "Second Instalment — 40%", "Third Instalment — 30%"].forEach((label, i) => {
+      const amount = `${currency} ${contractAmount(amounts[i], foreign[i])}`;
+      xml = xml.replace(label, `${label}: ${amount}`);
+    });
+    xml = xml.replace(/<w:highlight[^>]*\/>/g, "").replace(/<w:shd[^>]*\/>/g, "").replace(/<w:color[^>]*\/>/g, '<w:color w:val="000000"/>');
+  }
   xml = populateTableCell(xml, "7837ADEA", baseForeignAmt);
   xml = populateTableCell(xml, "04523E70", discountPct);
   xml = populateTableCell(xml, "7D29DFBC", discountEur);
@@ -188,6 +232,10 @@ export async function generateAgreementDocx(record: AgreementRecord): Promise<Bu
     "Official Stamp of UniMondo"
   );
 
+  if (fin.pricingVersion === 2) {
+    xml = xml.replace("CNIC/Passport:", `${record.studentIdType || "CNIC/Passport"}:`);
+    xml = xml.replace("; and, and (2)", "; and (2)").replace("“Student” (“Student”)", "“Student”");
+  }
   zip.file("word/document.xml", xml);
   return zip.generateAsync({ type: "nodebuffer" });
 }

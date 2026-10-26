@@ -34,7 +34,16 @@ export const CURRENCY_OPTIONS: { value: PaymentCurrency; label: string }[] = [
 ];
 
 export type AgreementFinancials = {
-  baseFeeEUR: number; // Always 1,000
+  pricingVersion?: 2;
+  currencyDecimals?: number;
+  exchangeRatePair?: string;
+  pricingApprovedBy?: string;
+  pricingApprovedAt?: string;
+  pricingMode?: "reference" | "custom";
+  grossFee?: number; // Agreed amount in paymentCurrency
+  grossFeeEUR?: number; // Equivalent, not the internal reference
+  customGrossFee?: number | null;
+  baseFeeEUR: number; // Internal reference: 1,000
   paymentCurrency: PaymentCurrency;
   agreedExchangeRate: number | null;
   exchangeRateDate: string | null;
@@ -71,6 +80,9 @@ export type AgreementRecord = {
   consultantAddress: string;
 
   // Student
+  studentTitle?: "Mr." | "Ms." | "Mx.";
+  studentRelationship?: "son of" | "daughter of" | "spouse of";
+  studentIdType?: "CNIC" | "Passport" | "Other ID";
   studentFullName: string;
   studentParentGuardian: string;
   studentCnicPassport: string;
@@ -109,6 +121,9 @@ export type AgreementFormInput = {
   consultantRegNumber: string;
   consultantAddress: string;
 
+  studentTitle?: "Mr." | "Ms." | "Mx.";
+  studentRelationship?: "son of" | "daughter of" | "spouse of";
+  studentIdType?: "CNIC" | "Passport" | "Other ID";
   studentFullName: string;
   studentParentGuardian: string;
   studentCnicPassport: string;
@@ -121,6 +136,8 @@ export type AgreementFormInput = {
   preferredDestination: string;
   academicYearIntake: string;
 
+  pricingMode?: "reference" | "custom";
+  customGrossFee?: number | string | null;
   paymentCurrency: PaymentCurrency;
   agreedExchangeRate?: number | string | null;
   exchangeRateDate?: string | null;

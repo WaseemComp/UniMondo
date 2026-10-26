@@ -1,11 +1,11 @@
-import { calculateAgreementFinancials } from "./financials";
-import { createSupabaseServiceClient } from "../supabase/admin";
+import { calculateAgreementFinancials, calculateLegacyAgreementFinancials } from "./financials";
+import { createSupabaseServiceClient } from "@/lib/supabase/admin";
 import type { AgreementFormInput, AgreementRecord, AgreementStatus, PaymentCurrency } from "../../types/agreement";
 
 const SITE_CONTENT_PAGE = "admin";
 const SITE_CONTENT_SECTION = "agreements";
 
-function mapRowToRecord(row: Record<string, unknown>): AgreementRecord {
+export function mapRowToRecord(row: Record<string, unknown>): AgreementRecord {
   // If row has payload JSON, we can restore from it or from individual columns
   const payload = (row.payload && typeof row.payload === "object" ? row.payload : {}) as Record<string, unknown>;
   const fin = (payload.financials && typeof payload.financials === "object" ? payload.financials : {}) as Record<string, unknown>;
@@ -16,7 +16,7 @@ function mapRowToRecord(row: Record<string, unknown>): AgreementRecord {
   const discountType = (row.discount_type || fin.discountType || "percentage") as "percentage" | "amount";
   const discountValue = row.discount_value != null ? Number(row.discount_value) : (fin.discountValue != null ? Number(fin.discountValue) : 0);
 
-  const calculatedFin = calculateAgreementFinancials({
+  const calculatedFin = calculateLegacyAgreementFinancials({
     paymentCurrency,
     agreedExchangeRate,
     exchangeRateDate,
@@ -35,6 +35,9 @@ function mapRowToRecord(row: Record<string, unknown>): AgreementRecord {
     consultantRegNumber: String(row.consultant_reg_number || payload.consultantRegNumber || ""),
     consultantAddress: String(row.consultant_address || payload.consultantAddress || ""),
 
+    studentTitle: payload.studentTitle as AgreementRecord["studentTitle"],
+    studentRelationship: payload.studentRelationship as AgreementRecord["studentRelationship"],
+    studentIdType: payload.studentIdType as AgreementRecord["studentIdType"],
     studentFullName: String(row.student_full_name || payload.studentFullName || ""),
     studentParentGuardian: String(row.student_parent_guardian || payload.studentParentGuardian || ""),
     studentCnicPassport: String(row.student_cnic_passport || payload.studentCnicPassport || ""),
@@ -47,7 +50,7 @@ function mapRowToRecord(row: Record<string, unknown>): AgreementRecord {
     preferredDestination: String(row.preferred_destination || payload.preferredDestination || ""),
     academicYearIntake: String(row.academic_year_intake || payload.academicYearIntake || ""),
 
-    financials: calculatedFin,
+    financials: Object.keys(fin).length ? fin as AgreementRecord["financials"] : calculatedFin,
 
     repName: String(row.rep_name || payload.repName || ""),
     repDesignation: String(row.rep_designation || payload.repDesignation || ""),
@@ -61,101 +64,87 @@ function mapRowToRecord(row: Record<string, unknown>): AgreementRecord {
   };
 }
 
-// Fallback in-memory storage if database is completely offline
-const memoryAgreements = new Map<string, AgreementRecord>();
+export class AgreementPersistenceError extends Error {
+  constructor(message: string, public readonly status: number = 503) { super(message); }
+}
+
+const unavailable = () => new AgreementPersistenceError("Agreement storage is unavailable. Please try again.");
+const conflict = () => new AgreementPersistenceError("Agreement changed or was finalized. Reload before trying again.", 409);
+const missingTable = (error: { code?: string } | null) => error?.code === "42P01" || error?.code === "PGRST205";
+
+function requireStorage() {
+  const svc = createSupabaseServiceClient();
+  if (!svc) throw unavailable();
+  return svc;
+}
+
+type StoredAgreement = {
+  record: AgreementRecord;
+  source: "agreements" | "site_content";
+  version: string;
+};
+
+async function loadAgreement(id: string): Promise<StoredAgreement | null> {
+  const svc = requireStorage();
+  const { data, error } = await svc.from("agreements").select("*").eq("id", id).maybeSingle();
+  if (error && !missingTable(error) && error.code !== "22P02") throw unavailable();
+  if (!error && data) return { record: mapRowToRecord(data), source: "agreements", version: data.updated_at };
+
+  const { data: content, error: contentError } = await svc.from("site_content")
+    .select("value").eq("key", `agreement:${id}`).maybeSingle();
+  if (contentError) throw unavailable();
+  if (!content) return null;
+  try {
+    return { record: JSON.parse(String(content.value)) as AgreementRecord, source: "site_content", version: String(content.value) };
+  } catch { throw unavailable(); }
+}
 
 export async function getAgreementsList(): Promise<AgreementRecord[]> {
-  const svc = createSupabaseServiceClient();
-  if (svc) {
-    // 1. Try public.agreements table
-    const { data, error } = await svc
-      .from("agreements")
-      .select("*")
-      .order("updated_at", { ascending: false });
-
-    if (!error && Array.isArray(data)) {
-      return data.map((r) => mapRowToRecord(r as Record<string, unknown>));
-    }
-
-    // 2. Fallback to site_content key storage if table not yet migrated
-    const { data: contentData, error: contentError } = await svc
-      .from("site_content")
-      .select("key, value, updated_at")
-      .eq("page", SITE_CONTENT_PAGE)
-      .eq("section", SITE_CONTENT_SECTION);
-
-    if (!contentError && Array.isArray(contentData) && contentData.length > 0) {
-      const records: AgreementRecord[] = [];
-      for (const item of contentData) {
-        try {
-          const parsed = JSON.parse(String(item.value));
-          records.push(parsed);
-        } catch {
-          // ignore corrupted JSON
-        }
-      }
-      records.sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
-      return records;
-    }
+  const svc = requireStorage();
+  const { data, error } = await svc.from("agreements").select("*").order("updated_at", { ascending: false });
+  if (error && !missingTable(error)) throw unavailable();
+  const { data: content, error: contentError } = await svc.from("site_content")
+    .select("value").eq("page", SITE_CONTENT_PAGE).eq("section", SITE_CONTENT_SECTION);
+  if (contentError) throw unavailable();
+  const records = new Map<string, AgreementRecord>();
+  for (const item of content || []) {
+    try { const record = JSON.parse(String(item.value)) as AgreementRecord; records.set(record.id, record); }
+    catch { /* Preserve historical behavior for unreadable legacy entries. */ }
   }
-
-  return Array.from(memoryAgreements.values()).sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
+  // The primary table is authoritative over old duplicate fallback snapshots.
+  for (const row of data || []) { const record = mapRowToRecord(row); records.set(record.id, record); }
+  return [...records.values()].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
 
 export async function getAgreementById(id: string): Promise<AgreementRecord | null> {
-  const svc = createSupabaseServiceClient();
-  if (svc) {
-    const { data, error } = await svc
-      .from("agreements")
-      .select("*")
-      .eq("id", id)
-      .maybeSingle();
-
-    if (!error && data) {
-      return mapRowToRecord(data as Record<string, unknown>);
-    }
-
-    // Check site_content fallback
-    const { data: contentData } = await svc
-      .from("site_content")
-      .select("value")
-      .eq("key", `agreement:${id}`)
-      .maybeSingle();
-
-    if (contentData?.value) {
-      try {
-        return JSON.parse(String(contentData.value)) as AgreementRecord;
-      } catch {
-        // ignore
-      }
-    }
-  }
-
-  return memoryAgreements.get(id) || null;
+  return (await loadAgreement(id))?.record || null;
 }
 
 export async function saveAgreement(
   input: AgreementFormInput & { id?: string },
   userEmail?: string,
+  expectedUpdatedAt?: string,
 ): Promise<AgreementRecord> {
-  const svc = createSupabaseServiceClient();
+  const svc = requireStorage();
   const id = input.id || crypto.randomUUID();
-  const now = new Date().toISOString();
-
-  const financials = calculateAgreementFinancials({
-    paymentCurrency: input.paymentCurrency,
-    agreedExchangeRate: input.agreedExchangeRate,
-    exchangeRateDate: input.exchangeRateDate,
-    discountType: input.discountType,
-    discountValue: input.discountValue,
-  });
-
-  const existing = await getAgreementById(id);
+  const stored = input.id ? await loadAgreement(id) : null;
+  const existing = stored?.record;
+  if (input.id && !existing) throw new AgreementPersistenceError("Agreement not found.", 404);
+  if (existing?.status === "finalized") throw conflict();
+  if (expectedUpdatedAt && expectedUpdatedAt !== existing?.updatedAt) throw conflict();
+  if (existing && input.referenceNumber !== existing.referenceNumber) throw new AgreementPersistenceError("Agreement reference cannot be changed.", 409);
+  if (!existing && !/^UM\/[^\s]+$/.test(input.referenceNumber || "")) throw new AgreementPersistenceError("A valid UM/ agreement reference is required.", 400);
+  // Advance even when two requests arrive in the same millisecond.
+  const previousTime = existing ? Date.parse(existing.updatedAt) : 0;
+  const now = new Date(Math.max(Date.now(), Number.isFinite(previousTime) ? previousTime + 1 : 0)).toISOString();
+  const financials = calculateAgreementFinancials(input);
+  financials.pricingApprovedBy = input.status === "finalized" ? userEmail || "staff" : undefined;
+  financials.pricingApprovedAt = input.status === "finalized" ? now : undefined;
 
   const record: AgreementRecord = {
     id,
-    referenceNumber: input.referenceNumber.trim(),
-    templateVersion: "1.0",
+    referenceNumber: existing?.referenceNumber || input.referenceNumber.trim(),
+    templateVersion: "2.0",
     applicationId: input.applicationId?.trim() || null,
     status: input.status || "draft",
 
@@ -163,6 +152,9 @@ export async function saveAgreement(
     consultantRegNumber: input.consultantRegNumber.trim(),
     consultantAddress: input.consultantAddress.trim(),
 
+    studentTitle: input.studentTitle,
+    studentRelationship: input.studentRelationship,
+    studentIdType: input.studentIdType,
     studentFullName: input.studentFullName.trim(),
     studentParentGuardian: input.studentParentGuardian.trim(),
     studentCnicPassport: input.studentCnicPassport.trim(),
@@ -188,94 +180,110 @@ export async function saveAgreement(
     updatedAt: now,
   };
 
-  memoryAgreements.set(id, record);
+  const dbPayload = {
+    id: record.id,
+    reference_number: record.referenceNumber,
+    template_version: record.templateVersion,
+    application_id: record.applicationId,
+    status: record.status,
+    consultant_entity_name: record.consultantEntityName,
+    consultant_reg_number: record.consultantRegNumber,
+    consultant_address: record.consultantAddress,
+    student_full_name: record.studentFullName,
+    student_parent_guardian: record.studentParentGuardian,
+    student_cnic_passport: record.studentCnicPassport,
+    student_address: record.studentAddress,
+    student_email: record.studentEmail,
+    student_phone: record.studentPhone,
+    degree_level: record.degreeLevel,
+    field_of_study: record.fieldOfStudy,
+    preferred_destination: record.preferredDestination,
+    academic_year_intake: record.academicYearIntake,
+    base_fee_eur: financials.baseFeeEUR,
+    payment_currency: financials.paymentCurrency,
+    agreed_exchange_rate: financials.agreedExchangeRate,
+    exchange_rate_date: financials.exchangeRateDate,
+    discount_type: financials.discountType,
+    discount_value: financials.discountValue,
+    rep_name: record.repName,
+    rep_designation: record.repDesignation,
+    rep_date: record.repDate,
+    student_signature_date: record.studentSignatureDate,
+    agreement_date: record.agreementDate,
+    payload: record,
+    created_by: record.createdBy,
+    created_at: record.createdAt,
+    updated_at: record.updatedAt,
+  };
 
-  if (svc) {
-    // 1. Attempt insert / update on public.agreements
-    const dbPayload = {
-      id: record.id,
-      reference_number: record.referenceNumber,
-      template_version: record.templateVersion,
-      application_id: record.applicationId,
-      status: record.status,
-      consultant_entity_name: record.consultantEntityName,
-      consultant_reg_number: record.consultantRegNumber,
-      consultant_address: record.consultantAddress,
-      student_full_name: record.studentFullName,
-      student_parent_guardian: record.studentParentGuardian,
-      student_cnic_passport: record.studentCnicPassport,
-      student_address: record.studentAddress,
-      student_email: record.studentEmail,
-      student_phone: record.studentPhone,
-      degree_level: record.degreeLevel,
-      field_of_study: record.fieldOfStudy,
-      preferred_destination: record.preferredDestination,
-      academic_year_intake: record.academicYearIntake,
-      base_fee_eur: financials.baseFeeEUR,
-      payment_currency: financials.paymentCurrency,
-      agreed_exchange_rate: financials.agreedExchangeRate,
-      exchange_rate_date: financials.exchangeRateDate,
-      discount_type: financials.discountType,
-      discount_value: financials.discountValue,
-      rep_name: record.repName,
-      rep_designation: record.repDesignation,
-      rep_date: record.repDate,
-      student_signature_date: record.studentSignatureDate,
-      agreement_date: record.agreementDate,
-      payload: record,
-      created_by: record.createdBy,
-      created_at: record.createdAt,
-      updated_at: record.updatedAt,
-    };
+  if (stored?.source === "site_content") {
+    // Compare the full old serialized snapshot atomically; never upsert an existing agreement.
+    const { data, error } = await svc.from("site_content").update({
+      value: JSON.stringify(record), label: `Agreement ${record.referenceNumber}`, updated_at: now,
+    }).eq("key", `agreement:${id}`).eq("value", stored.version).select("key").maybeSingle();
+    if (error) throw unavailable();
+    if (!data) throw conflict();
+  } else {
+    const result = stored
+      ? await svc.from("agreements").update(dbPayload).eq("id", id).eq("status", "draft")
+          .eq("updated_at", stored.version).select("id").maybeSingle()
+      : await svc.from("agreements").insert(dbPayload).select("id").single();
+    if (result.error) {
+      // Only a missing primary schema permits legacy storage; network/permission/write failures fail closed.
+      if (!stored && missingTable(result.error)) {
+        const { error } = await svc.from("site_content").insert({
+          key: `agreement:${id}`, value: JSON.stringify(record), label: `Agreement ${record.referenceNumber}`,
+          page: SITE_CONTENT_PAGE, section: SITE_CONTENT_SECTION, sort_order: 0, updated_at: now,
+        });
+        if (error) throw unavailable();
+      } else if (result.error.code === "23505") {
+        throw new AgreementPersistenceError("Agreement reference already exists. Reload to create a new reference.", 409);
+      } else { throw unavailable(); }
+    } else if (!result.data) { throw conflict(); }
+  }
+  // 3. If linked to an application, link agreement reference
+  if (record.applicationId) {
+    try {
+      const { data: appData } = await svc
+        .from("applications")
+        .select("payload")
+        .eq("tracking_id", record.applicationId)
+        .maybeSingle();
 
-    const { error } = await svc
-      .from("agreements")
-      .upsert(dbPayload, { onConflict: "id" });
-
-    // 2. Also ensure resilient fallback in site_content
-    await svc.from("site_content").upsert({
-      key: `agreement:${id}`,
-      value: JSON.stringify(record),
-      label: `Agreement ${record.referenceNumber}`,
-      page: SITE_CONTENT_PAGE,
-      section: SITE_CONTENT_SECTION,
-      sort_order: 0,
-      updated_at: now,
-    }, { onConflict: "key" });
-
-    // 3. If linked to an application, link agreement reference
-    if (record.applicationId) {
-      try {
-        const { data: appData } = await svc
+      if (appData) {
+        const appPayload = (appData.payload && typeof appData.payload === "object" ? appData.payload : {}) as Record<string, unknown>;
+        appPayload.agreementReference = record.referenceNumber;
+        appPayload.agreementId = record.id;
+        await svc
           .from("applications")
-          .select("payload")
-          .eq("tracking_id", record.applicationId)
-          .maybeSingle();
-
-        if (appData) {
-          const appPayload = (appData.payload && typeof appData.payload === "object" ? appData.payload : {}) as Record<string, unknown>;
-          appPayload.agreementReference = record.referenceNumber;
-          appPayload.agreementId = record.id;
-          await svc
-            .from("applications")
-            .update({ payload: appPayload })
-            .eq("tracking_id", record.applicationId);
-        }
-      } catch (err) {
-        console.warn("[saveAgreement] Failed to link agreement to application:", err);
+          .update({ payload: appPayload })
+          .eq("tracking_id", record.applicationId);
       }
+    } catch (err) {
+      console.warn("[saveAgreement] Failed to link agreement to application:", err);
     }
   }
-
   return record;
 }
 
 export async function deleteAgreement(id: string): Promise<boolean> {
-  memoryAgreements.delete(id);
-  const svc = createSupabaseServiceClient();
-  if (svc) {
-    await svc.from("agreements").delete().eq("id", id);
-    await svc.from("site_content").delete().eq("key", `agreement:${id}`);
+  const svc = requireStorage();
+  const stored = await loadAgreement(id);
+  if (!stored) return true;
+  if (stored.record.status === "finalized") throw conflict();
+  if (stored.source === "site_content") {
+    const { data, error } = await svc.from("site_content").delete()
+      .eq("key", `agreement:${id}`).eq("value", stored.version).select("key").maybeSingle();
+    if (error) throw unavailable();
+    if (!data) throw conflict();
+  } else {
+    // Remove an old duplicate first; the primary row still controls visibility and finalization.
+    const { error: fallbackError } = await svc.from("site_content").delete().eq("key", `agreement:${id}`);
+    if (fallbackError) throw unavailable();
+    const { data, error } = await svc.from("agreements").delete().eq("id", id)
+      .eq("status", "draft").eq("updated_at", stored.version).select("id").maybeSingle();
+    if (error) throw unavailable();
+    if (!data) throw conflict();
   }
   return true;
 }
