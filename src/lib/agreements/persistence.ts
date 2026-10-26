@@ -1,9 +1,7 @@
-import { calculateAgreementFinancials, calculateLegacyAgreementFinancials } from "./financials";
+import { calculateAgreementFinancials, calculateLegacyAgreementFinancials, agreementPricingUnchanged } from "./financials";
 import { createSupabaseServiceClient } from "@/lib/supabase/admin";
 import type { AgreementFormInput, AgreementRecord, AgreementStatus, PaymentCurrency } from "../../types/agreement";
 
-const SITE_CONTENT_PAGE = "admin";
-const SITE_CONTENT_SECTION = "agreements";
 
 export function mapRowToRecord(row: Record<string, unknown>): AgreementRecord {
   // If row has payload JSON, we can restore from it or from individual columns
@@ -16,7 +14,7 @@ export function mapRowToRecord(row: Record<string, unknown>): AgreementRecord {
   const discountType = (row.discount_type || fin.discountType || "percentage") as "percentage" | "amount";
   const discountValue = row.discount_value != null ? Number(row.discount_value) : (fin.discountValue != null ? Number(fin.discountValue) : 0);
 
-  const calculatedFin = calculateLegacyAgreementFinancials({
+  const restoredFinancials = Object.keys(fin).length ? fin as AgreementRecord["financials"] : calculateLegacyAgreementFinancials({
     paymentCurrency,
     agreedExchangeRate,
     exchangeRateDate,
@@ -31,7 +29,7 @@ export function mapRowToRecord(row: Record<string, unknown>): AgreementRecord {
     applicationId: (row.application_id as string | null) || (payload.applicationId as string | null) || null,
     status: (row.status || payload.status || "draft") as AgreementStatus,
 
-    consultantEntityName: String(row.consultant_entity_name || payload.consultantEntityName || "UniMondo Ltd"),
+    consultantEntityName: String(row.consultant_entity_name ?? payload.consultantEntityName ?? "UniMondo"),
     consultantRegNumber: String(row.consultant_reg_number || payload.consultantRegNumber || ""),
     consultantAddress: String(row.consultant_address || payload.consultantAddress || ""),
 
@@ -50,7 +48,7 @@ export function mapRowToRecord(row: Record<string, unknown>): AgreementRecord {
     preferredDestination: String(row.preferred_destination || payload.preferredDestination || ""),
     academicYearIntake: String(row.academic_year_intake || payload.academicYearIntake || ""),
 
-    financials: Object.keys(fin).length ? fin as AgreementRecord["financials"] : calculatedFin,
+    financials: restoredFinancials,
 
     repName: String(row.rep_name || payload.repName || ""),
     repDesignation: String(row.rep_designation || payload.repDesignation || ""),
@@ -70,7 +68,6 @@ export class AgreementPersistenceError extends Error {
 
 const unavailable = () => new AgreementPersistenceError("Agreement storage is unavailable. Please try again.");
 const conflict = () => new AgreementPersistenceError("Agreement changed or was finalized. Reload before trying again.", 409);
-const missingTable = (error: { code?: string } | null) => error?.code === "42P01" || error?.code === "PGRST205";
 
 function requireStorage() {
   const svc = createSupabaseServiceClient();
@@ -78,75 +75,102 @@ function requireStorage() {
   return svc;
 }
 
-type StoredAgreement = {
-  record: AgreementRecord;
-  source: "agreements" | "site_content";
-  version: string;
+type AgreementState = {
+  agreement_id: string; source_snapshot: Record<string, unknown>; source_kind: "row" | "record";
+  draft: AgreementRecord | null; status: AgreementStatus; version: number; revision_no: number;
+  updated_at: string; deleted_at: string | null;
 };
 
-async function loadAgreement(id: string): Promise<StoredAgreement | null> {
-  const svc = requireStorage();
-  const { data, error } = await svc.from("agreements").select("*").eq("id", id).maybeSingle();
-  if (error && !missingTable(error) && error.code !== "22P02") throw unavailable();
-  if (!error && data) return { record: mapRowToRecord(data), source: "agreements", version: data.updated_at };
-
-  const { data: content, error: contentError } = await svc.from("site_content")
-    .select("value").eq("key", `agreement:${id}`).maybeSingle();
-  if (contentError) throw unavailable();
-  if (!content) return null;
-  try {
-    return { record: JSON.parse(String(content.value)) as AgreementRecord, source: "site_content", version: String(content.value) };
-  } catch { throw unavailable(); }
+function fromSnapshot(snapshot: Record<string, unknown>, kind: string): AgreementRecord {
+  return kind === "row" ? mapRowToRecord(snapshot) : snapshot as AgreementRecord;
+}
+function fromState(state: AgreementState, editing = false): AgreementRecord {
+  const record = editing && state.draft ? state.draft : fromSnapshot(state.source_snapshot, state.source_kind);
+  return { ...record, status: editing && state.draft ? "draft" : state.status,
+    version: state.version, revisionNumber: state.revision_no, hasDraftRevision: Boolean(state.draft),
+    updatedAt: state.updated_at };
 }
 
 export async function getAgreementsList(): Promise<AgreementRecord[]> {
-  const svc = requireStorage();
-  const { data, error } = await svc.from("agreements").select("*").order("updated_at", { ascending: false });
-  if (error && !missingTable(error)) throw unavailable();
-  const { data: content, error: contentError } = await svc.from("site_content")
-    .select("value").eq("page", SITE_CONTENT_PAGE).eq("section", SITE_CONTENT_SECTION);
-  if (contentError) throw unavailable();
-  const records = new Map<string, AgreementRecord>();
-  for (const item of content || []) {
-    try { const record = JSON.parse(String(item.value)) as AgreementRecord; records.set(record.id, record); }
-    catch { /* Preserve historical behavior for unreadable legacy entries. */ }
-  }
-  // The primary table is authoritative over old duplicate fallback snapshots.
-  for (const row of data || []) { const record = mapRowToRecord(row); records.set(record.id, record); }
-  return [...records.values()].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  const { data, error } = await requireStorage().from("agreement_state").select("*")
+    .is("deleted_at", null).order("updated_at", { ascending: false });
+  if (error) throw unavailable();
+  return (data || []).map(row => fromState(row as AgreementState, row.status === "draft"));
 }
 
-export async function getAgreementById(id: string): Promise<AgreementRecord | null> {
-  return (await loadAgreement(id))?.record || null;
+export async function getAgreementById(id: string, editing = false): Promise<AgreementRecord | null> {
+  const { data, error } = await requireStorage().from("agreement_state").select("*").eq("agreement_id", id).maybeSingle();
+  if (error) throw unavailable();
+  return !data || data.deleted_at ? null : fromState(data as AgreementState, editing || data.status === "draft");
+}
+
+export type AgreementRevision = { revision_no: number; author: string; finalized_at: string; supersedes: number | null };
+export async function getAgreementRevisions(id: string): Promise<AgreementRevision[]> {
+  if (!await getAgreementById(id)) return [];
+  const { data, error } = await requireStorage().from("agreement_revisions")
+    .select("revision_no,author,finalized_at,supersedes").eq("agreement_id", id).order("revision_no", { ascending: false });
+  if (error) throw unavailable();
+  return data || [];
+}
+export async function getAgreementRevision(id: string, revision: number): Promise<AgreementRecord | null> {
+  if (!await getAgreementById(id)) return null;
+  const { data, error } = await requireStorage().from("agreement_revisions").select("*")
+    .eq("agreement_id", id).eq("revision_no", revision).maybeSingle();
+  if (error) throw unavailable();
+  return data ? { ...fromSnapshot(data.snapshot, data.snapshot_kind), status: "finalized", revisionNumber: revision } : null;
+}
+
+async function mutate(id: string, action: string, expected: number | undefined, actor: string, isSuper = false,
+  record?: AgreementRecord, row?: Record<string, unknown>): Promise<AgreementState> {
+  const { data, error } = await requireStorage().rpc("agreement_mutate", {
+    p_id: id, p_action: action, p_expected: expected ?? null, p_actor: actor, p_super: isSuper,
+    p_record: record ?? null, p_row: row ?? null,
+  });
+  if (error) {
+    if (error.code === "40001") throw conflict();
+    if (error.code === "23505") throw new AgreementPersistenceError("Agreement reference already exists.", 409);
+    if (error.code === "P0002") throw new AgreementPersistenceError("Agreement not found.", 404);
+    if (error.code === "42501") throw new AgreementPersistenceError("Only Superadmin may change status or delete.", 403);
+    throw unavailable();
+  }
+  return data as AgreementState;
+}
+export async function changeAgreementStatus(id: string, status: AgreementStatus, version: number, actor: string, isSuper: boolean) {
+  if (!isSuper) throw new AgreementPersistenceError("Only Superadmin may change status.", 403);
+  return fromState(await mutate(id, status === "finalized" ? "finalize" : "reopen", version, actor, true), true);
+}
+export async function deleteAgreement(id: string, version: number, actor: string, isSuper: boolean): Promise<boolean> {
+  if (!isSuper) throw new AgreementPersistenceError("Only Superadmin may delete agreements.", 403);
+  await mutate(id, "delete", version, actor, true);
+  return true;
 }
 
 export async function saveAgreement(
   input: AgreementFormInput & { id?: string },
   userEmail?: string,
-  expectedUpdatedAt?: string,
+  expectedVersion?: number,
 ): Promise<AgreementRecord> {
-  const svc = requireStorage();
   const id = input.id || crypto.randomUUID();
-  const stored = input.id ? await loadAgreement(id) : null;
-  const existing = stored?.record;
+  const existing = input.id ? await getAgreementById(id, true) : null;
   if (input.id && !existing) throw new AgreementPersistenceError("Agreement not found.", 404);
-  if (existing?.status === "finalized") throw conflict();
-  if (expectedUpdatedAt && expectedUpdatedAt !== existing?.updatedAt) throw conflict();
+  if (existing && expectedVersion !== existing.version) throw conflict();
   if (existing && input.referenceNumber !== existing.referenceNumber) throw new AgreementPersistenceError("Agreement reference cannot be changed.", 409);
   if (!existing && !/^UM\/[^\s]+$/.test(input.referenceNumber || "")) throw new AgreementPersistenceError("A valid UM/ agreement reference is required.", 400);
   // Advance even when two requests arrive in the same millisecond.
   const previousTime = existing ? Date.parse(existing.updatedAt) : 0;
   const now = new Date(Math.max(Date.now(), Number.isFinite(previousTime) ? previousTime + 1 : 0)).toISOString();
-  const financials = calculateAgreementFinancials(input);
-  financials.pricingApprovedBy = input.status === "finalized" ? userEmail || "staff" : undefined;
-  financials.pricingApprovedAt = input.status === "finalized" ? now : undefined;
+  let financials = calculateAgreementFinancials(input);
+  // Preserve legacy rounding and previously approved pricing when only agreement details change.
+  if (existing && agreementPricingUnchanged(input, existing.financials)) {
+    financials = structuredClone(existing.financials);
+  }
 
   const record: AgreementRecord = {
     id,
     referenceNumber: existing?.referenceNumber || input.referenceNumber.trim(),
     templateVersion: "2.0",
     applicationId: input.applicationId?.trim() || null,
-    status: input.status || "draft",
+    status: "draft",
 
     consultantEntityName: input.consultantEntityName.trim(),
     consultantRegNumber: input.consultantRegNumber.trim(),
@@ -216,74 +240,15 @@ export async function saveAgreement(
     updated_at: record.updatedAt,
   };
 
-  if (stored?.source === "site_content") {
-    // Compare the full old serialized snapshot atomically; never upsert an existing agreement.
-    const { data, error } = await svc.from("site_content").update({
-      value: JSON.stringify(record), label: `Agreement ${record.referenceNumber}`, updated_at: now,
-    }).eq("key", `agreement:${id}`).eq("value", stored.version).select("key").maybeSingle();
-    if (error) throw unavailable();
-    if (!data) throw conflict();
-  } else {
-    const result = stored
-      ? await svc.from("agreements").update(dbPayload).eq("id", id).eq("status", "draft")
-          .eq("updated_at", stored.version).select("id").maybeSingle()
-      : await svc.from("agreements").insert(dbPayload).select("id").single();
-    if (result.error) {
-      // Only a missing primary schema permits legacy storage; network/permission/write failures fail closed.
-      if (!stored && missingTable(result.error)) {
-        const { error } = await svc.from("site_content").insert({
-          key: `agreement:${id}`, value: JSON.stringify(record), label: `Agreement ${record.referenceNumber}`,
-          page: SITE_CONTENT_PAGE, section: SITE_CONTENT_SECTION, sort_order: 0, updated_at: now,
-        });
-        if (error) throw unavailable();
-      } else if (result.error.code === "23505") {
-        throw new AgreementPersistenceError("Agreement reference already exists. Reload to create a new reference.", 409);
-      } else { throw unavailable(); }
-    } else if (!result.data) { throw conflict(); }
-  }
-  // 3. If linked to an application, link agreement reference
+  const state = await mutate(id, "save", existing ? expectedVersion : undefined, userEmail || "staff", false, record, dbPayload);
   if (record.applicationId) {
-    try {
-      const { data: appData } = await svc
-        .from("applications")
-        .select("payload")
-        .eq("tracking_id", record.applicationId)
-        .maybeSingle();
-
-      if (appData) {
-        const appPayload = (appData.payload && typeof appData.payload === "object" ? appData.payload : {}) as Record<string, unknown>;
-        appPayload.agreementReference = record.referenceNumber;
-        appPayload.agreementId = record.id;
-        await svc
-          .from("applications")
-          .update({ payload: appPayload })
-          .eq("tracking_id", record.applicationId);
-      }
-    } catch (err) {
-      console.warn("[saveAgreement] Failed to link agreement to application:", err);
+    // Existing application linkage is retained; agreement storage is already committed atomically.
+    const svc = requireStorage();
+    const { data } = await svc.from("applications").select("payload").eq("tracking_id", record.applicationId).maybeSingle();
+    if (data) {
+      const payload = { ...data.payload, agreementReference: record.referenceNumber, agreementId: record.id };
+      await svc.from("applications").update({ payload }).eq("tracking_id", record.applicationId);
     }
   }
-  return record;
-}
-
-export async function deleteAgreement(id: string): Promise<boolean> {
-  const svc = requireStorage();
-  const stored = await loadAgreement(id);
-  if (!stored) return true;
-  if (stored.record.status === "finalized") throw conflict();
-  if (stored.source === "site_content") {
-    const { data, error } = await svc.from("site_content").delete()
-      .eq("key", `agreement:${id}`).eq("value", stored.version).select("key").maybeSingle();
-    if (error) throw unavailable();
-    if (!data) throw conflict();
-  } else {
-    // Remove an old duplicate first; the primary row still controls visibility and finalization.
-    const { error: fallbackError } = await svc.from("site_content").delete().eq("key", `agreement:${id}`);
-    if (fallbackError) throw unavailable();
-    const { data, error } = await svc.from("agreements").delete().eq("id", id)
-      .eq("status", "draft").eq("updated_at", stored.version).select("id").maybeSingle();
-    if (error) throw unavailable();
-    if (!data) throw conflict();
-  }
-  return true;
+  return fromState(state, true);
 }

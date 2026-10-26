@@ -1,26 +1,25 @@
 "use client";
 
+import { calendarDate } from "@/lib/agreements/dates";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { calculateAgreementFinancials, validateAgreementForExport, formatForeignAmount } from "@/lib/agreements/financials";
+import { calculateAgreementFinancials, agreementPricingUnchanged, validateAgreementPricing, formatForeignAmount } from "@/lib/agreements/financials";
 import type { AgreementFormInput, AgreementRecord, DiscountType, PaymentCurrency } from "@/types/agreement";
-import type { AgreementRepresentative } from "@/lib/agreements/representatives";
 import { CURRENCY_OPTIONS, CURRENCY_DECIMALS } from "@/types/agreement";
-import { FileDown, Printer, Save, ArrowLeft, AlertCircle } from "lucide-react";
+import { Save, ArrowLeft, AlertCircle } from "lucide-react";
 
 type Props = {
   initialData?: AgreementRecord | null;
   applicationId?: string | null;
   prefill?: Partial<AgreementFormInput> | null;
   canEditDiscount: boolean;
-  representatives: AgreementRepresentative[];
   representativeName: string;
   representativeDesignation: string;
 };
 
-export function AgreementForm({ initialData, applicationId, prefill, canEditDiscount, representatives, representativeName, representativeDesignation }: Props) {
+export function AgreementForm({ initialData, applicationId, prefill, canEditDiscount, representativeName, representativeDesignation }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -28,19 +27,19 @@ export function AgreementForm({ initialData, applicationId, prefill, canEditDisc
     initialData?.referenceNumber || prefill?.referenceNumber || `UM/${new Date().getFullYear()}/${crypto.randomUUID().slice(0, 8).toUpperCase()}`
   );
   const [agreementDate, setAgreementDate] = useState(
-    initialData?.agreementDate || prefill?.agreementDate || new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })
+    calendarDate(initialData?.agreementDate || prefill?.agreementDate || new Date().toLocaleDateString("en-GB"))
   );
-  const [status, setStatus] = useState<"draft" | "finalized">(initialData?.status || "draft");
+  const [version, setVersion] = useState(initialData?.version);
 
   // Consultant
   const [consultantEntityName, setConsultantEntityName] = useState(
-    initialData?.consultantEntityName || prefill?.consultantEntityName || "UniMondo Ltd"
+    initialData?.consultantEntityName ?? prefill?.consultantEntityName ?? "UniMondo Ltd"
   );
   const [consultantRegNumber, setConsultantRegNumber] = useState(
-    initialData?.consultantRegNumber || prefill?.consultantRegNumber || "14829023"
+    initialData?.consultantRegNumber ?? prefill?.consultantRegNumber ?? "14829023"
   );
   const [consultantAddress, setConsultantAddress] = useState(
-    initialData?.consultantAddress || prefill?.consultantAddress || "Tripoli Tower, Suit 22, Block A, Floor 47, Tripoli, Libya"
+    initialData?.consultantAddress ?? prefill?.consultantAddress ?? "Tripoli Tower, Suit 22, Block A, Floor 47, Tripoli, Libya"
   );
 
   const [studentTitle, setStudentTitle] = useState<NonNullable<AgreementFormInput["studentTitle"]>>(initialData?.studentTitle || "Mr.");
@@ -74,7 +73,7 @@ export function AgreementForm({ initialData, applicationId, prefill, canEditDisc
       : (prefill?.agreedExchangeRate != null ? String(prefill.agreedExchangeRate) : "")
   );
   const [exchangeRateDate, setExchangeRateDate] = useState<string>(
-    initialData?.financials.exchangeRateDate || prefill?.exchangeRateDate || agreementDate
+    calendarDate(initialData?.financials.exchangeRateDate || prefill?.exchangeRateDate || agreementDate)
   );
 
   const [discountType, setDiscountType] = useState<DiscountType>(
@@ -88,9 +87,9 @@ export function AgreementForm({ initialData, applicationId, prefill, canEditDisc
 
   // Signatures
   const [repName, setRepName] = useState(initialData?.repName || prefill?.repName || representativeName);
-  const [repDesignation, setRepDesignation] = useState(initialData?.repDesignation || prefill?.repDesignation || representativeDesignation);
-  const [repDate, setRepDate] = useState(initialData?.repDate || prefill?.repDate || agreementDate);
-  const [studentSignatureDate, setStudentSignatureDate] = useState(initialData?.studentSignatureDate || prefill?.studentSignatureDate || agreementDate);
+  const [repDesignation, setRepDesignation] = useState(initialData?.repDesignation ?? prefill?.repDesignation ?? representativeDesignation);
+  const [repDate, setRepDate] = useState(calendarDate(initialData?.repDate || prefill?.repDate || agreementDate));
+  const [studentSignatureDate, setStudentSignatureDate] = useState(calendarDate(initialData?.studentSignatureDate || prefill?.studentSignatureDate || agreementDate));
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -105,13 +104,15 @@ export function AgreementForm({ initialData, applicationId, prefill, canEditDisc
     discountValue: discountValue ? parseFloat(discountValue) : 0,
   });
 
-  const financials = initialData?.status === "finalized" ? initialData.financials : calculatedFinancials;
+  const financials = initialData && agreementPricingUnchanged({ pricingMode, customGrossFee, paymentCurrency,
+    agreedExchangeRate, exchangeRateDate, discountType, discountValue } as AgreementFormInput, initialData.financials)
+    ? initialData.financials : calculatedFinancials;
 
   const getFormData = (): AgreementFormInput => ({
     referenceNumber,
     agreementDate,
     applicationId: initialData?.applicationId || applicationId || null,
-    status,
+    version,
     consultantEntityName,
     consultantRegNumber,
     consultantAddress,
@@ -141,8 +142,11 @@ export function AgreementForm({ initialData, applicationId, prefill, canEditDisc
     studentSignatureDate,
   });
 
-  const handleSave = async (silent = false) => {
+  const handleSave = async () => {
     const data = getFormData();
+    const validationErrors = validateAgreementPricing(data);
+    setErrors(Object.fromEntries(validationErrors.map(error => [error.field, error.message])));
+    if (validationErrors.length) { toast.error(validationErrors[0].message); return null; }
     try {
       const url = initialData?.id ? `/api/admin/agreements/${initialData.id}` : "/api/admin/agreements";
       const method = initialData?.id ? "PUT" : "POST";
@@ -158,9 +162,8 @@ export function AgreementForm({ initialData, applicationId, prefill, canEditDisc
         throw new Error(json.message || "Failed to save agreement draft.");
       }
 
-      if (!silent) {
-        toast.success("Agreement saved successfully.");
-      }
+      setVersion(json.agreement?.version);
+      toast.success("Agreement saved successfully.");
 
       if (!initialData?.id && json.agreement?.id) {
         router.push(`/admin/agreements/${json.agreement.id}`);
@@ -174,35 +177,6 @@ export function AgreementForm({ initialData, applicationId, prefill, canEditDisc
     }
   };
 
-  const handleExport = async (format: "docx" | "pdf" | "print") => {
-    const exportUrl = (id: string) => format === "print" ? `/admin/agreements/${id}/print` : `/api/admin/agreements/${id}/export?format=${format}`;
-    const data = getFormData();
-    const validationErrors = validateAgreementForExport(data);
-
-    if (validationErrors.length > 0) {
-      const errorMap: Record<string, string> = {};
-      validationErrors.forEach((e) => {
-        errorMap[e.field] = e.message;
-      });
-      setErrors(errorMap);
-      toast.error("Please fill in all required fields before export.");
-      return;
-    }
-    setErrors({});
-
-    if (initialData?.status === "finalized") {
-      window.open(exportUrl(initialData.id), "_blank");
-      return;
-    }
-
-    // First ensure draft is saved
-    const saved = await handleSave(true);
-    const agreementId = saved?.id;
-    if (!agreementId) return;
-
-    window.open(exportUrl(agreementId), "_blank");
-  };
-
   const isNonEur = paymentCurrency !== "EUR";
   const fmtF = (v: number) => formatForeignAmount(v, paymentCurrency);
   const rateLabel = `1 EUR = ${paymentCurrency} ...`;
@@ -214,16 +188,16 @@ export function AgreementForm({ initialData, applicationId, prefill, canEditDisc
         <div className="flex items-center gap-3">
           <Link
             href="/admin/agreements"
-            className="rounded-lg border border-zinc-200 p-2 text-zinc-600 hover:bg-zinc-100 transition"
+            className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 p-2 text-zinc-600 hover:bg-zinc-100 transition"
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="h-4 w-4" /> Back
           </Link>
           <div>
             <h1 className="text-xl font-bold text-zinc-900">
               {initialData ? `Edit Agreement (${initialData.referenceNumber})` : "Create Retainer Agreement"}
             </h1>
             <p className="text-xs text-zinc-500">
-              Student educational consultancy agreement
+              Drafts may be incomplete. Student name, identification, agreement date, engagement and representative name are required before finalization.
             </p>
           </div>
         </div>
@@ -231,7 +205,7 @@ export function AgreementForm({ initialData, applicationId, prefill, canEditDisc
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            disabled={isPending || initialData?.status === "finalized"}
+            disabled={isPending}
             onClick={() => {
               startTransition(async () => {
                 await handleSave();
@@ -241,27 +215,6 @@ export function AgreementForm({ initialData, applicationId, prefill, canEditDisc
           >
             <Save className="h-4 w-4" />
             Save Agreement
-          </button>
-          <button
-            type="button"
-            disabled={isPending}
-            onClick={() => startTransition(() => handleExport("docx"))}
-            className="inline-flex items-center gap-2 rounded-lg border border-amber-600 bg-amber-50 px-3.5 py-2 text-sm font-semibold text-amber-900 hover:bg-amber-100 transition"
-          >
-            <FileDown className="h-4 w-4" />
-            Download Word (.docx)
-          </button>
-          <button
-            type="button"
-            disabled={isPending}
-            onClick={() => startTransition(() => handleExport("pdf"))}
-            className="inline-flex items-center gap-2 rounded-lg bg-[#244B50] px-3.5 py-2 text-sm font-semibold text-white hover:bg-[#1a383c] transition shadow-sm"
-          >
-            <FileDown className="h-4 w-4" />
-            Download PDF
-          </button>
-          <button type="button" disabled={isPending} onClick={() => startTransition(() => handleExport("print"))} className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 px-3.5 py-2 text-sm font-semibold text-zinc-700 hover:bg-zinc-100 transition">
-            <Printer className="h-4 w-4" />Print
           </button>
         </div>
       </div>
@@ -280,16 +233,16 @@ export function AgreementForm({ initialData, applicationId, prefill, canEditDisc
         </div>
       ) : null}
 
-      {initialData?.status === "finalized" && <p role="status">Finalized agreement: saved details and pricing are read-only.</p>}
-      <fieldset disabled={initialData?.status === "finalized"} className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-3">
+      {(initialData?.revisionNumber || 0) > 0 && <p role="status">Saving changes creates a draft revision. The finalized agreement remains available in revision history.</p>}
+      <fieldset disabled={isPending} className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Left Column: Form Fields */}
         <div className="space-y-6 lg:col-span-2">
           {/* Card 1: Agreement Meta */}
           <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm space-y-4">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-zinc-600">Agreement Reference &amp; Status</h2>
+            <h2 className="text-sm font-bold uppercase tracking-wider text-zinc-600">Agreement Reference &amp; Date</h2>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <div>
-                <label htmlFor="agreement-field-1" className="block text-xs font-semibold text-zinc-700 mb-1">Agreement Reference *</label>
+                <label htmlFor="agreement-field-1" className="block text-xs font-semibold text-zinc-700 mb-1">Agreement Reference</label>
                 <input id="agreement-field-1"
                   type="text"
                   value={referenceNumber}
@@ -301,9 +254,9 @@ export function AgreementForm({ initialData, applicationId, prefill, canEditDisc
                 {errors.referenceNumber ? <p className="text-xs text-red-600 mt-1">{errors.referenceNumber}</p> : null}
               </div>
               <div>
-                <label htmlFor="agreement-field-2" className="block text-xs font-semibold text-zinc-700 mb-1">Agreement Date *</label>
+                <label htmlFor="agreement-field-2" className="block text-xs font-semibold text-zinc-700 mb-1">Agreement Date</label>
                 <input id="agreement-field-2"
-                  type="text"
+                  type="date"
                   value={agreementDate}
                   onChange={(e) => { setAgreementDate(e.target.value); setRepDate(e.target.value); setStudentSignatureDate(e.target.value); }}
                   className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-teal-600 focus:outline-none"
@@ -311,17 +264,7 @@ export function AgreementForm({ initialData, applicationId, prefill, canEditDisc
                 />
                 {errors.agreementDate ? <p className="text-xs text-red-600 mt-1">{errors.agreementDate}</p> : null}
               </div>
-              <div>
-                <label htmlFor="agreement-field-3" className="block text-xs font-semibold text-zinc-700 mb-1">Status</label>
-                <select id="agreement-field-3"
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value as "draft" | "finalized")}
-                  className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-teal-600 focus:outline-none"
-                >
-                  <option value="draft">Draft (Incomplete allowed)</option>
-                  <option value="finalized">Finalized (Ready for signing)</option>
-                </select>
-              </div>
+
             </div>
           </section>
 
@@ -330,7 +273,7 @@ export function AgreementForm({ initialData, applicationId, prefill, canEditDisc
             <h2 className="text-sm font-bold uppercase tracking-wider text-zinc-600">Consultant (UniMondo Entity)</h2>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label htmlFor="agreement-field-4" className="block text-xs font-semibold text-zinc-700 mb-1">Registered Legal Entity *</label>
+                <label htmlFor="agreement-field-4" className="block text-xs font-semibold text-zinc-700 mb-1">Registered Legal Entity (optional)</label>
                 <input id="agreement-field-4"
                   type="text"
                   value={consultantEntityName}
@@ -340,7 +283,7 @@ export function AgreementForm({ initialData, applicationId, prefill, canEditDisc
                 {errors.consultantEntityName ? <p className="text-xs text-red-600 mt-1">{errors.consultantEntityName}</p> : null}
               </div>
               <div>
-                <label htmlFor="agreement-field-5" className="block text-xs font-semibold text-zinc-700 mb-1">Registration Number *</label>
+                <label htmlFor="agreement-field-5" className="block text-xs font-semibold text-zinc-700 mb-1">Registration Number (optional)</label>
                 <input id="agreement-field-5"
                   type="text"
                   value={consultantRegNumber}
@@ -350,7 +293,7 @@ export function AgreementForm({ initialData, applicationId, prefill, canEditDisc
                 {errors.consultantRegNumber ? <p className="text-xs text-red-600 mt-1">{errors.consultantRegNumber}</p> : null}
               </div>
               <div className="sm:col-span-2">
-                <label htmlFor="agreement-field-6" className="block text-xs font-semibold text-zinc-700 mb-1">Registered Address *</label>
+                <label htmlFor="agreement-field-6" className="block text-xs font-semibold text-zinc-700 mb-1">Registered Address (optional)</label>
                 <input id="agreement-field-6"
                   type="text"
                   value={consultantAddress}
@@ -372,7 +315,7 @@ export function AgreementForm({ initialData, applicationId, prefill, canEditDisc
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label htmlFor="agreement-field-7" className="block text-xs font-semibold text-zinc-700 mb-1">Full Legal Name *</label>
+                <label htmlFor="agreement-field-7" className="block text-xs font-semibold text-zinc-700 mb-1">Full Legal Name</label>
                 <input id="agreement-field-7"
                   type="text"
                   value={studentFullName}
@@ -383,7 +326,7 @@ export function AgreementForm({ initialData, applicationId, prefill, canEditDisc
                 {errors.studentFullName ? <p className="text-xs text-red-600 mt-1">{errors.studentFullName}</p> : null}
               </div>
               <div>
-                <label htmlFor="agreement-field-8" className="block text-xs font-semibold text-zinc-700 mb-1">Relative Full Name *</label>
+                <label htmlFor="agreement-field-8" className="block text-xs font-semibold text-zinc-700 mb-1">Relative Full Name</label>
                 <input id="agreement-field-8"
                   type="text"
                   value={studentParentGuardian}
@@ -394,7 +337,7 @@ export function AgreementForm({ initialData, applicationId, prefill, canEditDisc
                 {errors.studentParentGuardian ? <p className="text-xs text-red-600 mt-1">{errors.studentParentGuardian}</p> : null}
               </div>
               <div>
-                <label htmlFor="agreement-field-9" className="block text-xs font-semibold text-zinc-700 mb-1">Identification Number *</label>
+                <label htmlFor="agreement-field-9" className="block text-xs font-semibold text-zinc-700 mb-1">Identification Number</label>
                 <input id="agreement-field-9"
                   type="text"
                   value={studentCnicPassport}
@@ -405,7 +348,7 @@ export function AgreementForm({ initialData, applicationId, prefill, canEditDisc
                 {errors.studentCnicPassport ? <p className="text-xs text-red-600 mt-1">{errors.studentCnicPassport}</p> : null}
               </div>
               <div>
-                <label htmlFor="agreement-field-10" className="block text-xs font-semibold text-zinc-700 mb-1">Contact Phone Number *</label>
+                <label htmlFor="agreement-field-10" className="block text-xs font-semibold text-zinc-700 mb-1">Contact Phone Number</label>
                 <input id="agreement-field-10"
                   type="text"
                   value={studentPhone}
@@ -416,7 +359,7 @@ export function AgreementForm({ initialData, applicationId, prefill, canEditDisc
                 {errors.studentPhone ? <p className="text-xs text-red-600 mt-1">{errors.studentPhone}</p> : null}
               </div>
               <div className="sm:col-span-2">
-                <label htmlFor="agreement-field-11" className="block text-xs font-semibold text-zinc-700 mb-1">Email Address *</label>
+                <label htmlFor="agreement-field-11" className="block text-xs font-semibold text-zinc-700 mb-1">Email Address (optional)</label>
                 <input id="agreement-field-11"
                   type="email"
                   value={studentEmail}
@@ -427,7 +370,7 @@ export function AgreementForm({ initialData, applicationId, prefill, canEditDisc
                 {errors.studentEmail ? <p className="text-xs text-red-600 mt-1">{errors.studentEmail}</p> : null}
               </div>
               <div className="sm:col-span-2">
-                <label htmlFor="agreement-field-12" className="block text-xs font-semibold text-zinc-700 mb-1">Residential Address *</label>
+                <label htmlFor="agreement-field-12" className="block text-xs font-semibold text-zinc-700 mb-1">Residential Address (optional)</label>
                 <textarea id="agreement-field-12"
                   rows={2}
                   value={studentAddress}
@@ -445,28 +388,24 @@ export function AgreementForm({ initialData, applicationId, prefill, canEditDisc
             <h2 className="text-sm font-bold uppercase tracking-wider text-zinc-600">Educational Engagement (Clause 1)</h2>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label htmlFor="agreement-field-13" className="block text-xs font-semibold text-zinc-700 mb-1">Degree Level *</label>
+                <label htmlFor="agreement-field-13" className="block text-xs font-semibold text-zinc-700 mb-1">Degree Level</label>
                 <select id="agreement-field-13" aria-label="degreeLevel" value={degreeLevel} onChange={e => setDegreeLevel(e.target.value)} className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm">
                   {Array.from(new Set([degreeLevel, "Bachelor's Degree", "Master's Degree", 'Doctorate', 'Diploma'])).map(value => <option key={value} value={value}>{value || "Select an option"}</option>)}
                 </select>
                 {errors.degreeLevel ? <p className="text-xs text-red-600 mt-1">{errors.degreeLevel}</p> : null}
               </div>
               <div>
-                <label htmlFor="agreement-field-14" className="block text-xs font-semibold text-zinc-700 mb-1">Field of Study *</label>
-                <select id="agreement-field-14" aria-label="fieldOfStudy" value={fieldOfStudy} onChange={e => setFieldOfStudy(e.target.value)} className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm">
-                  {Array.from(new Set([fieldOfStudy, 'Computer Science', 'Engineering', 'Business and Management', 'Medicine', 'Social Sciences', 'Arts and Humanities'])).map(value => <option key={value} value={value}>{value || "Select an option"}</option>)}
-                </select>
+                <label htmlFor="agreement-field-14" className="block text-xs font-semibold text-zinc-700 mb-1">Field of Study</label>
+                <input id="agreement-field-14" type="text" value={fieldOfStudy} onChange={e => setFieldOfStudy(e.target.value)} className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm" />
                 {errors.fieldOfStudy ? <p className="text-xs text-red-600 mt-1">{errors.fieldOfStudy}</p> : null}
               </div>
               <div>
-                <label htmlFor="agreement-field-15" className="block text-xs font-semibold text-zinc-700 mb-1">Preferred Destination *</label>
-                <select id="agreement-field-15" aria-label="preferredDestination" value={preferredDestination} onChange={e => setPreferredDestination(e.target.value)} className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm">
-                  {Array.from(new Set([preferredDestination, 'Germany', 'Italy', 'France', 'United Kingdom', 'United States', 'Canada', 'Turkey'])).map(value => <option key={value} value={value}>{value || "Select an option"}</option>)}
-                </select>
+                <label htmlFor="agreement-field-15" className="block text-xs font-semibold text-zinc-700 mb-1">Preferred Destination</label>
+                <input id="agreement-field-15" type="text" value={preferredDestination} onChange={e => setPreferredDestination(e.target.value)} className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm" />
                 {errors.preferredDestination ? <p className="text-xs text-red-600 mt-1">{errors.preferredDestination}</p> : null}
               </div>
               <div>
-                <label htmlFor="agreement-field-16" className="block text-xs font-semibold text-zinc-700 mb-1">Academic Year / Intake *</label>
+                <label htmlFor="agreement-field-16" className="block text-xs font-semibold text-zinc-700 mb-1">Academic Year / Intake (optional)</label>
                 <select id="agreement-field-16" aria-label="academicYearIntake" value={academicYearIntake} onChange={e => setAcademicYearIntake(e.target.value)} className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm">
                   {Array.from(new Set([academicYearIntake, 'Spring 2026', 'Fall 2026', 'Spring 2027', 'Fall 2027', 'Spring 2028', 'Fall 2028', 'Spring 2029', 'Fall 2029', 'Spring 2030', 'Fall 2030'])).map(value => <option key={value} value={value}>{value || "Select an option"}</option>)}
                 </select>
@@ -510,7 +449,7 @@ export function AgreementForm({ initialData, applicationId, prefill, canEditDisc
                 <>
                   <div>
                     <label htmlFor="agreement-field-18" className="block text-xs font-semibold text-zinc-700 mb-1">
-                      {rateLabel} *
+                      {rateLabel}
                     </label>
                     <input id="agreement-field-18"
                       type="number"
@@ -525,10 +464,10 @@ export function AgreementForm({ initialData, applicationId, prefill, canEditDisc
                   </div>
                   <div className="sm:col-span-2">
                     <label htmlFor="agreement-field-19" className="block text-xs font-semibold text-zinc-700 mb-1">
-                      Exchange Rate Agreed Date *
+                      Exchange Rate Agreed Date
                     </label>
                     <input id="agreement-field-19"
-                      type="text"
+                      type="date"
                       value={exchangeRateDate}
                       onChange={(e) => setExchangeRateDate(e.target.value)}
                       className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-teal-600 focus:outline-none"
@@ -540,17 +479,13 @@ export function AgreementForm({ initialData, applicationId, prefill, canEditDisc
               ) : null}
 
               <div>
-                <label htmlFor="pricing-mode" className="block text-xs font-semibold mb-1">Gross fee basis</label>
-                <select id="pricing-mode" value={pricingMode} disabled={!canEditDiscount} onChange={e => setPricingMode(e.target.value as "reference" | "custom")} className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm">
-                  <option value="reference">Convert internal reference fee</option>
-                  <option value="custom">Authorised custom fee</option>
-                </select>
-              </div>
-              {pricingMode === "custom" && <div>
-                <label htmlFor="custom-gross" className="block text-xs font-semibold mb-1">Agreed gross fee ({paymentCurrency})</label>
-                <input id="custom-gross" type="number" min="0" step={10 ** -CURRENCY_DECIMALS[paymentCurrency]} disabled={!canEditDiscount} value={customGrossFee} onChange={e => setCustomGrossFee(e.target.value)} className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm" />
+                <label htmlFor="custom-gross" className="block text-xs font-semibold mb-1">Gross consultancy fee ({paymentCurrency})</label>
+                <input id="custom-gross" type="number" min="0" step={10 ** -CURRENCY_DECIMALS[paymentCurrency]} disabled={!canEditDiscount}
+                  value={pricingMode === "custom" ? customGrossFee : financials.grossFee || ""}
+                  onChange={e => { setPricingMode("custom"); setCustomGrossFee(e.target.value); }}
+                  className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm disabled:bg-zinc-100" />
                 {errors.customGrossFee && <p role="alert">{errors.customGrossFee}</p>}
-              </div>}
+              </div>
               {/* Discount Section */}
               <div className="sm:col-span-2 border-t border-zinc-100 pt-4">
                 <div className="flex items-center justify-between mb-2">
@@ -593,6 +528,7 @@ export function AgreementForm({ initialData, applicationId, prefill, canEditDisc
                       className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-teal-600 focus:outline-none disabled:bg-zinc-100 disabled:text-zinc-500"
                       placeholder="0"
                     />
+                    {errors.discountValue && <p role="alert" className="mt-1 text-xs text-red-600">{errors.discountValue}</p>}
                   </div>
                 </div>
               </div>
@@ -604,21 +540,27 @@ export function AgreementForm({ initialData, applicationId, prefill, canEditDisc
             <h2 className="text-sm font-bold uppercase tracking-wider text-zinc-600">UniMondo Representative (Signatures)</h2>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label htmlFor="agreement-field-22" className="block text-xs font-semibold text-zinc-700 mb-1">Representative Name *</label>
-                <select id="agreement-field-22" aria-label="Authorised representative" value={repName} onChange={e => { setRepName(e.target.value); setRepDesignation(e.target.value === initialData?.repName ? initialData.repDesignation : representatives.find(rep => rep.name === e.target.value)?.designation || representativeDesignation); }} className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm">
-                  {Array.from(new Set([...representatives.map(rep => rep.name), representativeName, initialData?.repName, prefill?.repName].filter(Boolean))).map(name => <option key={name} value={name}>{name}</option>)}
-                </select>
+                <label htmlFor="agreement-field-22" className="block text-xs font-semibold text-zinc-700 mb-1">Representative Name</label>
+                <input id="agreement-field-22" type="text" value={repName} onChange={e => setRepName(e.target.value)} className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm" />
                 {errors.repName ? <p className="text-xs text-red-600 mt-1">{errors.repName}</p> : null}
               </div>
               <div>
-                <label htmlFor="agreement-field-23" className="block text-xs font-semibold text-zinc-700 mb-1">Designation *</label>
+                <label htmlFor="agreement-field-23" className="block text-xs font-semibold text-zinc-700 mb-1">Designation (optional)</label>
                 <input id="agreement-field-23"
                   type="text"
                   value={repDesignation}
-                  readOnly
+                  onChange={e => setRepDesignation(e.target.value)}
                   className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-teal-600 focus:outline-none"
                 />
                 {errors.repDesignation ? <p className="text-xs text-red-600 mt-1">{errors.repDesignation}</p> : null}
+              </div>
+              <div>
+                <label htmlFor="rep-date" className="block text-xs font-semibold mb-1">Representative date (optional)</label>
+                <input id="rep-date" type="date" value={repDate} onChange={e => setRepDate(e.target.value)} className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label htmlFor="student-signature-date" className="block text-xs font-semibold mb-1">Student signature date (optional)</label>
+                <input id="student-signature-date" type="date" value={studentSignatureDate} onChange={e => setStudentSignatureDate(e.target.value)} className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm" />
               </div>
             </div>
           </section>

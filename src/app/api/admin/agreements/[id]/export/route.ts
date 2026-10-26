@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerAuthClient } from "@/lib/supabase/server-auth";
 import { isAdminUser } from "@/lib/auth/admin";
-import { getAgreementById } from "@/lib/agreements/persistence";
+import { getAgreementById, getAgreementRevision } from "@/lib/agreements/persistence";
 import { validateAgreementForExport } from "@/lib/agreements/financials";
 import { generateAgreementDocx } from "@/lib/agreements/docx-generator";
 import { generateAgreementPdf } from "@/lib/agreements/pdf-generator";
@@ -27,7 +27,9 @@ export async function GET(request: NextRequest, { params }: Props) {
     }
 
     const { id } = await params;
-    const agreement = await getAgreementById(id);
+    const revision = request.nextUrl.searchParams.get("revision");
+    if (revision && !/^[1-9][0-9]*$/.test(revision)) return NextResponse.json({ message: "Invalid revision." }, { status: 400 });
+    const agreement = revision ? await getAgreementRevision(id, Number(revision)) : await getAgreementById(id);
     if (!agreement) {
       return NextResponse.json({ message: "Agreement not found." }, { status: 404 });
     }
@@ -66,7 +68,7 @@ export async function GET(request: NextRequest, { params }: Props) {
       studentSignatureDate: agreement.studentSignatureDate,
     });
 
-    if (validationErrors.length > 0) {
+    if (agreement.status !== "finalized" && validationErrors.length > 0) {
       return NextResponse.json(
         {
           message: "Agreement has missing required fields for export.",
@@ -78,7 +80,7 @@ export async function GET(request: NextRequest, { params }: Props) {
 
     if (format === "pdf") {
       const pdfBuffer = await generateAgreementPdf(agreement);
-      const filename = safeFilename(agreement.referenceNumber || agreement.id, "pdf");
+      const filename = safeFilename(`${agreement.referenceNumber || agreement.id}${revision ? `_revision_${revision}` : ""}`, "pdf");
 
       return new NextResponse(new Uint8Array(pdfBuffer), {
         status: 200,
@@ -93,7 +95,7 @@ export async function GET(request: NextRequest, { params }: Props) {
 
     // Default: docx
     const docxBuffer = await generateAgreementDocx(agreement);
-    const filename = safeFilename(agreement.referenceNumber || agreement.id, "docx");
+    const filename = safeFilename(`${agreement.referenceNumber || agreement.id}${revision ? `_revision_${revision}` : ""}`, "docx");
 
     return new NextResponse(new Uint8Array(docxBuffer), {
       status: 200,

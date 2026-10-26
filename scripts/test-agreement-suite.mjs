@@ -2,7 +2,9 @@ import assert from "node:assert";
 import fs from "node:fs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { PDFDocument } from "pdf-lib";
+import { PDFDocument, PDFRawStream, decodePDFRawStream } from "pdf-lib";
+import { AgreementActions } from "../src/components/admin/agreements/agreement-actions.tsx";
+import { AgreementForm } from "../src/components/admin/agreements/agreement-form.tsx";
 import { PrintAgreementClient } from "../src/components/admin/agreements/print-agreement-client.tsx";
 import { calculateAgreementFinancials, calculateLegacyAgreementFinancials, formatForeignAmount, validateAgreementPricing, validateAgreementForExport } from "../src/lib/agreements/financials.ts";
 import { mapRowToRecord } from "../src/lib/agreements/persistence.ts";
@@ -126,6 +128,17 @@ async function runTests() {
   assert.strictEqual(pdfBuffer.subarray(0, 5).toString(), "%PDF-", "PDF header must be valid");
   console.log("✓ PDF has valid %PDF- header and renders Times New Roman typography with 0.7-inch margins");
 
+  const optionalRecord = { ...testRecord, consultantEntityName: "", consultantRegNumber: "", consultantAddress: "",
+    studentAddress: "", studentEmail: "", studentPhone: "", studentParentGuardian: "", academicYearIntake: "", repDesignation: "" };
+  assert.deepEqual(validateAgreementForExport({ ...optionalRecord, ...optionalRecord.financials }), []);
+  const optionalWord = await JSZip.loadAsync(await generateAgreementDocx(optionalRecord));
+  const optionalText = (await optionalWord.file("word/document.xml").async("text")).replace(/<[^>]*>/g, "");
+  for (const omitted of ["registration number", "residing at", "email ", "telephone ", "son/daughter of", "Agreed exchange rate:", "[address]", "[parent/guardian]", "and the .", "Designation:"]) assert(!optionalText.includes(omitted), omitted);
+  const optionalHtml = renderToStaticMarkup(createElement(PrintAgreementClient, { agreement: optionalRecord }));
+  for (const omitted of ["registration number", "residing at", "Agreed exchange rate:"]) assert(!optionalHtml.includes(omitted));
+  fs.writeFileSync("/tmp/UniMondo_Agreement_Optional.docx", await generateAgreementDocx(optionalRecord));
+  fs.writeFileSync("/tmp/UniMondo_Agreement_Optional.pdf", await generateAgreementPdf(optionalRecord));
+  assert.deepEqual(validateAgreementPricing({ ...optionalRecord, ...optionalRecord.financials, paymentCurrency: "USD", agreedExchangeRate: null, exchangeRateDate: null }), [], "Incomplete FX details may be saved in drafts");
   console.log("\n=== 4. TESTING EXPORT VALIDATION ===");
   const incompleteInput = { ...testRecord, ...finC, studentFullName: "" };
   const valErrors = validateAgreementForExport(incompleteInput);
@@ -165,14 +178,23 @@ async function runTests() {
     assert(!text.includes("The base consultancy fee is EUR 1,000"));
     assert(!text.includes("1,000/-"));
     assert(text.includes(currency));
-    if (currency !== "EUR") assert(text.includes(`1 EUR = ${currency} 3.123456`), "Word must populate rates across split XML runs");
+    assert(!text.includes("Agreed exchange rate:"), "Exchange-rate metadata must remain internal");
     assert(!text.includes("__________, as mutually agreed"));
     assert(text.includes("First Instalment — 30%: "));
     assert(!customXml.includes("w:highlight"));
     for (let section = 1; section <= 8; section++) assert(text.includes(`${section}. `));
     const pdf = await generateAgreementPdf(customRecord);
     assert.equal(pdf.subarray(0, 5).toString(), "%PDF-");
-    assert((await PDFDocument.load(pdf)).getPageCount() >= 2);
+    const pdfDocument = await PDFDocument.load(pdf);
+    assert(pdfDocument.getPageCount() >= 2);
+    let pdfText = "";
+    for (const [, object] of pdfDocument.context.enumerateIndirectObjects()) {
+      if (object instanceof PDFRawStream) pdfText += Buffer.from(decodePDFRawStream(object).decode()).toString("latin1")
+        .replace(/<([0-9A-Fa-f]+)>/g, (_, hex) => Buffer.from(hex, "hex").toString("latin1"));
+    }
+    assert(!pdfText.includes("Agreed exchange rate:"));
+    assert(pdfText.includes(formatForeignAmount(custom.grossFee, currency)));
+    assert(pdfText.includes(formatForeignAmount(currency === "EUR" ? custom.netFeeEUR : custom.netFeeForeign, currency)));
     const printHtml = renderToStaticMarkup(createElement(PrintAgreementClient, { agreement: customRecord }));
     assert(printHtml.includes("The agreed gross consultancy fee"));
     assert(!printHtml.includes("The base consultancy fee is EUR 1,000"));
@@ -203,6 +225,26 @@ async function runTests() {
   console.log("✓ Stored snapshots, historical rounding/wording and invalid pricing validation passed");
 
   console.log("✓ Seven currencies: reference/custom gross, fixed/percentage discounts, precision, instalment totals and exports passed");
+
+  for (const authorized of [true, false]) {
+    const html = renderToStaticMarkup(createElement(AgreementForm, { initialData: { ...testRecord, version: 1 }, canEditDiscount: authorized,
+      representativeName: "TEST REP", representativeDesignation: "TEST ROLE" }));
+    for (const id of [14, 15, 22, 23]) assert(new RegExp(`<input[^>]*id="agreement-field-${id}"[^>]*type="text"`).test(html));
+    for (const id of [2, 19]) assert(new RegExp(`<input[^>]*id="agreement-field-${id}"[^>]*type="date"`).test(html));
+    for (const id of ["rep-date", "student-signature-date"]) assert(html.includes(`id="${id}" type="date"`));
+    assert(!html.includes("pricing-mode") && !html.includes("agreement-field-3\""));
+    assert(!html.includes("Download Word") && !html.includes("Download PDF") && !html.includes(">Print<"));
+    assert(html.includes("Save Agreement") && html.includes("Back"));
+    const discount = html.match(/<input[^>]*id="agreement-field-21"[^>]*>/)?.[0];
+    assert(discount && discount.includes('disabled=""') === !authorized);
+    const actions = renderToStaticMarkup(createElement(AgreementActions, { agreement: { ...testRecord, hasDraftRevision: true }, isSuper: authorized }));
+    assert(actions.includes("<select") === authorized);
+    assert(actions.includes(">Delete<") === authorized);
+    assert(actions.includes("Finalize revision") === authorized);
+    const fieldset = html.match(/<fieldset[^>]*>/)?.[0];
+    assert(fieldset && !fieldset.includes("disabled"), "Finalized content may be edited into a new draft");
+  }
+  console.log("✓ Form fields, calendar dates, optional completion, authorized discounts and action placement passed");
 
   console.log("\nALL AGREEMENT SUITE TESTS PASSED SUCCESSFULLY!");
 }

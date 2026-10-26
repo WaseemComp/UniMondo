@@ -5,7 +5,7 @@ const root = fileURLToPath(new URL("../", import.meta.url));
 const mode = process.argv[2] || "suite";
 if (!["suite", "regressions"].includes(mode)) throw new Error("Unknown agreement test suite.");
 const mock = fileURLToPath(new URL("./fixtures/agreement-services.mjs", import.meta.url));
-const alias = { "@": `${root}src` };
+const alias = { "@": `${root}src`, "next/navigation": mock };
 if (mode === "regressions") {
   for (const modulePath of ["lib/supabase/admin", "lib/supabase/server-auth", "lib/auth/admin", "lib/auth/permissions"]) {
     alias[`@/${modulePath}`] = mock;

@@ -2,16 +2,17 @@ import { notFound, redirect } from "next/navigation";
 import { createSupabaseServerAuthClient } from "@/lib/supabase/server-auth";
 import { isAdminUser } from "@/lib/auth/admin";
 import { validateAgreementForExport } from "@/lib/agreements/financials";
-import { getAgreementById } from "@/lib/agreements/persistence";
+import { getAgreementById, getAgreementRevision } from "@/lib/agreements/persistence";
 import { PrintAgreementClient } from "@/components/admin/agreements/print-agreement-client";
 
 type Props = {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ revision?: string }>;
 };
 
 export const dynamic = "force-dynamic";
 
-export default async function PrintAgreementPage({ params }: Props) {
+export default async function PrintAgreementPage({ params, searchParams }: Props) {
   const supabase = await createSupabaseServerAuthClient();
   const {
     data: { user },
@@ -22,13 +23,15 @@ export default async function PrintAgreementPage({ params }: Props) {
   }
 
   const { id } = await params;
-  const agreement = await getAgreementById(id);
+  const { revision } = await searchParams;
+  if (revision && !/^[1-9][0-9]*$/.test(revision)) notFound();
+  const agreement = revision ? await getAgreementRevision(id, Number(revision)) : await getAgreementById(id);
   if (!agreement) {
     notFound();
   }
 
   const errors = validateAgreementForExport({ ...agreement, ...agreement.financials });
-  if (errors.length) return <p role="alert">Complete the required agreement fields before printing: {errors.map(error => error.message).join(" ")}</p>;
+  if (agreement.status !== "finalized" && errors.length) return <p role="alert">Complete the required agreement fields before printing: {errors.map(error => error.message).join(" ")}</p>;
 
   return <PrintAgreementClient agreement={agreement} />;
 }
