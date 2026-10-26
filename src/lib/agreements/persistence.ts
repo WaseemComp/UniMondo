@@ -1,6 +1,6 @@
 import { calculateAgreementFinancials } from "./financials";
 import { createSupabaseServiceClient } from "../supabase/admin";
-import type { AgreementFormInput, AgreementRecord, AgreementStatus } from "../../types/agreement";
+import type { AgreementFormInput, AgreementRecord, AgreementStatus, PaymentCurrency } from "../../types/agreement";
 
 const SITE_CONTENT_PAGE = "admin";
 const SITE_CONTENT_SECTION = "agreements";
@@ -10,7 +10,7 @@ function mapRowToRecord(row: Record<string, unknown>): AgreementRecord {
   const payload = (row.payload && typeof row.payload === "object" ? row.payload : {}) as Record<string, unknown>;
   const fin = (payload.financials && typeof payload.financials === "object" ? payload.financials : {}) as Record<string, unknown>;
 
-  const paymentCurrency = (row.payment_currency || fin.paymentCurrency || "EUR") as "EUR" | "PKR";
+  const paymentCurrency = (row.payment_currency || fin.paymentCurrency || "EUR") as PaymentCurrency;
   const agreedExchangeRate = row.agreed_exchange_rate != null ? Number(row.agreed_exchange_rate) : (fin.agreedExchangeRate != null ? Number(fin.agreedExchangeRate) : null);
   const exchangeRateDate = (row.exchange_rate_date || fin.exchangeRateDate || null) as string | null;
   const discountType = (row.discount_type || fin.discountType || "percentage") as "percentage" | "amount";

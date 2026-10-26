@@ -4,6 +4,7 @@ import { createSupabaseServerAuthClient } from "@/lib/supabase/server-auth";
 import { isAdminUser } from "@/lib/auth/admin";
 import { getAgreementsList } from "@/lib/agreements/persistence";
 import { FileDown, FilePlus, FileText, Printer } from "lucide-react";
+import { formatForeignAmount } from "@/lib/agreements/financials";
 
 export const dynamic = "force-dynamic";
 
@@ -77,7 +78,7 @@ export default async function AgreementsListPage() {
               </thead>
               <tbody className="divide-y divide-zinc-200">
                 {agreements.map((agr) => {
-                  const isPkr = agr.financials.paymentCurrency === "PKR";
+// Removed unused isNonEur variable
                   return (
                     <tr key={agr.id} className="hover:bg-zinc-50/50 transition">
                       <td className="whitespace-nowrap px-5 py-4 font-semibold text-zinc-900">
@@ -105,13 +106,10 @@ export default async function AgreementsListPage() {
                       </td>
                       <td className="whitespace-nowrap px-5 py-4 text-xs">
                         <span className="font-semibold text-zinc-900">
-                          €{agr.financials.netFeeEUR.toLocaleString()}
+                          {agr.financials.paymentCurrency === "EUR"
+                            ? `€${agr.financials.netFeeEUR.toLocaleString()}`
+                            : agr.financials.netFeeForeign != null ? formatForeignAmount(agr.financials.netFeeForeign, agr.financials.paymentCurrency) : "—"}
                         </span>
-                        {isPkr && agr.financials.netFeePKR != null ? (
-                          <span className="block text-zinc-500">
-                            Rs {agr.financials.netFeePKR.toLocaleString()}
-                          </span>
-                        ) : null}
                         {agr.financials.discountPercent > 0 ? (
                           <span className="inline-block mt-0.5 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">
                             {agr.financials.discountPercent}% discount

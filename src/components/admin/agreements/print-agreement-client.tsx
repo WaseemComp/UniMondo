@@ -2,6 +2,8 @@
 
 import { useEffect } from "react";
 import type { AgreementRecord } from "@/types/agreement";
+import { CURRENCY_DECIMALS } from "@/types/agreement";
+import { formatForeignAmount } from "@/lib/agreements/financials";
 import { Printer, X } from "lucide-react";
 
 type Props = {
@@ -10,17 +12,48 @@ type Props = {
 
 export function PrintAgreementClient({ agreement }: Props) {
   useEffect(() => {
-    // Optionally trigger print dialog on mount if desired, but providing the button is safest
+    // Auto-focus window for keyboard shortcut discoverability
   }, []);
 
   const fin = agreement.financials;
-  const isPkr = fin.paymentCurrency === "PKR";
-  const refText = agreement.referenceNumber.startsWith("UM/") ? agreement.referenceNumber : `UM/${agreement.referenceNumber}`;
-  const consultantDetails = `${agreement.consultantEntityName}${agreement.consultantRegNumber ? `, registration number ${agreement.consultantRegNumber}` : ""}${agreement.consultantAddress ? ` and address ${agreement.consultantAddress}` : ""}`;
+  const isNonEur = fin.paymentCurrency !== "EUR";
+  const currency = fin.paymentCurrency;
+  const dec = CURRENCY_DECIMALS[currency];
+  const fmtF = (v: number) => formatForeignAmount(v, currency);
+  const fmtRate = (r: number) =>
+    r.toLocaleString("en", { minimumFractionDigits: dec, maximumFractionDigits: dec });
+
+  const refText = agreement.referenceNumber.startsWith("UM/")
+    ? agreement.referenceNumber
+    : `UM/${agreement.referenceNumber}`;
+
+  const consultantLine =
+    `${agreement.consultantEntityName}, registration number ${agreement.consultantRegNumber}` +
+    (agreement.consultantAddress ? `, with its address at ${agreement.consultantAddress}` : "") +
+    `, acting through its duly authorised representative, ${agreement.repName || "__________________"}, ` +
+    `${agreement.repDesignation || "__________________"}, hereinafter referred to as the \u201cConsultant\u201d; and`;
+
+  const studentLine =
+    `${agreement.studentFullName || "__________________"}, son/daughter of ` +
+    `${agreement.studentParentGuardian || "__________________"}, holding CNIC/Passport No. ` +
+    `${agreement.studentCnicPassport || "__________________"}, residing at ` +
+    `${agreement.studentAddress || "__________________"}, email ` +
+    `${agreement.studentEmail || "__________________"}, telephone ` +
+    `${agreement.studentPhone || "__________________"}, hereinafter referred to as the \u201cStudent\u201d.`;
+
+  const instalment1 = isNonEur && fin.firstInstalmentForeign != null
+    ? `EUR ${fin.firstInstalmentEUR.toLocaleString()} / ${currency} ${fmtF(fin.firstInstalmentForeign)}`
+    : `EUR ${fin.firstInstalmentEUR.toLocaleString()}`;
+  const instalment2 = isNonEur && fin.secondInstalmentForeign != null
+    ? `EUR ${fin.secondInstalmentEUR.toLocaleString()} / ${currency} ${fmtF(fin.secondInstalmentForeign)}`
+    : `EUR ${fin.secondInstalmentEUR.toLocaleString()}`;
+  const instalment3 = isNonEur && fin.thirdInstalmentForeign != null
+    ? `EUR ${fin.thirdInstalmentEUR.toLocaleString()} / ${currency} ${fmtF(fin.thirdInstalmentForeign)}`
+    : `EUR ${fin.thirdInstalmentEUR.toLocaleString()}`;
 
   return (
     <div className="min-h-screen bg-zinc-100 py-6 print:bg-white print:p-0 print:m-0">
-      {/* Floating control bar - hidden when printing */}
+      {/* Floating control bar — hidden when printing */}
       <div className="print:hidden fixed top-4 right-4 z-50 flex items-center gap-2 rounded-xl border border-zinc-200 bg-white/95 px-4 py-2.5 shadow-lg backdrop-blur">
         <button
           type="button"
@@ -40,7 +73,7 @@ export function PrintAgreementClient({ agreement }: Props) {
         </button>
       </div>
 
-      {/* Printable Sheet (Letter Portrait, 0.7in margins, Times New Roman) */}
+      {/* Printable sheet — Letter Portrait, 0.7 in margins, Times New Roman */}
       <div
         className="mx-auto w-[8.5in] bg-white shadow-xl print:shadow-none print:w-full"
         style={{
@@ -57,15 +90,8 @@ export function PrintAgreementClient({ agreement }: Props) {
               margin: 0.7in;
             }
             @media print {
-              body {
-                background: white !important;
-                margin: 0 !important;
-                padding: 0 !important;
-              }
-              .page-break-before {
-                page-break-before: always;
-                break-before: page;
-              }
+              body { background: white !important; margin: 0 !important; padding: 0 !important; }
+              .page-break-before { page-break-before: always; break-before: page; }
             }
           `
         }} />
@@ -73,35 +99,35 @@ export function PrintAgreementClient({ agreement }: Props) {
         {/* ================= PAGE 1 ================= */}
         <div>
           {/* Header */}
-          <div className="text-center mb-6">
+          <div className="text-center mb-4">
             <h1 className="text-xl font-bold tracking-tight uppercase">UNIMONDO</h1>
             <h2 className="text-sm font-bold uppercase mt-1">
               STUDENT EDUCATIONAL CONSULTANCY &amp; SERVICE RETAINER AGREEMENT
             </h2>
           </div>
 
-          {/* Table 1: Agreement Reference & Date */}
-          <table className="w-full border border-black mb-5 text-sm">
-            <tbody>
-              <tr>
-                <td className="border border-black p-2 font-bold w-1/2">
-                  Agreement Reference: {refText}
-                </td>
-                <td className="border border-black p-2 font-bold w-1/2 text-right">
-                  Date: {agreement.agreementDate || "_________________"}
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          {/* Reference / Date — plain unboxed text */}
+          <div className="flex justify-between mb-5 text-sm font-bold">
+            <span>Reference: {refText}</span>
+            <span>Date: {agreement.agreementDate || "_________________"}</span>
+          </div>
 
           {/* 1. PARTIES AND ENGAGEMENT */}
           <div className="mb-4 text-justify text-[13px] leading-[1.35]">
             <h3 className="font-bold text-[13.5px] uppercase mb-1.5">1. PARTIES AND ENGAGEMENT</h3>
+            <p className="mb-2">This Agreement is entered into between:</p>
+            <p className="mb-2">(1) {consultantLine}</p>
+            <p className="mb-2">(2) {studentLine}</p>
             <p className="mb-2">
-              This Agreement is made between UniMondo, acting through its duly authorised representative on behalf of {consultantDetails} (“Consultant”), and Mr./Ms. {agreement.studentFullName || "__________________"}, son/daughter of {agreement.studentParentGuardian || "__________________"}, holding CNIC/Passport No. {agreement.studentCnicPassport || "__________________"}, residing at {agreement.studentAddress || "__________________"}, email {agreement.studentEmail || "__________________"}, contact {agreement.studentPhone || "__________________"} (“Student”).
+              The Consultant and the Student are each referred to individually as a &ldquo;Party&rdquo; and
+              collectively as the &ldquo;Parties&rdquo;.
             </p>
             <p>
-              Following preliminary assessment, the Student engages UniMondo for educational consultancy and university admission assistance concerning {agreement.degreeLevel || "__________________"}, {agreement.fieldOfStudy || "__________________"}, {agreement.preferredDestination || "__________________"} and the {agreement.academicYearIntake || "__________________"}. The Parties agree as follows.
+              Following preliminary assessment, the Student engages UniMondo for educational consultancy and
+              university admission assistance concerning {agreement.degreeLevel || "__________________"},{" "}
+              {agreement.fieldOfStudy || "__________________"},{" "}
+              {agreement.preferredDestination || "__________________"} and the{" "}
+              {agreement.academicYearIntake || "__________________"}. The Parties agree as follows.
             </p>
           </div>
 
@@ -109,7 +135,13 @@ export function PrintAgreementClient({ agreement }: Props) {
           <div className="mb-4 text-justify text-[13px] leading-[1.35]">
             <h3 className="font-bold text-[13.5px] uppercase mb-1.5">2. SCOPE OF EDUCATIONAL SERVICES</h3>
             <p>
-              UniMondo will provide reasonable professional assistance with academic profile assessment; selection and shortlisting of suitable universities and programmes; eligibility and admission requirements; preparation and submission of agreed university applications; supporting academic documentation, statements and motivation letters; scholarship information and application guidance where relevant; correspondence and application status follow-up; and general post-admission educational and enrolment guidance. Any university, destination or intake not agreed under this engagement may require a separate written arrangement.
+              UniMondo will provide reasonable professional assistance with academic profile assessment; selection
+              and shortlisting of suitable universities and programmes; eligibility and admission requirements;
+              preparation and submission of agreed university applications; supporting academic documentation,
+              statements and motivation letters; scholarship information and application guidance where relevant;
+              correspondence and application status follow-up; and general post-admission educational and enrolment
+              guidance. Any university, destination or intake not agreed under this engagement may require a
+              separate written arrangement.
             </p>
           </div>
 
@@ -117,22 +149,26 @@ export function PrintAgreementClient({ agreement }: Props) {
           <div className="mb-4 text-justify text-[13px] leading-[1.35]">
             <h3 className="font-bold text-[13.5px] uppercase mb-1.5">3. PROFESSIONAL FEE AND AUTHORISED DISCOUNT</h3>
             <p className="mb-2">
-              The Parties agree that UniMondo’s educational consultancy services shall be provided against a professional service fee. The base consultancy fee is EUR 1,000, or an agreed PKR equivalent. The authorised UniMondo administrator may approve a discount within delegated authority. The discounted net amount entered below shall be the final agreed fee upon signature.
+              The Parties agree that UniMondo&apos;s educational consultancy services shall be provided against a
+              professional service fee. The base consultancy fee is EUR 1,000, or an agreed equivalent in the
+              selected payment currency. The authorised UniMondo administrator may approve a discount within
+              delegated authority. The discounted net amount entered below shall be the final agreed fee upon
+              signature.
             </p>
             <p className="italic text-[12px] mb-3">
-              {isPkr && fin.agreedExchangeRate
-                ? `Agreed exchange rate: 1 EUR = PKR ${fin.agreedExchangeRate.toLocaleString()}, as mutually agreed on ${fin.exchangeRateDate || agreement.agreementDate || "____ / ____ / ______"}. Applicable only where payment is in PKR.`
-                : `Agreed exchange rate: 1 EUR = PKR N/A, as mutually agreed on N/A. Applicable only where payment is in PKR.`}
+              {isNonEur && fin.agreedExchangeRate
+                ? `Agreed exchange rate: 1 EUR = ${currency} ${fmtRate(fin.agreedExchangeRate)}, as mutually agreed on ${fin.exchangeRateDate || agreement.agreementDate || "____ / ____ / ______"}. Applicable only where payment is in ${currency}.`
+                : `Agreed exchange rate: 1 EUR = ${currency} N/A, as mutually agreed on N/A. Applicable only where payment is in ${currency}.`}
             </p>
 
-            {/* Table 2: Fees Table */}
+            {/* Table 2: Fees */}
             <table className="w-full border-collapse border border-black text-[12.5px] mb-2">
               <thead>
                 <tr className="bg-zinc-100 font-bold">
                   <th className="border border-black p-1.5 text-left w-[40%]">Particulars</th>
                   <th className="border border-black p-1.5 text-center w-[15%]">%</th>
                   <th className="border border-black p-1.5 text-right w-[22%]">EUR</th>
-                  <th className="border border-black p-1.5 text-right w-[23%]">PKR</th>
+                  <th className="border border-black p-1.5 text-right w-[23%]">{currency}</th>
                 </tr>
               </thead>
               <tbody>
@@ -141,7 +177,9 @@ export function PrintAgreementClient({ agreement }: Props) {
                   <td className="border border-black p-1.5 text-center">n/a</td>
                   <td className="border border-black p-1.5 text-right underline">1,000/-</td>
                   <td className="border border-black p-1.5 text-right underline">
-                    {isPkr && fin.agreedExchangeRate ? `${(fin.baseFeeEUR * fin.agreedExchangeRate).toLocaleString()}/-` : "—"}
+                    {isNonEur && fin.agreedExchangeRate
+                      ? `${fmtF(fin.baseFeeEUR * fin.agreedExchangeRate)}/-`
+                      : "\u2014"}
                   </td>
                 </tr>
                 <tr>
@@ -149,7 +187,7 @@ export function PrintAgreementClient({ agreement }: Props) {
                   <td className="border border-black p-1.5 text-center underline">{fin.discountPercent}%</td>
                   <td className="border border-black p-1.5 text-right underline">{fin.discountEUR.toLocaleString()}/-</td>
                   <td className="border border-black p-1.5 text-right underline">
-                    {isPkr && fin.discountPKR != null ? `${fin.discountPKR.toLocaleString()}/-` : "—"}
+                    {isNonEur && fin.discountForeign != null ? `${fmtF(fin.discountForeign)}/-` : "\u2014"}
                   </td>
                 </tr>
                 <tr className="font-bold">
@@ -157,7 +195,7 @@ export function PrintAgreementClient({ agreement }: Props) {
                   <td className="border border-black p-1.5 text-center">n/a</td>
                   <td className="border border-black p-1.5 text-right underline">{fin.netFeeEUR.toLocaleString()}/-</td>
                   <td className="border border-black p-1.5 text-right underline">
-                    {isPkr && fin.netFeePKR != null ? `${fin.netFeePKR.toLocaleString()}/-` : "—"}
+                    {isNonEur && fin.netFeeForeign != null ? `${fmtF(fin.netFeeForeign)}/-` : "\u2014"}
                   </td>
                 </tr>
               </tbody>
@@ -168,16 +206,21 @@ export function PrintAgreementClient({ agreement }: Props) {
           <div className="mb-4 text-justify text-[13px] leading-[1.35]">
             <h3 className="font-bold text-[13.5px] uppercase mb-1.5">4. FIXED THREE-INSTALMENT PAYMENT SCHEDULE</h3>
             <p className="mb-1">
-              <strong>First Instalment — 30%</strong> ({`EUR ${fin.firstInstalmentEUR.toLocaleString()}`}{isPkr && fin.firstInstalmentPKR != null ? ` / PKR ${fin.firstInstalmentPKR.toLocaleString()}` : ""}) payable upon signing this Agreement and commencement of the engagement.
+              <strong>First Instalment &mdash; 30%</strong> ({instalment1}) payable upon signing this Agreement
+              and commencement of the engagement.
             </p>
             <p className="mb-1">
-              <strong>Second Instalment — 40%</strong> ({`EUR ${fin.secondInstalmentEUR.toLocaleString()}`}{isPkr && fin.secondInstalmentPKR != null ? ` / PKR ${fin.secondInstalmentPKR.toLocaleString()}` : ""}) payable upon submission of the first agreed university admission application.
+              <strong>Second Instalment &mdash; 40%</strong> ({instalment2}) payable upon submission of the
+              first agreed university admission application.
             </p>
             <p className="mb-1.5">
-              <strong>Third Instalment — 30%</strong> ({`EUR ${fin.thirdInstalmentEUR.toLocaleString()}`}{isPkr && fin.thirdInstalmentPKR != null ? ` / PKR ${fin.thirdInstalmentPKR.toLocaleString()}` : ""}) (payable upon the Student’s receipt of an embassy/consulate visa appointment date).
+              <strong>Third Instalment &mdash; 30%</strong> ({instalment3}) (payable upon the Student&apos;s
+              receipt of an embassy/consulate visa appointment date).
             </p>
             <p className="italic text-[12px]">
-              The third instalment is an agreed payment timing milestone only: UniMondo does not arrange or guarantee appointments, undertake visa applications, or provide immigration services under this Agreement.
+              The third instalment is an agreed payment timing milestone only: UniMondo does not arrange or
+              guarantee appointments, undertake visa applications, or provide immigration services under this
+              Agreement.
             </p>
           </div>
 
@@ -185,13 +228,21 @@ export function PrintAgreementClient({ agreement }: Props) {
           <div className="text-justify text-[13px] leading-[1.35]">
             <h3 className="font-bold text-[13.5px] uppercase mb-1.5">5. CANCELLATION AND REFUND</h3>
             <p className="mb-1.5">
-              <strong>No admission:</strong> If no admission offer is obtained following completion of the agreed application cycle despite the Student’s compliance with this Agreement, UniMondo shall refund 70% of the consultancy fees actually paid, subject to mandatory law.
+              <strong>No admission:</strong> If no admission offer is obtained following completion of the
+              agreed application cycle despite the Student&apos;s compliance with this Agreement, UniMondo
+              shall refund 70% of the consultancy fees actually paid, subject to mandatory law.
             </p>
             <p className="mb-1.5">
-              <strong>Student cancellation before admission:</strong> If the Student voluntarily cancels before receiving an admission offer, UniMondo shall refund 50% of the first instalment received. Payments relating to completed later milestones, if any, shall be settled according to services performed and applicable law.
+              <strong>Student cancellation before admission:</strong> If the Student voluntarily cancels before
+              receiving an admission offer, UniMondo shall refund 50% of the first instalment received. Payments
+              relating to completed later milestones, if any, shall be settled according to services performed
+              and applicable law.
             </p>
             <p>
-              <strong>Student cancellation after admission:</strong> If the Student cancels after receiving an admission offer, UniMondo shall retain the first instalment (30% of the final agreed fee) and refund all additional consultancy fees actually paid, subject to mandatory law. Statutory withdrawal and refund rights prevail over any inconsistent term.
+              <strong>Student cancellation after admission:</strong> If the Student cancels after receiving an
+              admission offer, UniMondo shall retain the first instalment (30% of the final agreed fee) and
+              refund all additional consultancy fees actually paid, subject to mandatory law. Statutory
+              withdrawal and refund rights prevail over any inconsistent term.
             </p>
           </div>
         </div>
@@ -202,22 +253,43 @@ export function PrintAgreementClient({ agreement }: Props) {
           <div className="mb-4 text-justify text-[13px] leading-[1.35]">
             <h3 className="font-bold text-[13.5px] uppercase mb-1.5">6. DISCLAIMERS, EXCLUSIONS AND UNDERTAKINGS</h3>
             <p className="mb-1.5">
-              <strong>Educational outcomes:</strong> University admission, academic recognition, scholarships and funding decisions are determined independently by the relevant institutions. UniMondo undertakes reasonable care and diligence, but does not guarantee admission, scholarships, an acceptance date or any particular result.
+              <strong>Educational outcomes:</strong> University admission, academic recognition, scholarships
+              and funding decisions are determined independently by the relevant institutions. UniMondo undertakes
+              reasonable care and diligence, but does not guarantee admission, scholarships, an acceptance date
+              or any particular result.
             </p>
             <p className="mb-1.5">
-              <strong>Visa and immigration:</strong> UniMondo is an educational consultancy, not a visa or immigration consultancy or legal representative under this Agreement. Visa applications, appointments, evidence, submissions and immigration compliance are the Student’s responsibility, assisted by appropriately authorised professionals if needed. Any general public information shared by UniMondo is incidental orientation, not individual immigration advice. UniMondo does not promise or guarantee visa or residence approval. Visa refusal or delay alone does not establish non-performance of educational services.
+              <strong>Visa and immigration:</strong> UniMondo is an educational consultancy, not a visa or
+              immigration consultancy or legal representative under this Agreement. Visa applications,
+              appointments, evidence, submissions and immigration compliance are the Student&apos;s
+              responsibility, assisted by appropriately authorised professionals if needed. Any general public
+              information shared by UniMondo is incidental orientation, not individual immigration advice.
+              UniMondo does not promise or guarantee visa or residence approval. Visa refusal or delay alone
+              does not establish non-performance of educational services.
             </p>
             <p className="mb-1.5">
-              <strong>Official payments and additional charges:</strong> Payments shall be made only through officially designated UniMondo channels and acknowledged by receipt. Additional consultancy charges require prior written agreement.
+              <strong>Official payments and additional charges:</strong> Payments shall be made only through
+              officially designated UniMondo channels and acknowledged by receipt. Additional consultancy
+              charges require prior written agreement.
             </p>
             <p className="mb-1.5">
-              <strong>Student obligations:</strong> The Student shall provide complete, accurate and authentic documents; disclose relevant academic circumstances; review and approve applications; cooperate promptly; meet examinations, interviews and deadlines; share important university correspondence; and pay the agreed fees. UniMondo may suspend or end the engagement on reasonable written notice for material non-cooperation, fraudulent documents or non-payment of an amount properly due, subject to applicable law.
+              <strong>Student obligations:</strong> The Student shall provide complete, accurate and authentic
+              documents; disclose relevant academic circumstances; review and approve applications; cooperate
+              promptly; meet examinations, interviews and deadlines; share important university correspondence;
+              and pay the agreed fees. UniMondo may suspend or end the engagement on reasonable written notice
+              for material non-cooperation, fraudulent documents or non-payment of an amount properly due,
+              subject to applicable law.
             </p>
             <p className="mb-1.5">
-              <strong>Excluded third-party charges:</strong> University application and tuition fees, tests, translations, attestations, legalisation, visa-related charges, insurance, travel and accommodation are not included unless expressly stated otherwise in writing. The Student must be informed of material known third-party costs before agreeing to incur them.
+              <strong>Excluded third-party charges:</strong> University application and tuition fees, tests,
+              translations, attestations, legalisation, visa-related charges, insurance, travel and
+              accommodation are not included unless expressly stated otherwise in writing. The Student must be
+              informed of material known third-party costs before agreeing to incur them.
             </p>
             <p>
-              <strong>Liability:</strong> Nothing in this Agreement excludes liability for negligence, misrepresentation, failure to perform agreed services, or other liability that cannot lawfully be excluded.
+              <strong>Liability:</strong> Nothing in this Agreement excludes liability for negligence,
+              misrepresentation, failure to perform agreed services, or other liability that cannot lawfully
+              be excluded.
             </p>
           </div>
 
@@ -225,7 +297,12 @@ export function PrintAgreementClient({ agreement }: Props) {
           <div className="mb-4 text-justify text-[13px] leading-[1.35]">
             <h3 className="font-bold text-[13.5px] uppercase mb-1.5">7. CONFIDENTIALITY, DURATION AND GENERAL TERMS</h3>
             <p>
-              Both Parties shall treat personal and academic information confidentially. UniMondo may process and share necessary information with relevant educational institutions in accordance with applicable data-protection law and its privacy notice. This Agreement takes effect on signature and continues for the agreed application cycle, unless completed or lawfully terminated sooner. Amendments must be recorded in writing and accepted by both Parties. Concerns shall first be raised and discussed in good faith, without limiting available legal rights.
+              Both Parties shall treat personal and academic information confidentially. UniMondo may process
+              and share necessary information with relevant educational institutions in accordance with
+              applicable data-protection law and its privacy notice. This Agreement takes effect on signature
+              and continues for the agreed application cycle, unless completed or lawfully terminated sooner.
+              Amendments must be recorded in writing and accepted by both Parties. Concerns shall first be
+              raised and discussed in good faith, without limiting available legal rights.
             </p>
           </div>
 
@@ -233,11 +310,13 @@ export function PrintAgreementClient({ agreement }: Props) {
           <div className="mb-5 text-justify text-[13px] leading-[1.35]">
             <h3 className="font-bold text-[13.5px] uppercase mb-1.5">8. ACCEPTANCE AND SIGNATURES</h3>
             <p>
-              By signing, the Student acknowledges the agreed services, total fee and discount, fixed three-instalment schedule, refund terms and the express exclusion of visa and immigration consultancy services.
+              By signing, the Student acknowledges the agreed services, total fee and discount, fixed
+              three-instalment schedule, refund terms and the express exclusion of visa and immigration
+              consultancy services.
             </p>
           </div>
 
-          {/* Table 3: Signatures (Preserving handwritten blank lines and stamp area) */}
+          {/* Signature blocks */}
           <table className="w-full text-[13px] mb-8">
             <thead>
               <tr className="font-bold">
@@ -245,7 +324,7 @@ export function PrintAgreementClient({ agreement }: Props) {
                 <td className="w-1/2 pb-3">FOR THE STUDENT</td>
               </tr>
             </thead>
-            <tbody className="space-y-2">
+            <tbody>
               <tr>
                 <td className="py-2.5">Signature: ____________________________________</td>
                 <td className="py-2.5">Signature: ____________________________________</td>
@@ -265,9 +344,11 @@ export function PrintAgreementClient({ agreement }: Props) {
             </tbody>
           </table>
 
-          {/* Official Stamp of UniMondo */}
-          <div className="mx-auto w-64 h-24 border border-dashed border-zinc-400 flex items-center justify-center text-xs text-zinc-500">
-            [Official Stamp of UniMondo]
+          {/* Stamp area — blank space + rule + small label */}
+          <div>
+            <div style={{ height: "3rem" }} /> {/* blank space for physical stamp */}
+            <hr style={{ width: "7.5rem", borderTop: "0.6px solid #000", margin: "0" }} />
+            <p className="text-[10px] italic text-zinc-500 mt-0.5">Official Stamp of UniMondo</p>
           </div>
         </div>
       </div>

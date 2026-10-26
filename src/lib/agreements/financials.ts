@@ -1,6 +1,22 @@
 import type { AgreementFinancials, AgreementFormInput, DiscountType, PaymentCurrency } from "../../types/agreement";
+import { CURRENCY_DECIMALS } from "../../types/agreement";
 
 export const BASE_CONSULTANCY_FEE_EUR = 1000;
+
+/** Round to exactly N decimal places using standard half-up rounding. */
+function roundTo(value: number, decimals: number): number {
+  const factor = Math.pow(10, decimals);
+  return Math.round(value * factor) / factor;
+}
+
+/** Format a foreign-currency amount with the correct precision for that currency. */
+export function formatForeignAmount(amount: number, currency: PaymentCurrency): string {
+  const decimals = CURRENCY_DECIMALS[currency];
+  return amount.toLocaleString("en", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+}
 
 export function calculateAgreementFinancials(input: {
   paymentCurrency: PaymentCurrency;
@@ -10,19 +26,22 @@ export function calculateAgreementFinancials(input: {
   discountValue: number | string;
 }): AgreementFinancials {
   const baseFeeEUR = BASE_CONSULTANCY_FEE_EUR;
-  const isPkr = input.paymentCurrency === "PKR";
-  
+  const isNonEur = input.paymentCurrency !== "EUR";
+  const foreignDecimals = CURRENCY_DECIMALS[input.paymentCurrency];
+
   let rate: number | null = null;
-  if (isPkr) {
-    const parsedRate = typeof input.agreedExchangeRate === "number" 
-      ? input.agreedExchangeRate 
-      : parseFloat(String(input.agreedExchangeRate || "0"));
+  if (isNonEur) {
+    const parsedRate =
+      typeof input.agreedExchangeRate === "number"
+        ? input.agreedExchangeRate
+        : parseFloat(String(input.agreedExchangeRate || "0"));
     rate = Number.isFinite(parsedRate) && parsedRate > 0 ? parsedRate : null;
   }
 
-  const rawVal = typeof input.discountValue === "number" 
-    ? input.discountValue 
-    : parseFloat(String(input.discountValue || "0"));
+  const rawVal =
+    typeof input.discountValue === "number"
+      ? input.discountValue
+      : parseFloat(String(input.discountValue || "0"));
   const cleanVal = Number.isFinite(rawVal) && rawVal >= 0 ? rawVal : 0;
 
   let discountEUR = 0;
@@ -38,27 +57,30 @@ export function calculateAgreementFinancials(input: {
 
   const netFeeEUR = Math.max(0, baseFeeEUR - discountEUR);
 
-  // Fixed 30% / 40% / 30% instalments in EUR
-  const firstInstalmentEUR = Math.round(netFeeEUR * 0.30);
-  const secondInstalmentEUR = Math.round(netFeeEUR * 0.40);
-  // Guarantee exact sum equals netFeeEUR
+  // 30% / 40% / 30% instalments; third absorbs any rounding residual
+  const firstInstalmentEUR = Math.round(netFeeEUR * 0.3);
+  const secondInstalmentEUR = Math.round(netFeeEUR * 0.4);
   const thirdInstalmentEUR = netFeeEUR - firstInstalmentEUR - secondInstalmentEUR;
 
-  let discountPKR: number | null = null;
-  let netFeePKR: number | null = null;
-  let firstInstalmentPKR: number | null = null;
-  let secondInstalmentPKR: number | null = null;
-  let thirdInstalmentPKR: number | null = null;
+  // Foreign-currency equivalents
+  let discountForeign: number | null = null;
+  let netFeeForeign: number | null = null;
+  let firstInstalmentForeign: number | null = null;
+  let secondInstalmentForeign: number | null = null;
+  let thirdInstalmentForeign: number | null = null;
 
-  if (isPkr && rate !== null && rate > 0) {
-    const basePKR = Math.round(baseFeeEUR * rate);
-    discountPKR = Math.round(discountEUR * rate);
-    netFeePKR = Math.max(0, basePKR - discountPKR);
+  if (isNonEur && rate !== null && rate > 0) {
+    const baseForeign = roundTo(baseFeeEUR * rate, foreignDecimals);
+    discountForeign = roundTo(discountEUR * rate, foreignDecimals);
+    netFeeForeign = roundTo(Math.max(0, baseForeign - discountForeign), foreignDecimals);
 
-    firstInstalmentPKR = Math.round(netFeePKR * 0.30);
-    secondInstalmentPKR = Math.round(netFeePKR * 0.40);
-    // Guarantee exact sum equals netFeePKR
-    thirdInstalmentPKR = netFeePKR - firstInstalmentPKR - secondInstalmentPKR;
+    firstInstalmentForeign = roundTo(netFeeForeign * 0.3, foreignDecimals);
+    secondInstalmentForeign = roundTo(netFeeForeign * 0.4, foreignDecimals);
+    // Third instalment absorbs rounding residual; guarantees exact sum
+    thirdInstalmentForeign = roundTo(
+      netFeeForeign - firstInstalmentForeign - secondInstalmentForeign,
+      foreignDecimals
+    );
   }
 
   return {
@@ -70,15 +92,15 @@ export function calculateAgreementFinancials(input: {
     discountValue: cleanVal,
     discountPercent,
     discountEUR,
-    discountPKR,
+    discountForeign,
     netFeeEUR,
-    netFeePKR,
+    netFeeForeign,
     firstInstalmentEUR,
-    firstInstalmentPKR,
+    firstInstalmentForeign,
     secondInstalmentEUR,
-    secondInstalmentPKR,
+    secondInstalmentForeign,
     thirdInstalmentEUR,
-    thirdInstalmentPKR,
+    thirdInstalmentForeign,
   };
 }
 
@@ -105,7 +127,7 @@ export function validateAgreementForExport(input: AgreementFormInput): Validatio
     errors.push({ field: "consultantRegNumber", message: "Consultant registration number is required." });
   }
   if (!input.consultantAddress?.trim()) {
-    errors.push({ field: "consultantAddress", message: "Consultant registered address is required." });
+    errors.push({ field: "consultantAddress", message: "Consultant address is required." });
   }
 
   // Student
@@ -142,25 +164,32 @@ export function validateAgreementForExport(input: AgreementFormInput): Validatio
     errors.push({ field: "academicYearIntake", message: "Academic year or intake is required." });
   }
 
-  // Currency & Rate
-  if (input.paymentCurrency === "PKR") {
-    const rate = typeof input.agreedExchangeRate === "number" 
-      ? input.agreedExchangeRate 
-      : parseFloat(String(input.agreedExchangeRate || "0"));
-    if (!Number.isFinite(rate) || rate <= 0) {
-      errors.push({ field: "agreedExchangeRate", message: "A positive EUR/PKR exchange rate is required for PKR payments." });
-    }
-    if (!input.exchangeRateDate?.trim()) {
-      errors.push({ field: "exchangeRateDate", message: "Exchange rate agreement date is required when payment is in PKR." });
-    }
-  }
-
   // Representatives
   if (!input.repName?.trim()) {
     errors.push({ field: "repName", message: "UniMondo representative name is required." });
   }
   if (!input.repDesignation?.trim()) {
     errors.push({ field: "repDesignation", message: "UniMondo representative designation is required." });
+  }
+
+  // Non-EUR currencies require a manually agreed exchange rate
+  if (input.paymentCurrency !== "EUR") {
+    const rate =
+      typeof input.agreedExchangeRate === "number"
+        ? input.agreedExchangeRate
+        : parseFloat(String(input.agreedExchangeRate || "0"));
+    if (!Number.isFinite(rate) || rate <= 0) {
+      errors.push({
+        field: "agreedExchangeRate",
+        message: `A positive EUR/${input.paymentCurrency} exchange rate is required for export.`,
+      });
+    }
+    if (!input.exchangeRateDate?.trim()) {
+      errors.push({
+        field: "exchangeRateDate",
+        message: "Exchange rate agreement date is required for non-EUR payments.",
+      });
+    }
   }
 
   return errors;

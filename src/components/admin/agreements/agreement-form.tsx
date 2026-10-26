@@ -4,8 +4,9 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { calculateAgreementFinancials, validateAgreementForExport } from "@/lib/agreements/financials";
+import { calculateAgreementFinancials, validateAgreementForExport, formatForeignAmount } from "@/lib/agreements/financials";
 import type { AgreementFormInput, AgreementRecord, DiscountType, PaymentCurrency } from "@/types/agreement";
+import { CURRENCY_OPTIONS, CURRENCY_DECIMALS } from "@/types/agreement";
 import { FileDown, Printer, Save, ArrowLeft, AlertCircle } from "lucide-react";
 
 type Props = {
@@ -176,7 +177,9 @@ export function AgreementForm({ initialData, applicationId, prefill, canEditDisc
     window.open(`/api/admin/agreements/${agreementId}/export?format=${format}`, "_blank");
   };
 
-  const isPkr = paymentCurrency === "PKR";
+  const isNonEur = paymentCurrency !== "EUR";
+  const fmtF = (v: number) => formatForeignAmount(v, paymentCurrency);
+  const rateLabel = `1 EUR = ${paymentCurrency} ...`;
 
   return (
     <div className="space-y-6">
@@ -474,28 +477,37 @@ export function AgreementForm({ initialData, applicationId, prefill, canEditDisc
                 <label className="block text-xs font-semibold text-zinc-700 mb-1">Payment Currency</label>
                 <select
                   value={paymentCurrency}
-                  onChange={(e) => setPaymentCurrency(e.target.value as PaymentCurrency)}
+                  onChange={(e) => {
+                    const next = e.target.value as PaymentCurrency;
+                    if (next !== paymentCurrency) {
+                      // Clear rate to prevent reusing a rate agreed for a different currency
+                      setAgreedExchangeRate("");
+                      setExchangeRateDate("");
+                    }
+                    setPaymentCurrency(next);
+                  }}
                   className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-teal-600 focus:outline-none"
                 >
-                  <option value="EUR">EUR (€) — Euro</option>
-                  <option value="PKR">PKR (Rs) — Pakistani Rupee</option>
+                  {CURRENCY_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
                 </select>
               </div>
 
-              {isPkr ? (
+              {isNonEur ? (
                 <>
                   <div>
                     <label className="block text-xs font-semibold text-zinc-700 mb-1">
-                      Agreed Exchange Rate (1 EUR = PKR ...) *
+                      {rateLabel} *
                     </label>
                     <input
                       type="number"
                       step="any"
-                      min="1"
+                      min="0.000001"
                       value={agreedExchangeRate}
                       onChange={(e) => setAgreedExchangeRate(e.target.value)}
                       className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-teal-600 focus:outline-none"
-                      placeholder="e.g. 305"
+                      placeholder={paymentCurrency === "PKR" ? "e.g. 305" : paymentCurrency === "LYD" ? "e.g. 5.234" : "e.g. 1.08"}
                     />
                     {errors.agreedExchangeRate ? <p className="text-xs text-red-600 mt-1">{errors.agreedExchangeRate}</p> : null}
                   </div>
@@ -605,7 +617,7 @@ export function AgreementForm({ initialData, applicationId, prefill, canEditDisc
                     <th className="py-2 px-3">Particulars</th>
                     <th className="py-2 px-2 text-center">%</th>
                     <th className="py-2 px-2 text-right">EUR</th>
-                    {isPkr ? <th className="py-2 px-3 text-right">PKR</th> : null}
+                    {isNonEur ? <th className="py-2 px-3 text-right">{paymentCurrency}</th> : null}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-200 text-zinc-700">
@@ -613,9 +625,9 @@ export function AgreementForm({ initialData, applicationId, prefill, canEditDisc
                     <td className="py-2 px-3">Consultancy Fee:</td>
                     <td className="py-2 px-2 text-center">n/a</td>
                     <td className="py-2 px-2 text-right font-medium underline">1,000/-</td>
-                    {isPkr ? (
+                    {isNonEur ? (
                       <td className="py-2 px-3 text-right font-medium underline">
-                        {financials.agreedExchangeRate ? `${(financials.baseFeeEUR * financials.agreedExchangeRate).toLocaleString()}/-` : "—"}
+                        {financials.agreedExchangeRate ? `${fmtF(financials.baseFeeEUR * financials.agreedExchangeRate)}/-` : "—"}
                       </td>
                     ) : null}
                   </tr>
@@ -623,9 +635,9 @@ export function AgreementForm({ initialData, applicationId, prefill, canEditDisc
                     <td className="py-2 px-3">Discount:</td>
                     <td className="py-2 px-2 text-center">{financials.discountPercent}%</td>
                     <td className="py-2 px-2 text-right underline">{financials.discountEUR.toLocaleString()}/-</td>
-                    {isPkr ? (
+                    {isNonEur ? (
                       <td className="py-2 px-3 text-right underline">
-                        {financials.discountPKR != null ? `${financials.discountPKR.toLocaleString()}/-` : "—"}
+                        {financials.discountForeign != null ? `${fmtF(financials.discountForeign)}/-` : "—"}
                       </td>
                     ) : null}
                   </tr>
@@ -633,9 +645,9 @@ export function AgreementForm({ initialData, applicationId, prefill, canEditDisc
                     <td className="py-2.5 px-3">Net Consultancy Fee:</td>
                     <td className="py-2.5 px-2 text-center">n/a</td>
                     <td className="py-2.5 px-2 text-right underline">{financials.netFeeEUR.toLocaleString()}/-</td>
-                    {isPkr ? (
+                    {isNonEur ? (
                       <td className="py-2.5 px-3 text-right underline">
-                        {financials.netFeePKR != null ? `${financials.netFeePKR.toLocaleString()}/-` : "—"}
+                        {financials.netFeeForeign != null ? `${fmtF(financials.netFeeForeign)}/-` : "—"}
                       </td>
                     ) : null}
                   </tr>
@@ -652,29 +664,29 @@ export function AgreementForm({ initialData, applicationId, prefill, canEditDisc
                 <div className="flex justify-between py-1 border-b border-zinc-100">
                   <span>1st Instalment (30% on signing):</span>
                   <span className="font-semibold text-zinc-900">
-                    €{financials.firstInstalmentEUR.toLocaleString()}
-                    {isPkr && financials.firstInstalmentPKR != null ? ` / Rs ${financials.firstInstalmentPKR.toLocaleString()}` : ""}
+                    EUR {financials.firstInstalmentEUR.toLocaleString()}
+                    {isNonEur && financials.firstInstalmentForeign != null ? ` / ${paymentCurrency} ${fmtF(financials.firstInstalmentForeign)}` : ""}
                   </span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-zinc-100">
                   <span>2nd Instalment (40% on submission):</span>
                   <span className="font-semibold text-zinc-900">
-                    €{financials.secondInstalmentEUR.toLocaleString()}
-                    {isPkr && financials.secondInstalmentPKR != null ? ` / Rs ${financials.secondInstalmentPKR.toLocaleString()}` : ""}
+                    EUR {financials.secondInstalmentEUR.toLocaleString()}
+                    {isNonEur && financials.secondInstalmentForeign != null ? ` / ${paymentCurrency} ${fmtF(financials.secondInstalmentForeign)}` : ""}
                   </span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-zinc-100">
                   <span>3rd Instalment (30% on appointment date):</span>
                   <span className="font-semibold text-zinc-900">
-                    €{financials.thirdInstalmentEUR.toLocaleString()}
-                    {isPkr && financials.thirdInstalmentPKR != null ? ` / Rs ${financials.thirdInstalmentPKR.toLocaleString()}` : ""}
+                    EUR {financials.thirdInstalmentEUR.toLocaleString()}
+                    {isNonEur && financials.thirdInstalmentForeign != null ? ` / ${paymentCurrency} ${fmtF(financials.thirdInstalmentForeign)}` : ""}
                   </span>
                 </div>
                 <div className="flex justify-between pt-1 font-bold text-teal-900">
                   <span>Total Scheduled:</span>
                   <span>
-                    €{(financials.firstInstalmentEUR + financials.secondInstalmentEUR + financials.thirdInstalmentEUR).toLocaleString()}
-                    {isPkr && financials.netFeePKR != null ? ` / Rs ${financials.netFeePKR.toLocaleString()}` : ""}
+                    EUR {(financials.firstInstalmentEUR + financials.secondInstalmentEUR + financials.thirdInstalmentEUR).toLocaleString()}
+                    {isNonEur && financials.netFeeForeign != null ? ` / ${paymentCurrency} ${fmtF(financials.netFeeForeign)}` : ""}
                   </span>
                 </div>
               </div>
