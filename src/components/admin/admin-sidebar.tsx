@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import type { AdminAccessContext, AdminAreaPermission } from "@/lib/auth/admin";
 import {
   BookOpen,
+  FileText,
   Gift,
   GraduationCap,
   Home,
@@ -44,6 +45,7 @@ const NAV: NavItem[] = [
   { href: "/admin/contact", label: "Contact", icon: Phone, scope: "content" },
   { href: "/admin/blog", label: "Blog", icon: Newspaper, scope: "academic" },
   { href: "/admin/applications", label: "Applications", icon: GraduationCap, scope: "applications" },
+  { href: "/admin/agreements", label: "Agreements", icon: FileText, scope: "applications" },
   { href: "/admin/submissions", label: "Submissions", icon: Inbox, scope: "submissions" },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ] as const;

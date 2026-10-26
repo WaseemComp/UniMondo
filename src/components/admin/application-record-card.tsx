@@ -93,6 +93,12 @@ export function ApplicationRecordCard({
             </p>
           ) : null}
           <div className="mt-3 flex flex-wrap gap-2">
+            <Link
+              href={`/admin/agreements/new?applicationId=${encodeURIComponent(application.trackingId)}`}
+              className="rounded-full border border-teal-600 bg-teal-50 px-3 py-1.5 text-xs font-semibold text-teal-950 hover:bg-teal-100 transition"
+            >
+              Create Agreement
+            </Link>
             <a
               href={`/api/applications/${encodeURIComponent(application.trackingId)}/export?type=pdf`}
               className="rounded-full border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-950 hover:border-amber-500"
