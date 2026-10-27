@@ -13,7 +13,6 @@ export function AdminSidebar({ items, mobileOpen, desktop, onClose }: { items: C
   const pathname = usePathname() || "/admin/dashboard";
   const hash = useSyncExternalStore(subscribeHash, () => window.location.hash, () => "");
   const active = activeCmsItem(items, pathname, hash);
-  const showMediaBoundary = items.some(item => ["home", "stories", "about", "contact"].includes(item.id));
   return <aside id="cms-sidebar" className="cms-sidebar" aria-label="Content Studio navigation"
     aria-hidden={!desktop && !mobileOpen} inert={!desktop && !mobileOpen}
     role={!desktop && mobileOpen ? "dialog" : undefined} aria-modal={!desktop && mobileOpen ? true : undefined}>
@@ -37,7 +36,6 @@ export function AdminSidebar({ items, mobileOpen, desktop, onClose }: { items: C
               <CmsIcon name={item.icon} /><span>{item.label}</span>{active === item.id && <ChevronRight className="cms-nav-chevron" size={14} aria-hidden />}
             </Anchor>;
           })}
-          {group === "Website" && showMediaBoundary && <div className="cms-nav-planned"><CmsIcon name="media" /><span>Media Library</span><small>Later</small><span className="sr-only">Planned for a later phase; not available yet.</span></div>}
         </div>;
       })}
     </nav>

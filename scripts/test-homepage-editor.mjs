@@ -24,6 +24,7 @@ function matches(row, params) {
 const client = createClient("https://homepage-tests.invalid", "isolated-test-key", { auth: { persistSession: false, autoRefreshToken: false }, global: { fetch: async (input, options = {}) => {
   const url = new URL(input), method = options.method || "GET", table = url.pathname.split("/").at(-1);
   if (table === "admin_profiles") { assert.equal(method, "GET"); return response([{ user_id: session.id, is_super_admin: false, permissions: { content: true }, permissions_v2: fine }]); }
+  if (table === "cms_media_assets") { assert.equal(method, "GET", "Media availability check is read-only"); return response([]); }
   assert(["site_content", "cms_content_blocks"].includes(table), "Homepage persistence must not touch other tables");
   if (unavailable) return response({ message: "Synthetic unavailability" }, 503);
   if (method === "GET") return response(structuredClone(state[table].filter(row => matches(row, url.searchParams))));

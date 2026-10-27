@@ -11,6 +11,8 @@ import { DEFAULT_HERO_SLIDES, HERO_SITE_KEYS, HOME_SECTIONS, SLIDE_COPY_KEYS, en
 import { validateCopyPatch, validateSlidePatch } from "@/lib/homepage/validation";
 import { saveSiteContent } from "@/app/admin/actions";
 import { upsertCmsBlock } from "./cms-block-actions";
+import { getMediaAccess } from "@/lib/media/access";
+import { validateManagedMediaSelection } from "@/lib/media/operations";
 import { saveHomeHeroSlide } from "./home-page-blocks-actions";
 
 const patch = z.record(z.string(), z.string()).refine(value => Object.keys(value).length <= 12);
@@ -38,6 +40,7 @@ export async function saveHomepageEditor(input: unknown): Promise<HomepageSaveRe
     if (value.kind === "builtin" && !(await hasAdminPermission(user, "home.hero_slider.create"))) return { ok: false, error: "Creating editable slides requires the existing create-slide permission." };
     const error = value.kind === "global" || value.kind === "copy" ? validateCopyPatch(value.kind === "global" ? "hero" : section!.id, value.patch) : validateSlidePatch(value.patch, process.env.NEXT_PUBLIC_SUPABASE_URL);
     if (error) return { ok: false, error };
+    if (value.patch.imageUrl !== undefined) await validateManagedMediaSelection(value.patch.imageUrl, await getMediaAccess(user));
     const before = await readHomepageSnapshot();
     if (!before.available) return { ok: false, error: "Saved content could not be loaded. No changes were made." };
     if (value.kind === "global") {

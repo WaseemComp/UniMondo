@@ -13,6 +13,7 @@ export const CMS_NAVIGATION: CmsNavItem[] = [
   { id: "universities", label: "Universities & Programs", href: "/admin/programs", group: "Website", icon: "universities", scope: "academic", permission: "universities.view", aliases: ["/admin/universities", "/admin/data/programs", "/admin/featured-universities"] },
   { id: "courses", label: "Language Courses", href: "/admin/courses", group: "Website", icon: "courses", scope: "academic", permission: "courses.view" },
   { id: "stories", label: "Success Stories", href: "/admin/content/success-stories", group: "Website", icon: "stories", scope: "content", permission: "blog.view" },
+  { id: "media", label: "Media Library", href: "/admin/media", group: "Website", icon: "media" },
   { id: "blog", label: "Blog", href: "/admin/blog", group: "Website", icon: "blog", scope: "academic", permission: "blog.view", aliases: ["/admin/blogs"] },
   { id: "packages", label: "Packages", href: "/admin/packages", group: "Website", icon: "packages", scope: "academic", permission: "packages.view" },
   { id: "about", label: "About", href: "/admin/about", group: "Website", icon: "about", scope: "content", permission: "about.view", aliases: ["/admin/content/about", "/admin/content/team"] },

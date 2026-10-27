@@ -1,6 +1,6 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element -- Existing public image thumbnails; uploads/optimization belong to Phase 03. */
+/* eslint-disable @next/next/no-img-element -- Existing public image thumbnails; library and existing-image thumbnails. */
 
 import { useEffect, useState } from "react";
 import { ArrowUpRight, Check, ImageIcon, Monitor, Save } from "lucide-react";
@@ -11,6 +11,7 @@ import { safeImage, validateCopyPatch, validateSlidePatch } from "@/lib/homepage
 import { CmsActionArea, CmsFieldContext, CmsNotice, CmsPageHeader } from "@/components/admin/cms/cms-foundation";
 import { CmsIcon } from "@/components/admin/cms/cms-icons";
 import { HomepagePreview, HomepageSectionRendering } from "./homepage-preview";
+import { MediaPicker } from "@/components/admin/media/media-picker";
 import "./homepage-editor.css";
 
 const leaveMessage = "You have unsaved homepage changes. Leave without saving?";
@@ -35,9 +36,10 @@ function useUnsavedChanges(dirty: boolean) {
   }, [dirty]);
 }
 
-type Props = { initial: HomepageEditorData };
-export function HomepageEditor({ initial }: Props) {
+type Props = { initial: HomepageEditorData; initialMediaId?: string };
+export function HomepageEditor({ initial, initialMediaId }: Props) {
   const [data, setData] = useState(initial);
+  const [pendingMediaId, setPendingMediaId] = useState(initialMediaId);
   const [section, setSection] = useState<SectionId>("hero");
   const [target, setTarget] = useState(() => firstHeroEditorTarget(initial.blocks, initial.permissions.viewSlides));
   const [dirty, setDirty] = useState(false);
@@ -66,13 +68,13 @@ export function HomepageEditor({ initial }: Props) {
     {!data.available && <CmsNotice>Saved homepage content could not be loaded. Website defaults are shown for reference, and saving is disabled to protect existing content.</CmsNotice>}
     {savedMessage && <p className="hp-success" role="status"><Check size={17} aria-hidden />{savedMessage}</p>}
     <div className="hp-workspace"><nav className="hp-sections" aria-label="Homepage sections"><p className="cms-eyebrow">HOMEPAGE SECTIONS</p>{sections.map((item, index) => <button key={item.id} type="button" disabled={busy} className={section === item.id ? "is-active" : ""} aria-current={section === item.id ? "true" : undefined} onClick={() => navigate(item.id)}><CmsIcon name={item.icon} size={17} /><span>{item.label}</span><small>{String(index + 1).padStart(2, "0")}</small></button>)}</nav>
-      <SectionEditor key={`${section}:${target}:${revision}`} data={data} section={section} target={target} onTarget={value => navigate(section, value)} onDirty={setDirty} onBusy={setBusy} onSaved={saved} />
+      <SectionEditor key={`${section}:${target}:${revision}`} data={data} section={section} target={target} onTarget={value => navigate(section, value)} onDirty={setDirty} onBusy={setBusy} onSaved={saved} suggestedMediaId={pendingMediaId} onMediaClose={() => setPendingMediaId(undefined)} />
     </div>
   </div>;
 }
 
-type SectionProps = { data: HomepageEditorData; section: SectionId; target: string; onTarget: (value: string) => void; onDirty: (dirty: boolean) => void; onBusy: (busy: boolean) => void; onSaved: (snapshot: HomepageSnapshot) => void };
-function SectionEditor({ data, section, target, onTarget, onDirty, onBusy, onSaved }: SectionProps) {
+type SectionProps = { suggestedMediaId?: string; onMediaClose: () => void; data: HomepageEditorData; section: SectionId; target: string; onTarget: (value: string) => void; onDirty: (dirty: boolean) => void; onBusy: (busy: boolean) => void; onSaved: (snapshot: HomepageSnapshot) => void };
+function SectionEditor({ data, section, target, onTarget, onDirty, onBusy, onSaved, suggestedMediaId, onMediaClose }: SectionProps) {
   const definition = HOME_SECTIONS.find(item => item.id === section)!;
   const isSlide = section === "hero" && target !== "global";
   const builtinIndex = target.startsWith("builtin:") ? Number(target.split(":")[1]) : null;
@@ -89,6 +91,7 @@ function SectionEditor({ data, section, target, onTarget, onDirty, onBusy, onSav
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const [previewChoice, setPreviewChoice] = useState("");
+  const [pickerOpen, setPickerOpen] = useState(Boolean(suggestedMediaId && isSlide));
   const dirty = JSON.stringify(values) !== JSON.stringify(initialValues) || JSON.stringify(inheritance) !== JSON.stringify(initialInheritance) || visible !== (block?.is_active ?? true) || order !== (block?.sort_order ?? builtinIndex ?? 0);
   const canSave = data.available && (isSlide ? data.permissions.editSlides && (builtinIndex === null || data.permissions.createSlides && !savedSlides.length) : section === "journey_cta" ? data.permissions.editCta : data.permissions.editHome);
   const locked = !canSave || pending;
@@ -143,7 +146,6 @@ function SectionEditor({ data, section, target, onTarget, onDirty, onBusy, onSav
     if (key === "line" && block && !english(record(block.content).line)?.trim()) return { value: initialValues.line, source: "inherited", detail: "Uses the saved image description because no caption is set" };
     return copySource[key] ?? { value: initialValues[key], source: block ? "saved" : "default", detail: block ? "Saved slide image or caption" : "Built-in website slide" };
   };
-  const imageChoices = [...new Map([...DEFAULT_HERO_SLIDES, ...savedSlides.map(heroSlideFromBlock)].filter(slide => slide.src).map(slide => [slide.src, slide])).values()];
   return <>
     <section className="hp-fields-panel" aria-label="Section editing controls"><div className="hp-panel-heading"><div><p className="cms-eyebrow">EDIT SECTION</p><h2>{definition.label}</h2></div><button type="button" className="hp-preview-jump" onClick={() => document.querySelector(".hp-preview-panel")?.scrollIntoView({ behavior: "smooth", block: "start" })}><Monitor size={15} aria-hidden />Preview</button></div>
       <form onSubmit={save} className="hp-section-form">
@@ -163,12 +165,11 @@ function SectionEditor({ data, section, target, onTarget, onDirty, onBusy, onSav
           </div>;
         })}
         {isSlide && <>
-          <div className="hp-field hp-image-field"><label htmlFor="hp-imageUrl"><ImageIcon size={16} aria-hidden />Background image</label>
-            <div className="hp-image-thumbnail">{safeImage(values.imageUrl, process.env.NEXT_PUBLIC_SUPABASE_URL) ? <img src={values.imageUrl} alt={values.imageAlt || "Current slide image"} /> : <p className="hp-help">Enter a supported image address to see its thumbnail.</p>}</div>
-            <input id="hp-imageUrl" value={values.imageUrl} disabled={locked} onChange={event => change("imageUrl", event.target.value)} aria-label="Background image address" />
-            <CmsFieldContext source={block ? "saved" : "default"} description={block ? "Existing saved slide image" : "Existing built-in website image"} />
-            <details className="hp-image-picker"><summary>Choose an existing image</summary><div>{imageChoices.map(image => <button type="button" key={image.src} disabled={locked} onClick={() => { updateFields({ imageUrl: image.src, imageAlt: image.alt }); }}><img src={image.src} alt="" /><span>{image.alt}</span></button>)}</div></details>
-            <p className="hp-help">Use an existing image address or select above. Computer uploads and the shared media library arrive in Phase 03.</p>
+          <div className="hp-field hp-image-field"><p className="hp-field-label"><ImageIcon size={16} aria-hidden />Background image</p>
+            <div className="hp-image-thumbnail">{safeImage(values.imageUrl, process.env.NEXT_PUBLIC_SUPABASE_URL) ? <img src={values.imageUrl} alt={values.imageAlt || "Current slide image"} /> : <p className="hp-help">Your current image is preserved. Choose a supported library image to replace it.</p>}</div>
+            <button type="button" className="cms-button-secondary" disabled={locked} onClick={() => setPickerOpen(true)}><ImageIcon size={16} aria-hidden />Change Image</button>
+            {values.imageUrl !== initialValues.imageUrl ? <p className="hp-help">New image selection · unsaved. Save changes to update the website.</p> : <CmsFieldContext source={block ? "saved" : "default"} description={block ? "Existing saved slide image" : "Existing built-in website image"} />}
+            <p className="hp-help">Choose or upload an image from the shared library. Your existing image stays public until you save changes.</p>
           </div>
           <div className="hp-field"><label htmlFor="hp-imageAlt">Image description</label><input id="hp-imageAlt" value={values.imageAlt} disabled={locked} onChange={event => change("imageAlt", event.target.value)} /><p className="hp-help">Describe the image for visitors using a screen reader.</p></div>
           <div className="hp-slide-controls"><label><input type="checkbox" checked={visible} disabled={locked} onChange={event => { updateFields({}, inheritance, event.target.checked); }} />Visible on homepage</label>{block && <label htmlFor="hp-order">Slide position<input id="hp-order" type="number" min={0} max={10000} value={Number.isFinite(order) ? order : ""} disabled={locked} onChange={event => { updateFields({}, inheritance, visible, event.target.value === "" ? NaN : Number(event.target.value)); }} /></label>}</div>
@@ -176,12 +177,13 @@ function SectionEditor({ data, section, target, onTarget, onDirty, onBusy, onSav
           <p className="hp-help">The introductory label and button destinations come from global hero copy.</p>
         </>}
         {section === "hero" && !isSlide && <div className="hp-field"><label htmlFor="hp-preview-slide">Public slide in preview</label><select id="hp-preview-slide" value={previewChoice} onChange={event => setPreviewChoice(event.target.value)}>{publicHeroSlides(data.blocks).map((slide, index) => <option value={index} key={index}>Slide {index + 1} · {slide.alt}</option>)}</select>{["title", "subtitle", "ctaExplore", "ctaApply"].some(key => Boolean(previewSlide[key as keyof HeroSlide])) && <p className="hp-help">This slide has saved text overrides. Global edits will appear on slides that inherit those fields. Select the slide under Editing to change its overrides.</p>}<div className="hp-image-thumbnail hp-reference-image"><img src={previewSlide.src} alt={previewSlide.alt} /></div><p className="hp-help">{previewSlide.line} · Select a slide under Editing to change its image or caption.</p></div>}
-        {section === "why_europe" && <div className="hp-reference-image hp-image-thumbnail"><img src="https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=2400&q=75" alt="Existing landscape background" /><p className="hp-help">Existing website background. Image replacement is reserved for the media integration phase.</p></div>}
+        {section === "why_europe" && <div className="hp-reference-image hp-image-thumbnail"><img src="https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=2400&q=75" alt="Existing landscape background" /><p className="hp-help">Existing website background. This section has no saved background-image field yet. Individual section items and their images remain a Phase 04 requirement.</p></div>}
         {definition.note && <p className="hp-help hp-boundary">{definition.note}</p>}
         {(error || validation) && <p role="alert" className="hp-form-error">{error || validation}</p>}
         <CmsActionArea><button className="cms-button-secondary" type="button" disabled={locked || !dirty} onClick={() => { if (window.confirm("Discard your unsaved changes to this selection?")) { setValues(initialValues); setInheritance(initialInheritance); setVisible(block?.is_active ?? true); setOrder(block?.sort_order ?? builtinIndex ?? 0); setError(""); onDirty(false); } }}>Discard changes</button><button className="cms-button-primary" type="submit" disabled={locked || !dirty || Boolean(validation) || !Number.isFinite(order)}><Save size={15} aria-hidden />{pending ? "Saving…" : "Save changes"}</button></CmsActionArea>
       </form>
     </section>
+    {pickerOpen && isSlide && <MediaPicker currentUrl={values.imageUrl} initialSelectedId={suggestedMediaId} onSelect={asset => updateFields({ imageUrl: asset.url, imageAlt: asset.alt || asset.name })} onClose={() => { setPickerOpen(false); onMediaClose(); }} />}
     <HomepagePreview dirty={dirty} hidden={isSlide && !visible}><HomepageSectionRendering section={section} data={previewData} slide={previewSlide} /></HomepagePreview>
   </>;
 }
