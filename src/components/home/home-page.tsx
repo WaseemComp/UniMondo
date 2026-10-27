@@ -21,6 +21,7 @@ type Props = {
   destinationsCopy?: DestinationsCopy;
   universitiesSectionCopy?: { kicker?: string; title?: string; subtitle?: string; ctaLabel?: string; ctaHref?: string };
   successStories: SuccessStoryRow[];
+  successStoriesCopy?: { kicker?: string; title?: string };
   howItWorksCopy?: HowItWorksCopy;
   whyEuropeCopy?: WhyEuropeCopy;
   journeyCtaCopy?: JourneyCtaCopy;
@@ -36,6 +37,7 @@ export function HomePage({
   destinationsCopy,
   universitiesSectionCopy,
   successStories,
+  successStoriesCopy,
   howItWorksCopy,
   whyEuropeCopy,
   journeyCtaCopy,
@@ -47,7 +49,7 @@ export function HomePage({
       <WhyUniMondo {...(whyUniMondoCopy ?? {})} />
       <PopularDestinations copy={destinationsCopy} />
       <FeaturedProgramsLive initialOpenings={initialOpenings} {...(universitiesSectionCopy ?? {})} />
-      <SuccessStoriesSection stories={successStories} />
+      <SuccessStoriesSection stories={successStories} copy={successStoriesCopy} />
       <HowItWorks copy={howItWorksCopy} />
       <WhyEurope copy={whyEuropeCopy} />
       <JourneyCta copy={journeyCtaCopy} />

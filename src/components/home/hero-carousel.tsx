@@ -6,69 +6,22 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-export type HeroSlide = {
-  src: string;
-  alt: string;
-  line: string;
-  isActive?: boolean;
-  title?: string;
-  subtitle?: string;
-  ctaExplore?: string;
-  ctaApply?: string;
-};
-
-const SLIDES: HeroSlide[] = [
-  {
-    src: "https://images.unsplash.com/photo-1516483638261-f4dbaf036963?auto=format&fit=crop&w=2400&q=80",
-    alt: "Historic Italian architecture and canals",
-    line: "Italy · World-class universities & timeless culture",
-  },
-  {
-    src: "https://images.unsplash.com/photo-1595867818082-083862f3d630?auto=format&fit=crop&w=2400&q=85",
-    alt: "Munich cityscape with Frauenkirche",
-    line: "Germany · Research powerhouses & industry links",
-  },
-  {
-    src: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=2400&q=85",
-    alt: "Eiffel Tower Paris skyline",
-    line: "France · Prestige, innovation & global networks",
-  },
-  {
-    src: "https://images.unsplash.com/photo-1534351590666-13e3e96b5017?auto=format&fit=crop&w=2400&q=85",
-    alt: "Amsterdam canals",
-    line: "Netherlands · English-taught excellence",
-  },
-  {
-    src: "https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=2400&q=85",
-    alt: "International students collaborating",
-    line: "Your cohort · Ambitious peers from every continent",
-  },
-] as const;
+import { DEFAULT_HERO_SLIDES, HERO_DEFAULTS, type HeroCopy, type HeroSlide } from "@/lib/homepage/content";
+export type { HeroCopy, HeroSlide } from "@/lib/homepage/content";
 
 const INTERVAL_MS = 6500;
 
-export type HeroCopy = {
-  title: string;
-  subtitle: string;
-  ctaExplore: string;
-  ctaApply: string;
-};
-
 export function HeroCarousel({
-  copy = {
-    title: "Your Future Knows No Borders",
-    subtitle:
-      "Personalized admissions guidance, visa expertise, and full student support — from first call to campus arrival.",
-    ctaExplore: "Universities",
-    ctaApply: "Begin Your Application",
-  },
+  copy = HERO_DEFAULTS,
   slides,
+  preview = false,
 }: {
   copy?: HeroCopy;
   slides?: HeroSlide[];
+  preview?: boolean;
 }) {
-  const activeSlides = (slides ?? SLIDES).filter((s) => s && (s as HeroSlide).isActive !== false);
-  const normalizedSlides = activeSlides.length ? activeSlides : SLIDES;
+  const activeSlides = (slides ?? DEFAULT_HERO_SLIDES).filter((s) => s && (s as HeroSlide).isActive !== false);
+  const normalizedSlides = activeSlides.length ? activeSlides : DEFAULT_HERO_SLIDES;
   const [index, setIndex] = useState(0);
 
   const next = useCallback(() => setIndex((i) => (i + 1) % normalizedSlides.length), [normalizedSlides.length]);
@@ -78,11 +31,12 @@ export function HeroCarousel({
   );
 
   useEffect(() => {
+    if (preview) return;
     const t = setInterval(next, INTERVAL_MS);
     return () => clearInterval(t);
-  }, [next]);
+  }, [next, preview]);
 
-  const slide = normalizedSlides[index];
+  const slide = normalizedSlides[index % normalizedSlides.length];
   const effectiveCopy: HeroCopy = {
     title: slide.title ?? copy.title,
     subtitle: slide.subtitle ?? copy.subtitle,
@@ -127,7 +81,7 @@ export function HeroCarousel({
             className="max-w-3xl"
           >
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#C9AB76]">
-              UNIMONDO · EUROPEAN ADMISSIONS CONSULTANCY
+              {copy.eyebrow ?? HERO_DEFAULTS.eyebrow}
             </p>
             <h1 className="mt-4 font-[family-name:var(--font-editorial)] text-4xl font-normal leading-[1.08] tracking-tight text-white sm:text-5xl md:text-6xl lg:text-7xl">
               {effectiveCopy.title}
@@ -136,7 +90,7 @@ export function HeroCarousel({
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
               <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                 <Link
-                  href="/destinations"
+                  href={copy.primaryHref ?? HERO_DEFAULTS.primaryHref}
                   className="inline-flex w-full items-center justify-center rounded-lg bg-[#C9AB76] px-8 py-3.5 text-sm font-semibold text-[#1A2E3A] shadow-lg shadow-black/20 transition hover:bg-[#B8996A] sm:w-auto"
                 >
                   {effectiveCopy.ctaExplore}
@@ -144,7 +98,7 @@ export function HeroCarousel({
               </motion.div>
               <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                 <Link
-                  href="/apply"
+                  href={copy.secondaryHref ?? HERO_DEFAULTS.secondaryHref}
                   className="inline-flex w-full items-center justify-center rounded-lg border border-white/25 bg-white/10 px-8 py-3.5 text-sm font-semibold text-white backdrop-blur-md transition hover:bg-white/20 sm:w-auto"
                 >
                   {effectiveCopy.ctaApply}

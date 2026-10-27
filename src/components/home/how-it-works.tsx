@@ -1,5 +1,8 @@
 "use client";
 
+import { SECTION_DEFAULTS } from "@/lib/homepage/content";
+const DEFAULT_COPY = SECTION_DEFAULTS.how_it_works;
+
 import { motion } from "framer-motion";
 import { BookOpen, ClipboardCheck, FileText, GraduationCap, Plane } from "lucide-react";
 
@@ -38,18 +41,14 @@ export type HowItWorksCopy = {
 };
 
 export function HowItWorks({
-  copy = {
-    kicker: "Process",
-    title: "How it works",
-    subtitle: "Five clear stages — transparent, documented, and built around your timeline.",
-  },
+  copy = DEFAULT_COPY,
 }: {
   copy?: HowItWorksCopy;
 }) {
   const c = {
-    kicker: copy?.kicker ?? "Process",
-    title: copy?.title ?? "How it works",
-    subtitle: copy?.subtitle ?? "Five clear stages — transparent, documented, and built around your timeline.",
+    kicker: copy?.kicker ?? DEFAULT_COPY.kicker,
+    title: copy?.title ?? DEFAULT_COPY.title,
+    subtitle: copy?.subtitle ?? DEFAULT_COPY.subtitle,
   };
   return (
     <section className="border-y border-[#E2DFD8] bg-[#F8F7F3] py-20 sm:py-28">

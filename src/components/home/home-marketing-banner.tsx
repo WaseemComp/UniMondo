@@ -1,3 +1,6 @@
+import { SECTION_DEFAULTS } from "@/lib/homepage/content";
+const DEFAULT_COPY = SECTION_DEFAULTS.marketing_banner;
+
 import Link from "next/link";
 
 /** Prominent homepage strip: low entry price + no application fee. */
@@ -9,20 +12,15 @@ export type HomeMarketingBannerCopy = {
 };
 
 export function HomeMarketingBanner({
-  copy = {
-    text: "Start your European journey with UniMondo from as low as",
-    highlight: "$150",
-    ctaLabel: "Our packages",
-    ctaHref: "/packages",
-  },
+  copy = DEFAULT_COPY,
 }: {
   copy?: HomeMarketingBannerCopy;
 }) {
   const c = {
-    text: copy?.text ?? "Start your European journey with UniMondo from as low as",
-    highlight: copy?.highlight ?? "$150",
-    ctaLabel: copy?.ctaLabel ?? "Our packages",
-    ctaHref: copy?.ctaHref ?? "/packages",
+    text: copy?.text ?? DEFAULT_COPY.text,
+    highlight: copy?.highlight ?? DEFAULT_COPY.highlight,
+    ctaLabel: copy?.ctaLabel ?? DEFAULT_COPY.ctaLabel,
+    ctaHref: copy?.ctaHref ?? DEFAULT_COPY.ctaHref,
   };
   return (
     <section className="relative border-b border-[#E2DFD8] bg-[#E6EEE8] px-4 py-3.5 sm:px-6 lg:px-8">

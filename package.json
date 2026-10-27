@@ -10,6 +10,7 @@
     "seed:admin": "node --env-file=.env.local scripts/create-admin-user.mjs",
     "test:staff": "node scripts/run-staff-tests.mjs",
     "test:cms": "node scripts/run-cms-tests.mjs",
+    "test:homepage": "node scripts/run-homepage-tests.mjs",
     "test:agreements": "node scripts/run-agreement-tests.mjs suite",
     "test:agreements:standardization": "node scripts/run-agreement-tests.mjs standardization",
     "test:agreements:regressions": "node scripts/run-agreement-tests.mjs regressions"

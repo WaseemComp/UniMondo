@@ -1,4 +1,5 @@
 import { createSupabaseServiceClient } from "@/lib/supabase/admin";
+import { contentLabel } from "@/lib/homepage/content";
 import type { CmsNavItem } from "./navigation";
 
 export type OverviewStat = { id: string; label: string; href: string; icon: string; count: number | null };
@@ -67,7 +68,7 @@ export async function getCmsOverview(items: CmsNavItem[]): Promise<CmsOverview> 
     for (const row of data ?? []) {
       const item = visible.get(row.page);
       if (!item || !row.updated_at) continue;
-      result.recent.push({ id: `content:${row.key}`, title: row.label || item.label, section: item.label, href: item.href, icon: item.icon, updatedAt: row.updated_at, status: "saved" });
+      result.recent.push({ id: `content:${row.key}`, title: contentLabel(row.key, row.label), section: item.label, href: item.href, icon: item.icon, updatedAt: row.updated_at, status: "saved" });
     }
   });
   const settled = await Promise.allSettled(jobs.map(job => job()));

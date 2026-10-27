@@ -1,5 +1,8 @@
 "use client";
 
+import { SECTION_DEFAULTS } from "@/lib/homepage/content";
+const DEFAULT_COPY = SECTION_DEFAULTS.destinations;
+
 import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -57,22 +60,16 @@ export type DestinationsCopy = {
 };
 
 export function PopularDestinations({
-  copy = {
-    kicker: "Destinations",
-    title: "Popular countries we cover",
-    subtitle: "From Mediterranean campuses to Nordic innovation — find where your profile fits best.",
-    ctaLabel: "View all destinations",
-    ctaHref: "/destinations",
-  },
+  copy = DEFAULT_COPY,
 }: {
   copy?: DestinationsCopy;
 }) {
   const c = {
-    kicker: copy?.kicker ?? "Destinations",
-    title: copy?.title ?? "Popular countries we cover",
-    subtitle: copy?.subtitle ?? "From Mediterranean campuses to Nordic innovation — find where your profile fits best.",
-    ctaLabel: copy?.ctaLabel ?? "View all destinations",
-    ctaHref: copy?.ctaHref ?? "/destinations",
+    kicker: copy?.kicker ?? DEFAULT_COPY.kicker,
+    title: copy?.title ?? DEFAULT_COPY.title,
+    subtitle: copy?.subtitle ?? DEFAULT_COPY.subtitle,
+    ctaLabel: copy?.ctaLabel ?? DEFAULT_COPY.ctaLabel,
+    ctaHref: copy?.ctaHref ?? DEFAULT_COPY.ctaHref,
   };
   return (
     <section className="bg-[#F8F7F3] py-20 sm:py-28">

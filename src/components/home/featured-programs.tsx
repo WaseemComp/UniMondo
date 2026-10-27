@@ -1,7 +1,9 @@
 "use client";
 
+import { SECTION_DEFAULTS } from "@/lib/homepage/content";
+const DEFAULT_COPY = SECTION_DEFAULTS.universities;
+
 import Link from "next/link";
-import Image from "next/image";
 import { motion } from "framer-motion";
 import { ArrowRight, Calendar, MapPin } from "lucide-react";
 import type { Opening } from "@/lib/unimondo-data";
@@ -17,11 +19,11 @@ type Props = {
 
 export function FeaturedPrograms({
   openings,
-  kicker = "Universities",
-  title = "Universities and Programs",
-  subtitle = "Hand-picked tracks from leading institutions — clear deadlines, transparent tuition bands, and counselor support.",
-  ctaLabel = "See all openings",
-  ctaHref = "/destinations",
+  kicker = DEFAULT_COPY.kicker,
+  title = DEFAULT_COPY.title,
+  subtitle = DEFAULT_COPY.subtitle,
+  ctaLabel = DEFAULT_COPY.ctaLabel,
+  ctaHref = DEFAULT_COPY.ctaHref,
 }: Props) {
   const featured = openings.slice(0, 4);
   return (
