@@ -5,14 +5,9 @@ import { SECTION_DEFAULTS, EUROPE_PARTIAL_DEFAULTS } from "@/lib/homepage/conten
 import Image from "next/image";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { useRef } from "react";
-import { Globe2, Languages, Landmark, Sparkles } from "lucide-react";
 
-const BULLETS = [
-  { icon: Globe2, text: "Degrees recognized worldwide — strong mobility after graduation." },
-  { icon: Languages, text: "Thousands of English-taught programs beyond the UK." },
-  { icon: Landmark, text: "Affordable public options and scholarship ecosystems." },
-  { icon: Sparkles, text: "Travel, culture, and networks that shape a global mindset." },
-];
+import { resolveCollection, publicItems, newHomepageItem, type HomepageItem } from "@/lib/homepage/items";
+import { HomepageItemIcon } from "./homepage-item-icon";
 
 export type WhyEuropeCopy = {
   kicker?: string;
@@ -25,9 +20,9 @@ export type WhyEuropeCopy = {
 };
 
 export function WhyEurope({
-  copy = SECTION_DEFAULTS.why_europe,
+  copy = SECTION_DEFAULTS.why_europe, benefits, facts, imageUrl, imageAlt,
 }: {
-  copy?: WhyEuropeCopy;
+  copy?: WhyEuropeCopy; benefits?: HomepageItem[]; facts?: HomepageItem[]; imageUrl?: string; imageAlt?: string;
 }) {
   const c = {
     kicker: copy?.kicker ?? EUROPE_PARTIAL_DEFAULTS.kicker,
@@ -52,8 +47,8 @@ export function WhyEurope({
       <div ref={ref} className="relative overflow-hidden">
         <motion.div style={{ y }} className="pointer-events-none absolute inset-0 scale-110">
           <Image
-            src="https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=2400&q=75"
-            alt=""
+            src={imageUrl || "https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=2400&q=75"}
+            alt={imageAlt || ""}
             fill
             className="object-cover"
             sizes="100vw"
@@ -76,21 +71,15 @@ export function WhyEurope({
                 {c.subtitle}
               </p>
               <dl className="mt-8 grid gap-4 sm:grid-cols-2">
-                <div className="rounded-xl border border-white/15 bg-white/10 px-4 py-3 backdrop-blur-sm">
-                  <dt className="text-xs uppercase tracking-wide text-[#C9AB76]">{c.quickFact1Label}</dt>
-                  <dd className="mt-1 text-sm font-medium text-white">{c.quickFact1Value}</dd>
-                </div>
-                <div className="rounded-xl border border-white/15 bg-white/10 px-4 py-3 backdrop-blur-sm">
-                  <dt className="text-xs uppercase tracking-wide text-[#C9AB76]">{c.quickFact2Label}</dt>
-                  <dd className="mt-1 text-sm font-medium text-white">{c.quickFact2Value}</dd>
-                </div>
+                {publicItems(facts ?? [newHomepageItem("default-fact-0", {label: c.quickFact1Label, description: c.quickFact1Value}), newHomepageItem("default-fact-1", {label: c.quickFact2Label, description: c.quickFact2Value})]).map(fact => <div key={fact.id} data-home-item={`europe_facts:${fact.id}`} className="rounded-xl border border-white/15 bg-white/10 px-4 py-3 backdrop-blur-sm"><dt className="text-xs uppercase tracking-wide text-[#C9AB76]">{fact.label}</dt><dd className="mt-1 text-sm font-medium text-white">{fact.description}</dd></div>)}
               </dl>
             </div>
 
             <ul className="space-y-4">
-              {BULLETS.map((b, i) => (
+              {publicItems(benefits ?? resolveCollection([], "europe_benefits").items).map((b, i) => (
                 <motion.li
-                  key={b.text}
+                  key={b.id}
+                  data-home-item={`europe_benefits:${b.id}`}
                   initial={{ opacity: 0, x: 16 }}
                   whileInView={{ opacity: 1, x: 0 }}
                   viewport={{ once: true }}
@@ -98,9 +87,9 @@ export function WhyEurope({
                   className="flex gap-4 rounded-xl border border-white/15 bg-white/10 p-4 backdrop-blur-md"
                 >
                   <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-[#C9AB76]/20 text-[#C9AB76]">
-                    <b.icon className="h-5 w-5" aria-hidden />
+                    <HomepageItemIcon name={b.icon} className="h-5 w-5" />
                   </div>
-                  <p className="text-sm leading-relaxed text-[#E6EEE8] sm:text-base">{b.text}</p>
+                  <p className="text-sm leading-relaxed text-[#E6EEE8] sm:text-base">{b.description}</p>
                 </motion.li>
               ))}
             </ul>

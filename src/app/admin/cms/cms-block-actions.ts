@@ -93,6 +93,7 @@ export async function deleteCmsBlock(input: unknown): Promise<{ ok: true } | { o
     if (!svc) return { ok: false, error: "SUPABASE_SERVICE_ROLE_KEY is not configured." };
     const { data: target, error: readError } = await svc.from("cms_content_blocks").select("page_slug,section_key,block_key").eq("id", parsed.data.id).maybeSingle();
     if (readError || !target) return { ok: false, error: "Content is no longer available." };
+    if (target.page_slug === "home" && (target.block_key.startsWith("collection_") || target.block_key === "presentation")) return {ok:false,error:"Use item archiving or section visibility. Homepage collection history is retained."};
     const homePermission = target.section_key === "hero_slider" ? "home.hero_slider.delete" : target.section_key === "journey_cta" ? "home.cta.edit" : "home.edit";
     if (!(await hasAdminPermission(me, target.page_slug === "home" ? homePermission : parsed.data.permission_key))) return { ok: false, error: "Forbidden" };
     const { error } = await svc.from("cms_content_blocks").delete().eq("id", parsed.data.id);

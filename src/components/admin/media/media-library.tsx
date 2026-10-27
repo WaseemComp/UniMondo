@@ -16,9 +16,9 @@ async function libraryFetcher(url: string) {
   return data;
 }
 const dateLabel = (date: string | null) => date ? new Date(date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "Existing website image";
-type Props = { onSelect?: (asset: MediaAsset) => void; currentUrl?: string; initialSelectedId?: string };
+type Props = { preferredCategory?: MediaCategory; onSelect?: (asset: MediaAsset) => void; currentUrl?: string; initialSelectedId?: string };
 
-export function MediaLibrary({ onSelect, currentUrl, initialSelectedId }: Props) {
+export function MediaLibrary({ onSelect, currentUrl, initialSelectedId, preferredCategory = "hero" }: Props) {
   const { mutate: refreshCache } = useSWRConfig();
   const refreshLibrary = () => refreshCache(key => typeof key === "string" && key.startsWith("/api/admin/media"), undefined, { revalidate: true, populateCache: false });
   const [query, setQuery] = useState("");
@@ -54,7 +54,7 @@ export function MediaLibrary({ onSelect, currentUrl, initialSelectedId }: Props)
       <label className="ml-archive-toggle"><input type="checkbox" checked={archived} onChange={event => { setArchived(event.target.checked); setOffset(0); setSelection(null); }} />Archived</label>
       {onSelect && <button type="button" className="cms-button-primary" disabled={!uploadAllowed} onClick={() => beginUpload()}><Upload size={15} aria-hidden />Upload image</button>}
     </div>
-    {upload && data && <MediaUploader key={`${replacement?.id ?? "new"}:${droppedFiles.map(file => file.name).join(",")}`} permissions={data.permissions} initialCategory={replacement?.category ?? (onSelect && data.permissions.hero.upload ? "hero" : undefined)} initialAlt={replacement?.alt} files={droppedFiles} replacing={Boolean(replacement)} onClose={() => { setUpload(false); setDroppedFiles([]); }} onUploaded={asset => { setSelection(asset); setMessage("Image uploaded. Existing pages keep their current image until you choose a replacement and save the page."); void refreshLibrary(); }} />}
+    {upload && data && <MediaUploader key={`${replacement?.id ?? "new"}:${droppedFiles.map(file => file.name).join(",")}`} permissions={data.permissions} initialCategory={replacement?.category ?? (onSelect && data.permissions[preferredCategory].upload ? preferredCategory : undefined)} initialAlt={replacement?.alt} files={droppedFiles} replacing={Boolean(replacement)} onClose={() => { setUpload(false); setDroppedFiles([]); }} onUploaded={asset => { setSelection(asset); setMessage("Image uploaded. Existing pages keep their current image until you choose a replacement and save the page."); void refreshLibrary(); }} />}
     <div className={`ml-workspace${active ? " has-selection" : ""}`}>
       <section className={`ml-gallery-panel${dragging ? " is-dragging" : ""}`} aria-label="Website image gallery"
         onDragOver={event => { if (event.dataTransfer.types.includes("Files")) { event.preventDefault(); setDragging(true); } }} onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragging(false); }}

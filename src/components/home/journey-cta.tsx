@@ -16,9 +16,9 @@ export type JourneyCtaCopy = {
 };
 
 export function JourneyCta({
-  copy = DEFAULT_COPY,
+  copy = DEFAULT_COPY, options = {},
 }: {
-  copy?: JourneyCtaCopy;
+  copy?: JourneyCtaCopy; options?: Record<string, string | boolean>;
 }) {
   const c = {
     kicker: copy?.kicker ?? DEFAULT_COPY.kicker,
@@ -35,8 +35,12 @@ export function JourneyCta({
     if (gpa.trim()) q.set("gpa", gpa.trim());
     if (ielts.trim()) q.set("ielts", ielts.trim());
     const s = q.toString();
-    return s ? `/apply?${s}` : "/apply";
-  }, [gpa, ielts]);
+    const destination = String(options.buttonHref || "/apply");
+    if (!s || !destination.startsWith("/apply") || destination.split(/[?#]/)[0] !== "/apply") return destination;
+    const url = new URL(destination, "https://unimondo.invalid");
+    q.forEach((value, key) => url.searchParams.set(key, value));
+    return url.pathname + url.search + url.hash;
+  }, [gpa, ielts, options.buttonHref]);
 
   return (
     <section id="eligibility" className="bg-[#F8F7F3] py-20 sm:py-28">
@@ -57,32 +61,32 @@ export function JourneyCta({
             </h2>
             <p className="mt-4 text-[#E6EEE8]/90">{c.description}</p>
 
-            <div className="mx-auto mt-8 flex max-w-md flex-col gap-3 sm:max-w-none sm:flex-row sm:justify-center">
+            {options.showEligibility !== false && <div className="mx-auto mt-8 flex max-w-md flex-col gap-3 sm:max-w-none sm:flex-row sm:justify-center">
               <label className="sr-only" htmlFor="gpa-field">
-                GPA (4.0 scale)
+                {String(options.gpaLabel || "GPA (4.0 scale)")}
               </label>
               <input
                 id="gpa-field"
                 type="text"
                 inputMode="decimal"
-                placeholder="GPA (e.g. 3.4)"
+                placeholder={String(options.gpaPlaceholder || "GPA (e.g. 3.4)")}
                 value={gpa}
                 onChange={(e) => setGpa(e.target.value)}
                 className="w-full rounded-lg border border-white/20 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/60 focus:border-[#C9AB76] focus:outline-none focus:ring-2 focus:ring-[#C9AB76]/40 sm:max-w-[200px]"
               />
               <label className="sr-only" htmlFor="ielts-field">
-                IELTS overall
+                {String(options.ieltsLabel || "IELTS overall")}
               </label>
               <input
                 id="ielts-field"
                 type="text"
                 inputMode="decimal"
-                placeholder="IELTS (e.g. 7.0)"
+                placeholder={String(options.ieltsPlaceholder || "IELTS (e.g. 7.0)")}
                 value={ielts}
                 onChange={(e) => setIelts(e.target.value)}
                 className="w-full rounded-lg border border-white/20 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/60 focus:border-[#C9AB76] focus:outline-none focus:ring-2 focus:ring-[#C9AB76]/40 sm:max-w-[200px]"
               />
-            </div>
+            </div>}
 
             <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="mt-8">
               <Link
@@ -94,7 +98,7 @@ export function JourneyCta({
               </Link>
             </motion.div>
             <p className="mt-4 text-xs text-[#E6EEE8]/70">
-              No payment required to start · Your data is used only for counseling coordination.
+              {String(options.supportingText ?? "No payment required to start · Your data is used only for counseling coordination.")}
             </p>
           </div>
         </motion.div>

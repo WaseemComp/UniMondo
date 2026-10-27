@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { featuredItems, type HomepageItem, type HomepageReferences } from "@/lib/homepage/items";
 import type { Opening } from "@/lib/unimondo-data";
 import { programRowToOpening, type ProgramRow } from "@/lib/cms/maps";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { FeaturedPrograms } from "./featured-programs";
 
 type Props = {
-  initialOpenings: Opening[];
+  initialOpenings: Opening[]; selection?: HomepageItem[]; references?: HomepageReferences; cardOptions?: Record<string, string | boolean>;
   kicker?: string;
   title?: string;
   subtitle?: string;
@@ -32,7 +33,7 @@ async function fetchPublishedPrograms(): Promise<Opening[] | null> {
   return (data as ProgramRow[]).map(programRowToOpening);
 }
 
-export function FeaturedProgramsLive({ initialOpenings, kicker, title, subtitle, ctaLabel, ctaHref }: Props) {
+export function FeaturedProgramsLive({ initialOpenings, kicker, title, subtitle, ctaLabel, ctaHref, selection, references, cardOptions }: Props) {
   const [openings, setOpenings] = useState(initialOpenings);
 
   useEffect(() => {
@@ -61,6 +62,6 @@ export function FeaturedProgramsLive({ initialOpenings, kicker, title, subtitle,
   }, []);
 
   return (
-    <FeaturedPrograms openings={openings} kicker={kicker} title={title} subtitle={subtitle} ctaLabel={ctaLabel} ctaHref={ctaHref} />
+    <FeaturedPrograms featured={selection && references ? featuredItems(selection, references, openings) : undefined} cardOptions={cardOptions} openings={openings} kicker={kicker} title={title} subtitle={subtitle} ctaLabel={ctaLabel} ctaHref={ctaHref} />
   );
 }

@@ -1,0 +1,3 @@
+import { Sparkles, ShieldCheck, Compass, HeartHandshake, Plane, BarChart3, BookOpen, GraduationCap, ClipboardCheck, FileText, Globe2, Languages, Landmark, CheckCircle, MapPin, Users, Award, Clock } from "lucide-react";
+const icons = { Sparkles, ShieldCheck, Compass, HeartHandshake, Plane, BarChart3, BookOpen, GraduationCap, ClipboardCheck, FileText, Globe2, Languages, Landmark, CheckCircle, MapPin, Users, Award, Clock };
+export function HomepageItemIcon({ name, className }: { name: string; className?: string }) { const Icon = icons[name as keyof typeof icons] ?? Sparkles; return <Icon className={className} aria-hidden />; }

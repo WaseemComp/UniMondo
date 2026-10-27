@@ -16,11 +16,12 @@ import { validateManagedMediaSelection } from "@/lib/media/operations";
 import { saveHomeHeroSlide } from "./home-page-blocks-actions";
 
 const patch = z.record(z.string(), z.string()).refine(value => Object.keys(value).length <= 12);
-const inherit = z.array(z.enum(["title", "subtitle", "ctaExplore", "ctaApply"])).max(4).default([]);
+const inherit = z.array(z.enum(["title", "subtitle", "ctaExplore", "ctaApply", "eyebrow", "primaryHref", "secondaryHref"])).max(7).default([]);
 const schema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("global"), patch, expected: z.record(z.string(), z.string().nullable()) }).strict(),
   z.object({ kind: z.literal("copy"), section: z.string(), patch, expectedUpdatedAt: z.string().nullable() }).strict(),
   z.object({ kind: z.literal("slide"), id: z.string().uuid(), patch, inherit, expectedUpdatedAt: z.string(), visible: z.boolean(), order: z.number().int().min(0).max(10000) }).strict(),
+  z.object({ kind: z.literal("newSlide"), patch, inherit, visible: z.boolean(), order: z.number().int().min(0).max(10000) }).strict(),
   z.object({ kind: z.literal("builtin"), index: z.number().int().min(0).max(DEFAULT_HERO_SLIDES.length - 1), patch, inherit, visible: z.boolean() }).strict(),
 ]);
 export type HomepageSaveInput = z.input<typeof schema>;
@@ -35,7 +36,7 @@ export async function saveHomepageEditor(input: unknown): Promise<HomepageSaveRe
     const value = parsed.data;
     const section = value.kind === "copy" ? HOME_SECTIONS.find(section => section.id === value.section && section.id !== "hero") : undefined;
     if (value.kind === "copy" && !section) return { ok: false, error: "This section cannot be changed here." };
-    const permission = value.kind === "copy" ? section!.permission : value.kind === "global" ? "home.edit" : "home.hero_slider.edit";
+    const permission = value.kind === "copy" ? section!.permission : value.kind === "global" ? "home.edit" : value.kind === "newSlide" ? "home.hero_slider.create" : "home.hero_slider.edit";
     if (!(await hasAdminPermission(user, permission))) return { ok: false, error: "You do not have permission to save this content." };
     if (value.kind === "builtin" && !(await hasAdminPermission(user, "home.hero_slider.create"))) return { ok: false, error: "Creating editable slides requires the existing create-slide permission." };
     const error = value.kind === "global" || value.kind === "copy" ? validateCopyPatch(value.kind === "global" ? "hero" : section!.id, value.patch) : validateSlidePatch(value.patch, process.env.NEXT_PUBLIC_SUPABASE_URL);
@@ -72,7 +73,15 @@ export async function saveHomepageEditor(input: unknown): Promise<HomepageSaveRe
         if (key === "imageUrl" || key === "imageAlt") media[key] = text;
         else { const field = SLIDE_COPY_KEYS[key] ?? key; content[field] = mergeEnglish(content[field], text); }
       }
-      if (value.kind === "builtin") {
+      if (value.kind === "newSlide") {
+        const existingSlides = before.blocks.filter(block => block.section_key === "hero_slider" && block.block_key === "slide");
+        if (existingSlides.some(block => block.sort_order === value.order) || !existingSlides.length && value.order < DEFAULT_HERO_SLIDES.length) return {ok:false,error:"Choose an unused position after the existing slides."};
+        if (!media.imageUrl || !media.imageAlt) return {ok:false,error:"Choose an image and describe it before saving the new slide."};
+        const service = createSupabaseServiceClient(); if (!service) return {ok:false,error:"Slide saving is unavailable."};
+        const defaults = existingSlides.length ? [] : DEFAULT_HERO_SLIDES.map((slide,index)=>({page_slug:"home",section_key:"hero_slider",block_key:"slide",block_type:"hero_slide",is_active:true,sort_order:index,content:{line:slide.line},media:{imageUrl:slide.src,imageAlt:slide.alt}}));
+        const {error:writeError}=await service.from("cms_content_blocks").insert([...defaults,{page_slug:"home",section_key:"hero_slider",block_key:"slide",block_type:"hero_slide",is_active:value.visible,sort_order:value.order,content,media}]);
+        if(writeError)return {ok:false,error:"The new slide could not be saved. Reload before retrying."};
+      } else if (value.kind === "builtin") {
         if (before.blocks.some(block => block.section_key === "hero_slider" && block.block_key === "slide")) return { ok: false, error: "Saved slides already exist. Reload to edit them instead." };
         const service = createSupabaseServiceClient();
         if (!service) return { ok: false, error: "Slide saving is unavailable." };
@@ -81,7 +90,7 @@ export async function saveHomepageEditor(input: unknown): Promise<HomepageSaveRe
         const { error: writeError } = await service.from("cms_content_blocks").insert(rows);
         if (writeError) return { ok: false, error: "Slides could not be saved. Reload before trying again; existing slides were not replaced." };
       } else {
-        const result = await saveHomeHeroSlide({ id: value.id, expected_updated_at: value.expectedUpdatedAt, is_active: value.visible, sort_order: value.order, imageUrl: String(media.imageUrl ?? media.src ?? fallback?.src ?? ""), imageAlt: String(media.imageAlt ?? media.alt ?? ""), line: content.line as string, title: content.title as string, subtitle: content.subtitle as string, buttonText: content.buttonText as string, secondaryButtonText: content.secondaryButtonText as string });
+        const result = await saveHomeHeroSlide({ id: value.id, expected_updated_at: value.expectedUpdatedAt, is_active: value.visible, sort_order: value.order, imageUrl: String(media.imageUrl ?? media.src ?? fallback?.src ?? ""), imageAlt: String(media.imageAlt ?? media.alt ?? ""), line: content.line as string, title: content.title as string, subtitle: content.subtitle as string, buttonText: content.buttonText as string, secondaryButtonText: content.secondaryButtonText as string, eyebrow: content.eyebrow as string, primaryHref: content.primaryHref as string, secondaryHref: content.secondaryHref as string });
         if (!result.ok) return result;
       }
     }
@@ -92,7 +101,7 @@ export async function saveHomepageEditor(input: unknown): Promise<HomepageSaveRe
     if (value.kind === "global") verified = Object.entries(value.patch).every(([key, text]) => snapshot.site[HERO_SITE_KEYS[key as keyof typeof HERO_SITE_KEYS]] === text);
     else if (value.kind === "copy") verified = Object.entries(value.patch).every(([key, text]) => resolveSection(snapshot.blocks, value.section as CopySection)[key]?.value === text);
     else {
-      const row = snapshot.blocks.find(row => row.section_key === "hero_slider" && row.block_key === "slide" && (value.kind === "slide" ? row.id === value.id : row.sort_order === value.index));
+      const row = snapshot.blocks.find(row => row.section_key === "hero_slider" && row.block_key === "slide" && (value.kind === "slide" ? row.id === value.id : row.sort_order === (value.kind === "builtin" ? value.index : value.order)));
       verified = Boolean(row && row.is_active === value.visible && (value.kind !== "slide" || row.sort_order === value.order) && Object.entries(value.patch).every(([key, text]) => key === "imageUrl" || key === "imageAlt" ? record(row.media)[key] === text : english(record(row.content)[SLIDE_COPY_KEYS[key] ?? key]) === text) && value.inherit.every(key => !english(record(row.content)[SLIDE_COPY_KEYS[key]])?.trim()));
     }
     if (!verified) return { ok: false, error: "Saving could not be confirmed. Reload the section before trying again." };
