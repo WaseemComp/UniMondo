@@ -26,11 +26,12 @@ export function validateCopyPatch(section: SectionId, patch: Record<string, stri
   return null;
 }
 export function validateSlidePatch(patch: Record<string, string>, supabaseUrl?: string): string | null {
-  const allowed = [...Object.keys(HERO_DEFAULTS).filter(key => ["title", "subtitle", "ctaExplore", "ctaApply"].includes(key)), "line", "imageUrl", "imageAlt"];
+  const allowed = [...Object.keys(HERO_DEFAULTS).filter(key => ["title", "subtitle", "ctaExplore", "ctaApply", "eyebrow", "primaryHref", "secondaryHref"].includes(key)), "line", "imageUrl", "imageAlt"];
   for (const [key, value] of Object.entries(patch)) {
     if (!allowed.includes(key)) return "This slide field cannot be edited.";
     if (!value.trim()) return "Slide fields cannot be blank. Use ‘Use global copy’ to remove a text override.";
     if (value.length > (key === "subtitle" ? 5000 : 1500)) return "The slide text is too long.";
+    if ((key === "primaryHref" || key === "secondaryHref") && !safeDestination(value)) return "Use a valid website path or secure https:// button destination.";
     if (key === "imageUrl" && !safeImage(value, supabaseUrl)) return "Choose an existing website image, a public UniMondo storage image or an Unsplash image using https://.";
   }
   return null;

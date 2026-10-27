@@ -12,6 +12,9 @@ import { CmsActionArea, CmsFieldContext, CmsNotice, CmsPageHeader } from "@/comp
 import { CmsIcon } from "@/components/admin/cms/cms-icons";
 import { HomepagePreview, HomepageSectionRendering } from "./homepage-preview";
 import { MediaPicker } from "@/components/admin/media/media-picker";
+import { COLLECTIONS, isSectionVisible, type CollectionId } from "@/lib/homepage/items";
+import { HomepageItemsEditor, HomepagePresentationEditor } from "./homepage-items-editor";
+import { HomepageStoriesEditor } from "./homepage-stories-editor";
 import "./homepage-editor.css";
 
 const leaveMessage = "You have unsaved homepage changes. Leave without saving?";
@@ -42,6 +45,8 @@ export function HomepageEditor({ initial, initialMediaId }: Props) {
   const [pendingMediaId, setPendingMediaId] = useState(initialMediaId);
   const [section, setSection] = useState<SectionId>("hero");
   const [target, setTarget] = useState(() => firstHeroEditorTarget(initial.blocks, initial.permissions.viewSlides));
+  const [mode, setMode] = useState<string>("text");
+  const [itemSelection, setItemSelection] = useState<string>();
   const [dirty, setDirty] = useState(false);
   const [revision, setRevision] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -52,10 +57,21 @@ export function HomepageEditor({ initial, initialMediaId }: Props) {
     if (busy) return;
     if (section === nextSection && target === nextTarget) return;
     if (dirty && !window.confirm(leaveMessage)) return;
-    setDirty(false); setSection(nextSection); setTarget(nextTarget); setSavedMessage("");
+    setMode("text"); setItemSelection(undefined); setDirty(false); setSection(nextSection); setTarget(nextTarget); setSavedMessage("");
+  };
+  const selectMode = (nextMode:string, identity?:string) => {
+    if(busy || mode===nextMode && !identity)return;
+    if(dirty && !window.confirm(leaveMessage))return;
+    setDirty(false);setMode(nextMode);setItemSelection(identity);setSavedMessage("");
+  };
+  const previewSelect = (identity:string) => {
+    const separator = identity.indexOf(":"), group=identity.slice(0,separator), id=identity.slice(separator+1);
+    if(group==="stories"&&section==="success_stories")selectMode("stories",id);
+    else if(group in COLLECTIONS&&COLLECTIONS[group as CollectionId].section===section)selectMode(group,id);
   };
   const saved = (snapshot: HomepageSnapshot) => {
     setData(previous => ({ ...previous, ...snapshot })); setDirty(false); setRevision(value => value + 1); setSavedMessage("Changes saved. Public homepage content updates immediately after the website refreshes.");
+    if(target === "new") { const previous = new Set(data.blocks.map(b=>b.id)); const row=snapshot.blocks.find(b=>b.section_key==="hero_slider"&&b.block_key==="slide"&&!previous.has(b.id)&&b.sort_order>=DEFAULT_HERO_SLIDES.length); if(row)setTarget(row.id); }
     if (target.startsWith("builtin:")) {
       const index = Number(target.split(":")[1]);
       const row = snapshot.blocks.find(block => block.section_key === "hero_slider" && block.block_key === "slide" && block.sort_order === index);
@@ -66,17 +82,20 @@ export function HomepageEditor({ initial, initialMediaId }: Props) {
     <CmsPageHeader eyebrow="WEBSITE / HOME" title="Homepage editor" description="Shape your homepage one section at a time, with the content your visitors actually see." actions={<a href="/" target="_blank" rel="noopener noreferrer" className="cms-button-secondary">View public homepage<ArrowUpRight size={15} aria-hidden /></a>} />
     <div className="hp-save-explanation"><span className={`hp-work-state ${dirty ? "is-unsaved" : ""}`}><span />{dirty ? "Unsaved changes" : data.available ? "Current public content" : "Reference defaults"}</span><p>Save updates the public website. Changes in this preview stay private until you save.</p></div>
     {!data.available && <CmsNotice>Saved homepage content could not be loaded. Website defaults are shown for reference, and saving is disabled to protect existing content.</CmsNotice>}
+    {!isSectionVisible(data.blocks, section) && <CmsNotice>This section is currently hidden on the public homepage. Its content remains visible here for editing.</CmsNotice>}
     {savedMessage && <p className="hp-success" role="status"><Check size={17} aria-hidden />{savedMessage}</p>}
+    <nav className="hp-editor-tabs" aria-label="Section editing tools"><button type="button" aria-pressed={mode==="text"} disabled={busy} onClick={()=>selectMode("text")}>{section==="hero"?"Slide & text":"Section text"}</button>{Object.entries(COLLECTIONS).filter(([key,value])=>value.section===section&&(key!=="why_stats"||data.permissions.viewStats)).map(([key,value])=><button type="button" aria-pressed={mode===key} disabled={busy} key={key} onClick={()=>selectMode(key)}>{value.label}</button>)}{section==="success_stories"&&<button type="button" disabled={busy} aria-pressed={mode==="stories"} onClick={()=>selectMode("stories")}>Testimonials</button>}<button type="button" aria-pressed={mode==="settings"} disabled={busy} onClick={()=>selectMode("settings")}>Section settings</button></nav>
     <div className="hp-workspace"><nav className="hp-sections" aria-label="Homepage sections"><p className="cms-eyebrow">HOMEPAGE SECTIONS</p>{sections.map((item, index) => <button key={item.id} type="button" disabled={busy} className={section === item.id ? "is-active" : ""} aria-current={section === item.id ? "true" : undefined} onClick={() => navigate(item.id)}><CmsIcon name={item.icon} size={17} /><span>{item.label}</span><small>{String(index + 1).padStart(2, "0")}</small></button>)}</nav>
-      <SectionEditor key={`${section}:${target}:${revision}`} data={data} section={section} target={target} onTarget={value => navigate(section, value)} onDirty={setDirty} onBusy={setBusy} onSaved={saved} suggestedMediaId={pendingMediaId} onMediaClose={() => setPendingMediaId(undefined)} />
+      {mode==="settings"?<HomepagePresentationEditor key={`${section}:settings:${revision}`} data={data} section={section} onDirty={setDirty} onBusy={setBusy} onSaved={saved}/>:mode==="stories"?<HomepageStoriesEditor key={`${section}:stories:${revision}`} data={data} section={section} initialSelection={itemSelection} onDirty={setDirty} onBusy={setBusy} onRows={(rows,selectedId)=>{setItemSelection(selectedId);setData(previous=>({...previous,editableStories:{rows,available:true},stories:rows.filter(row=>row.is_published).sort((a,b)=>a.sort_order-b.sort_order).slice(0,6)}));setDirty(false);setRevision(value=>value+1);setSavedMessage("Testimonial saved. Only approved featured information is shown publicly.");}}/>:mode in COLLECTIONS?<HomepageItemsEditor key={`${section}:${mode}:${revision}`} data={data} section={section} collection={mode as CollectionId} initialSelection={itemSelection} onRememberSelection={setItemSelection} onSelectOther={previewSelect} onDirty={setDirty} onBusy={setBusy} onSaved={saved}/>:<SectionEditor key={`${section}:${target}:${revision}`} data={data} section={section} target={target} onTarget={value => navigate(section, value)} onDirty={setDirty} onBusy={setBusy} onSaved={saved} suggestedMediaId={pendingMediaId} onMediaClose={() => setPendingMediaId(undefined)} onPreviewSelect={previewSelect} />}
     </div>
   </div>;
 }
 
-type SectionProps = { suggestedMediaId?: string; onMediaClose: () => void; data: HomepageEditorData; section: SectionId; target: string; onTarget: (value: string) => void; onDirty: (dirty: boolean) => void; onBusy: (busy: boolean) => void; onSaved: (snapshot: HomepageSnapshot) => void };
-function SectionEditor({ data, section, target, onTarget, onDirty, onBusy, onSaved, suggestedMediaId, onMediaClose }: SectionProps) {
+type SectionProps = { onPreviewSelect: (identity:string)=>void; suggestedMediaId?: string; onMediaClose: () => void; data: HomepageEditorData; section: SectionId; target: string; onTarget: (value: string) => void; onDirty: (dirty: boolean) => void; onBusy: (busy: boolean) => void; onSaved: (snapshot: HomepageSnapshot) => void };
+function SectionEditor({ data, section, target, onTarget, onDirty, onBusy, onSaved, suggestedMediaId, onMediaClose, onPreviewSelect }: SectionProps) {
   const definition = HOME_SECTIONS.find(item => item.id === section)!;
   const isSlide = section === "hero" && target !== "global";
+  const isNew = isSlide && target === "new";
   const builtinIndex = target.startsWith("builtin:") ? Number(target.split(":")[1]) : null;
   const block = isSlide ? data.blocks.find(row => row.id === target && row.section_key === "hero_slider" && row.block_key === "slide") : undefined;
   const savedSlides = data.blocks.filter(row => row.section_key === "hero_slider" && row.block_key === "slide");
@@ -87,19 +106,20 @@ function SectionEditor({ data, section, target, onTarget, onDirty, onBusy, onSav
   const [values, setValues] = useState(initialValues);
   const [inheritance, setInheritance] = useState(initialInheritance);
   const [visible, setVisible] = useState(block?.is_active ?? true);
-  const [order, setOrder] = useState(block?.sort_order ?? builtinIndex ?? 0);
+  const [order, setOrder] = useState(isNew ? Math.max(DEFAULT_HERO_SLIDES.length,...savedSlides.map(b=>b.sort_order+1)) : block?.sort_order ?? builtinIndex ?? 0);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const [previewChoice, setPreviewChoice] = useState("");
   const [pickerOpen, setPickerOpen] = useState(Boolean(suggestedMediaId && isSlide));
-  const dirty = JSON.stringify(values) !== JSON.stringify(initialValues) || JSON.stringify(inheritance) !== JSON.stringify(initialInheritance) || visible !== (block?.is_active ?? true) || order !== (block?.sort_order ?? builtinIndex ?? 0);
-  const canSave = data.available && (isSlide ? data.permissions.editSlides && (builtinIndex === null || data.permissions.createSlides && !savedSlides.length) : section === "journey_cta" ? data.permissions.editCta : data.permissions.editHome);
+  const dirty = JSON.stringify(values) !== JSON.stringify(initialValues) || JSON.stringify(inheritance) !== JSON.stringify(initialInheritance) || visible !== (block?.is_active ?? true) || order !== (block?.sort_order ?? builtinIndex ?? 0) || isNew;
+  const canSave = data.available && (isSlide ? isNew ? data.permissions.createSlides : data.permissions.editSlides && (builtinIndex === null || data.permissions.createSlides && !savedSlides.length) : section === "journey_cta" ? data.permissions.editCta : data.permissions.editHome);
+  useEffect(() => { if (isNew) onDirty(true); }, [isNew, onDirty]);
   const locked = !canSave || pending;
   const changedPatch = Object.fromEntries(Object.entries(values).filter(([key, value]) => value !== initialValues[key] || isSlide && SLIDE_COPY_KEYS[key] && inheritance[key] !== initialInheritance[key]).filter(([key]) => !inheritance[key]));
   const validation = isSlide ? validateSlidePatch(changedPatch, process.env.NEXT_PUBLIC_SUPABASE_URL) : validateCopyPatch(section, changedPatch);
   const fields = isSlide ? [
-    { key: "title", label: "Main headline" }, { key: "subtitle", label: "Supporting paragraph", type: "textarea" }, { key: "ctaExplore", label: "Primary button text" }, { key: "ctaApply", label: "Secondary button text" }, { key: "line", label: "Caption beneath buttons" },
-  ] : definition.fields;
+    { key: "eyebrow", label: "Introductory label" }, { key: "title", label: "Main headline" }, { key: "subtitle", label: "Supporting paragraph", type: "textarea" }, { key: "ctaExplore", label: "Primary button text" }, { key: "ctaApply", label: "Secondary button text" }, { key: "primaryHref", label: "Primary button destination", type: "link" }, { key: "secondaryHref", label: "Secondary button destination", type: "link" }, { key: "line", label: "Caption beneath buttons" },
+  ] : definition.fields.filter(field => section !== "why_europe" || !field.key.startsWith("quickFact"));
   function updateFields(patch: Record<string, string>, nextInheritance = inheritance, nextVisible = visible, nextOrder = order) {
     const next = { ...values, ...patch };
     setValues(next); setInheritance(nextInheritance); setVisible(nextVisible); setOrder(nextOrder); setError("");
@@ -114,7 +134,7 @@ function SectionEditor({ data, section, target, onTarget, onDirty, onBusy, onSav
     const publicSlides = publicHeroSlides(data.blocks);
     previewSlide = publicSlides[Number(previewChoice) || 0] ?? publicSlides[0];
   } else if (isSlide) {
-    previewSlide = { src: values.imageUrl, alt: values.imageAlt, line: values.line, isActive: true, title: inheritance.title ? undefined : values.title, subtitle: inheritance.subtitle ? undefined : values.subtitle, ctaExplore: inheritance.ctaExplore ? undefined : values.ctaExplore, ctaApply: inheritance.ctaApply ? undefined : values.ctaApply };
+    previewSlide = { src: values.imageUrl, alt: values.imageAlt, line: values.line, isActive: true, title: inheritance.title ? undefined : values.title, subtitle: inheritance.subtitle ? undefined : values.subtitle, ctaExplore: inheritance.ctaExplore ? undefined : values.ctaExplore, ctaApply: inheritance.ctaApply ? undefined : values.ctaApply, eyebrow: inheritance.eyebrow ? undefined : values.eyebrow, primaryHref: inheritance.primaryHref ? undefined : values.primaryHref, secondaryHref: inheritance.secondaryHref ? undefined : values.secondaryHref };
   } else {
     const current = sectionBlock(data.blocks, section as CopySection);
     const content = { ...record(current?.content) };
@@ -125,12 +145,12 @@ function SectionEditor({ data, section, target, onTarget, onDirty, onBusy, onSav
   }
   async function save(event: React.FormEvent) {
     event.preventDefault(); setError("");
-    if (!canSave || pending || !dirty) return;
+    if (!canSave || pending || !(dirty || isNew)) return;
     if (validation) { setError(validation); return; }
     let input: HomepageSaveInput;
     if (isSlide) {
-      const inherit = Object.keys(inheritance).filter(key => inheritance[key]) as ("title" | "subtitle" | "ctaExplore" | "ctaApply")[];
-      input = builtinIndex !== null ? { kind: "builtin", index: builtinIndex, patch: changedPatch, inherit, visible } : { kind: "slide", id: block!.id, expectedUpdatedAt: block!.updated_at, patch: changedPatch, inherit, visible, order };
+      const inherit = Object.keys(inheritance).filter(key => inheritance[key]) as ("title" | "subtitle" | "ctaExplore" | "ctaApply" | "eyebrow" | "primaryHref" | "secondaryHref")[];
+      input = isNew ? {kind:"newSlide",patch:Object.fromEntries(Object.entries(values).filter(([key])=>!inheritance[key])),inherit,visible,order} : builtinIndex !== null ? { kind: "builtin", index: builtinIndex, patch: changedPatch, inherit, visible } : { kind: "slide", id: block!.id, expectedUpdatedAt: block!.updated_at, patch: changedPatch, inherit, visible, order };
     } else if (section === "hero") {
       input = { kind: "global", patch: changedPatch, expected: Object.fromEntries(Object.keys(changedPatch).map(key => [key, data.site[HERO_SITE_KEYS[key as keyof typeof HERO_SITE_KEYS]] ?? null])) };
     } else input = { kind: "copy", section, patch: changedPatch, expectedUpdatedAt: sectionBlock(data.blocks, section)?.updated_at ?? null };
@@ -149,7 +169,8 @@ function SectionEditor({ data, section, target, onTarget, onDirty, onBusy, onSav
   return <>
     <section className="hp-fields-panel" aria-label="Section editing controls"><div className="hp-panel-heading"><div><p className="cms-eyebrow">EDIT SECTION</p><h2>{definition.label}</h2></div><button type="button" className="hp-preview-jump" onClick={() => document.querySelector(".hp-preview-panel")?.scrollIntoView({ behavior: "smooth", block: "start" })}><Monitor size={15} aria-hidden />Preview</button></div>
       <form onSubmit={save} className="hp-section-form">
-        {section === "hero" && data.permissions.viewSlides && <div className="hp-field-label"><label htmlFor="hp-target">Editing</label><select id="hp-target" value={target} disabled={pending} onChange={event => onTarget(event.target.value)}><option value="global">Global hero copy</option>{savedSlides.map((row, index) => <option key={row.id} value={row.id}>Slide {index + 1} · {heroSlideFromBlock(row).alt || "Saved image"}{row.is_active ? "" : " (hidden)"}</option>)}{(!savedSlides.length || !savedSlides.some(row => row.is_active && heroSlideFromBlock(row).src)) && DEFAULT_HERO_SLIDES.map((slide, index) => <option key={index} value={`builtin:${index}`}>Built-in slide {index + 1} · {slide.alt}</option>)}</select></div>}
+        {section === "hero" && data.permissions.viewSlides && <div className="hp-field-label"><label htmlFor="hp-target">Editing</label><select id="hp-target" value={target} disabled={pending} onChange={event => onTarget(event.target.value)}><option value="global">Global hero copy</option>{isNew&&<option value="new">New slide · unsaved</option>}{savedSlides.map((row, index) => <option key={row.id} value={row.id}>Slide {index + 1} · {heroSlideFromBlock(row).alt || "Saved image"}{row.is_active ? "" : " (hidden)"}</option>)}{(!savedSlides.length || !savedSlides.some(row => row.is_active && heroSlideFromBlock(row).src)) && DEFAULT_HERO_SLIDES.map((slide, index) => <option key={index} value={`builtin:${index}`}>Built-in slide {index + 1} · {slide.alt}</option>)}</select></div>}
+        {section === "hero" && data.permissions.viewSlides && <button type="button" className="cms-button-secondary" disabled={pending || !data.permissions.createSlides} onClick={()=>onTarget("new")}>Add new slide</button>}
         {!canSave && <p className="hp-help">{!data.available ? "Saving is disabled until saved content can be loaded." : "You can preview this content. Your current permissions do not allow saving this selection."}</p>}
         {section === "hero" && <div className="hp-explainer">{isSlide ? "Slide overrides take priority over global headlines and button text. Choose ‘Use global copy’ to inherit the shared value." : "Shared copy is used unless a slide has its own override. The preview shows the selected public slide, including its overrides."}</div>}
         {builtinIndex !== null && <p className="hp-help">{savedSlides.length ? "Built-in slides currently provide the public fallback because no saved slide is visible. Edit an existing slide to restore it." : "Your website currently uses five built-in slides. The first slide save makes all five editable together, retaining every other image and caption. Later saves update the same records."}</p>}
@@ -172,18 +193,17 @@ function SectionEditor({ data, section, target, onTarget, onDirty, onBusy, onSav
             <p className="hp-help">Choose or upload an image from the shared library. Your existing image stays public until you save changes.</p>
           </div>
           <div className="hp-field"><label htmlFor="hp-imageAlt">Image description</label><input id="hp-imageAlt" value={values.imageAlt} disabled={locked} onChange={event => change("imageAlt", event.target.value)} /><p className="hp-help">Describe the image for visitors using a screen reader.</p></div>
-          <div className="hp-slide-controls"><label><input type="checkbox" checked={visible} disabled={locked} onChange={event => { updateFields({}, inheritance, event.target.checked); }} />Visible on homepage</label>{block && <label htmlFor="hp-order">Slide position<input id="hp-order" type="number" min={0} max={10000} value={Number.isFinite(order) ? order : ""} disabled={locked} onChange={event => { updateFields({}, inheritance, visible, event.target.value === "" ? NaN : Number(event.target.value)); }} /></label>}</div>
+          <div className="hp-slide-controls"><label><input type="checkbox" checked={visible} disabled={locked} onChange={event => { updateFields({}, inheritance, event.target.checked); }} />Visible on homepage</label>{(block || isNew) && <label htmlFor="hp-order">Slide position<input id="hp-order" type="number" min={0} max={10000} value={Number.isFinite(order) ? order : ""} disabled={locked} onChange={event => { updateFields({}, inheritance, visible, event.target.value === "" ? NaN : Number(event.target.value)); }} /></label>}</div>
           <p className="hp-help">Lower positions appear first; each saved slide needs a distinct position. If all saved slides are hidden, the website uses its built-in carousel.</p>
-          <p className="hp-help">The introductory label and button destinations come from global hero copy.</p>
+          <p className="hp-help">The label and button destinations inherit global copy unless you set a slide override. Use an unused position to reorder slides; gaps are allowed.</p>
         </>}
         {section === "hero" && !isSlide && <div className="hp-field"><label htmlFor="hp-preview-slide">Public slide in preview</label><select id="hp-preview-slide" value={previewChoice} onChange={event => setPreviewChoice(event.target.value)}>{publicHeroSlides(data.blocks).map((slide, index) => <option value={index} key={index}>Slide {index + 1} · {slide.alt}</option>)}</select>{["title", "subtitle", "ctaExplore", "ctaApply"].some(key => Boolean(previewSlide[key as keyof HeroSlide])) && <p className="hp-help">This slide has saved text overrides. Global edits will appear on slides that inherit those fields. Select the slide under Editing to change its overrides.</p>}<div className="hp-image-thumbnail hp-reference-image"><img src={previewSlide.src} alt={previewSlide.alt} /></div><p className="hp-help">{previewSlide.line} · Select a slide under Editing to change its image or caption.</p></div>}
-        {section === "why_europe" && <div className="hp-reference-image hp-image-thumbnail"><img src="https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=2400&q=75" alt="Existing landscape background" /><p className="hp-help">Existing website background. This section has no saved background-image field yet. Individual section items and their images remain a Phase 04 requirement.</p></div>}
         {definition.note && <p className="hp-help hp-boundary">{definition.note}</p>}
         {(error || validation) && <p role="alert" className="hp-form-error">{error || validation}</p>}
-        <CmsActionArea><button className="cms-button-secondary" type="button" disabled={locked || !dirty} onClick={() => { if (window.confirm("Discard your unsaved changes to this selection?")) { setValues(initialValues); setInheritance(initialInheritance); setVisible(block?.is_active ?? true); setOrder(block?.sort_order ?? builtinIndex ?? 0); setError(""); onDirty(false); } }}>Discard changes</button><button className="cms-button-primary" type="submit" disabled={locked || !dirty || Boolean(validation) || !Number.isFinite(order)}><Save size={15} aria-hidden />{pending ? "Saving…" : "Save changes"}</button></CmsActionArea>
+        <CmsActionArea><button className="cms-button-secondary" type="button" disabled={locked || !dirty} onClick={() => { if (window.confirm("Discard your unsaved changes to this selection?")) { setValues(initialValues); setInheritance(initialInheritance); setVisible(block?.is_active ?? true); setOrder(block?.sort_order ?? builtinIndex ?? 0); setError(""); onDirty(false); } }}>Discard changes</button><button className="cms-button-primary" type="submit" disabled={locked || !(dirty || isNew) || Boolean(validation) || !Number.isFinite(order)}><Save size={15} aria-hidden />{pending ? "Saving…" : "Save changes"}</button></CmsActionArea>
       </form>
     </section>
     {pickerOpen && isSlide && <MediaPicker currentUrl={values.imageUrl} initialSelectedId={suggestedMediaId} onSelect={asset => updateFields({ imageUrl: asset.url, imageAlt: asset.alt || asset.name })} onClose={() => { setPickerOpen(false); onMediaClose(); }} />}
-    <HomepagePreview dirty={dirty} hidden={isSlide && !visible}><HomepageSectionRendering section={section} data={previewData} slide={previewSlide} /></HomepagePreview>
+    <HomepagePreview dirty={dirty || isNew} hidden={isSlide && !visible} onSelectItem={onPreviewSelect}><HomepageSectionRendering section={section} data={previewData} slide={previewSlide} /></HomepagePreview>
   </>;
 }

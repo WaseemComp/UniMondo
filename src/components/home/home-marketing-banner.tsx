@@ -12,9 +12,9 @@ export type HomeMarketingBannerCopy = {
 };
 
 export function HomeMarketingBanner({
-  copy = DEFAULT_COPY,
+  copy = DEFAULT_COPY, supportingText = "No upfront application fee.",
 }: {
-  copy?: HomeMarketingBannerCopy;
+  copy?: HomeMarketingBannerCopy; supportingText?: string;
 }) {
   const c = {
     text: copy?.text ?? DEFAULT_COPY.text,
@@ -26,7 +26,7 @@ export function HomeMarketingBanner({
     <section className="relative border-b border-[#E2DFD8] bg-[#E6EEE8] px-4 py-3.5 sm:px-6 lg:px-8">
       <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 sm:flex-row sm:gap-6">
         <p className="text-center text-sm leading-relaxed text-[#26343B] sm:text-left sm:text-[15px]">
-          {c.text} <strong className="font-bold text-[#244B50]">{c.highlight}</strong> — No upfront application fee.
+          {c.text} <strong className="font-bold text-[#244B50]">{c.highlight}</strong>{supportingText ? ` — ${supportingText}` : ""}
         </p>
         <Link
           href={c.ctaHref}

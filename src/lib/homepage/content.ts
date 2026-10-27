@@ -1,6 +1,6 @@
 /** Shared public/editor content. Existing records remain the source of saved values. */
 export type HeroCopy = { title: string; subtitle: string; ctaExplore: string; ctaApply: string; eyebrow?: string; primaryHref?: string; secondaryHref?: string };
-export type HeroSlide = { src: string; alt: string; line: string; isActive?: boolean; title?: string; subtitle?: string; ctaExplore?: string; ctaApply?: string };
+export type HeroSlide = { src: string; alt: string; line: string; isActive?: boolean; title?: string; subtitle?: string; ctaExplore?: string; ctaApply?: string; eyebrow?: string; primaryHref?: string; secondaryHref?: string };
 export const HERO_DEFAULTS = {
   eyebrow: "UNIMONDO · EUROPEAN ADMISSIONS CONSULTANCY",
   title: "Your Future Knows No Borders",
@@ -60,14 +60,14 @@ export const HOME_SECTIONS: { id: SectionId; label: string; icon: string; permis
     { key: "eyebrow", label: "Introductory label" }, { key: "title", label: "Main headline" }, { key: "subtitle", label: "Supporting paragraph", type: "textarea" },
     { key: "ctaExplore", label: "Primary button text" }, { key: "primaryHref", label: "Primary button destination", type: "link" }, { key: "ctaApply", label: "Secondary button text" }, { key: "secondaryHref", label: "Secondary button destination", type: "link" },
   ] },
-  { id: "marketing_banner", label: "Marketing Announcement", icon: "submissions", permission: "home.edit", fields: [{ key: "text", label: "Announcement", type: "textarea" }, { key: "highlight", label: "Highlighted text" }, ...buttonFields], note: "The existing no-upfront-fee statement stays in the public banner." },
-  { id: "why_unimondo", label: "Why UniMondo", icon: "about", permission: "home.edit", fields: standardFields, note: "The existing benefit cards remain unchanged. This editor controls the section introduction." },
-  { id: "destinations", label: "Popular Destinations", icon: "destinations", permission: "home.edit", fields: [...standardFields, ...buttonFields], note: "Destination cards remain in the existing website. This editor controls the heading and link." },
-  { id: "universities", label: "Featured Universities & Programs", icon: "universities", permission: "home.edit", fields: [...standardFields, ...buttonFields], note: "Program cards use existing published academic data; they are not edited here." },
-  { id: "success_stories", label: "Success Stories", icon: "stories", permission: "home.edit", fields: standardFields.slice(0, 2), note: "Edit this section’s headings. Existing published stories are previewed here; story management remains separate. The public section appears only when published stories exist." },
-  { id: "how_it_works", label: "How It Works", icon: "applications", permission: "home.edit", fields: standardFields, note: "The existing five process steps remain unchanged." },
-  { id: "why_europe", label: "Why Study in Europe", icon: "destinations", permission: "home.edit", fields: [...standardFields, { key: "quickFact1Label", label: "First fact label" }, { key: "quickFact1Value", label: "First fact" }, { key: "quickFact2Label", label: "Second fact label" }, { key: "quickFact2Value", label: "Second fact" }], note: "Existing background image and benefit list remain unchanged." },
-  { id: "journey_cta", label: "Final Call to Action", icon: "contact", permission: "home.cta.edit", fields: [...standardFields.slice(0, 2), { key: "description", label: "Supporting description", type: "textarea" }, { key: "buttonText", label: "Button text" }], note: "The button continues to the existing application flow, preserving GPA and IELTS handling." },
+  { id: "marketing_banner", label: "Marketing Announcement", icon: "submissions", permission: "home.edit", fields: [{ key: "text", label: "Announcement", type: "textarea" }, { key: "highlight", label: "Highlighted text" }, ...buttonFields], note: "The supporting statement and visibility are editable under Section settings." },
+  { id: "why_unimondo", label: "Why UniMondo", icon: "about", permission: "home.edit", fields: standardFields, note: "Use Benefit cards and Statistics above to manage each displayed item." },
+  { id: "destinations", label: "Popular Destinations", icon: "destinations", permission: "home.edit", fields: [...standardFields, ...buttonFields], note: "Use Featured countries to select, organize and illustrate existing destinations." },
+  { id: "universities", label: "Featured Universities & Programs", icon: "universities", permission: "home.edit", fields: [...standardFields, ...buttonFields], note: "Use Featured items to select existing universities and programs. Master records remain unchanged." },
+  { id: "success_stories", label: "Success Stories", icon: "stories", permission: "home.edit", fields: standardFields.slice(0, 2), note: "Use Testimonials to manage approved public stories. The public carousel displays the first six featured stories in display order." },
+  { id: "how_it_works", label: "How It Works", icon: "applications", permission: "home.edit", fields: standardFields, note: "Use Process steps to edit, add, organize or archive individual stages." },
+  { id: "why_europe", label: "Why Study in Europe", icon: "destinations", permission: "home.edit", fields: [...standardFields, { key: "quickFact1Label", label: "First fact label" }, { key: "quickFact1Value", label: "First fact" }, { key: "quickFact2Label", label: "Second fact label" }, { key: "quickFact2Value", label: "Second fact" }], note: "Use Quick facts, Europe benefits and Section settings for the individual content and background." },
+  { id: "journey_cta", label: "Final Call to Action", icon: "contact", permission: "home.cta.edit", fields: [...standardFields.slice(0, 2), { key: "description", label: "Supporting description", type: "textarea" }, { key: "buttonText", label: "Button text" }], note: "Section settings control the button destination, supporting text, input labels and visibility. Application destinations retain GPA and IELTS handling." },
 ];
 export type HomeBlock = { id: string; section_key: string; block_key: string; is_active: boolean; sort_order: number; content: unknown; media: unknown; updated_at: string };
 export type ValueSource = "saved" | "inherited" | "default";
@@ -103,9 +103,9 @@ export function valuesOf(fields: Record<string, EffectiveValue>): Record<string,
 export function heroSlideFromBlock(block: HomeBlock): HeroSlide {
   const c = record(block.content), m = record(block.media);
   const alt = String(m.imageAlt ?? m.alt ?? "");
-  return { src: String(m.imageUrl ?? m.src ?? ""), alt, line: nonblank(c.line) || alt, title: nonblank(c.title), subtitle: nonblank(c.subtitle), ctaExplore: nonblank(c.buttonText), ctaApply: nonblank(c.secondaryButtonText), isActive: block.is_active };
+  return { src: String(m.imageUrl ?? m.src ?? ""), alt, line: nonblank(c.line) || alt, title: nonblank(c.title), subtitle: nonblank(c.subtitle), ctaExplore: nonblank(c.buttonText), ctaApply: nonblank(c.secondaryButtonText), eyebrow: nonblank(c.eyebrow), primaryHref: nonblank(c.primaryHref), secondaryHref: nonblank(c.secondaryHref), isActive: block.is_active };
 }
-export const SLIDE_COPY_KEYS: Record<string, string> = { title: "title", subtitle: "subtitle", ctaExplore: "buttonText", ctaApply: "secondaryButtonText" };
+export const SLIDE_COPY_KEYS: Record<string, string> = { title: "title", subtitle: "subtitle", ctaExplore: "buttonText", ctaApply: "secondaryButtonText", eyebrow: "eyebrow", primaryHref: "primaryHref", secondaryHref: "secondaryHref" };
 export function resolveSlideCopy(site: Record<string, string>, block?: HomeBlock): Record<string, EffectiveValue> {
   const global = resolveGlobalHero(site), c = record(block?.content);
   return Object.fromEntries(Object.entries(SLIDE_COPY_KEYS).map(([field, key]) => {

@@ -9,27 +9,27 @@ import { SECTION_DEFAULTS } from "@/lib/homepage/content";
 
 type Props = {
   copy?: { kicker?: string; title?: string };
-  stories: SuccessStoryRow[];
+  stories: SuccessStoryRow[]; previewId?: string; preview?: boolean;
 };
 
 const AUTO_MS = 7000;
 
 /** CMS-driven block styled like the original “Testimonials” / success stories section (single rotating story). */
-export function SuccessStoriesSection({ stories, copy = SECTION_DEFAULTS.success_stories }: Props) {
+export function SuccessStoriesSection({ stories, copy = SECTION_DEFAULTS.success_stories, previewId, preview = false }: Props) {
   const [i, setI] = useState(0);
 
   const next = useCallback(() => setI((x) => (x + 1) % stories.length), [stories.length]);
   const prev = useCallback(() => setI((x) => (x - 1 + stories.length) % stories.length), [stories.length]);
 
   useEffect(() => {
-    if (stories.length <= 1) return;
+    if (preview || stories.length <= 1) return;
     const t = setInterval(next, AUTO_MS);
     return () => clearInterval(t);
-  }, [next, stories.length]);
+  }, [next, stories.length, preview]);
 
   if (!stories.length) return null;
 
-  const s = stories[i]!;
+  const s = stories.find(story => story.id === previewId) ?? stories[i % stories.length]!;
   const roleLine = [s.program, s.university].filter(Boolean).join(" · ");
 
   return (
@@ -46,6 +46,7 @@ export function SuccessStoriesSection({ stories, copy = SECTION_DEFAULTS.success
           <AnimatePresence mode="wait">
             <motion.div
               key={s.id}
+              data-home-item={`stories:${s.id}`}
               initial={{ opacity: 0, x: 24 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -24 }}
@@ -56,7 +57,7 @@ export function SuccessStoriesSection({ stories, copy = SECTION_DEFAULTS.success
               <div className="flex flex-col gap-8 md:flex-row md:items-center">
                 <div className="relative mx-auto h-24 w-24 shrink-0 overflow-hidden rounded-full ring-2 ring-[#C9AB76]/50 md:mx-0">
                   {/* eslint-disable-next-line @next/next/no-img-element -- CMS may use arbitrary image hosts */}
-                  <img src={s.profile_image_url} alt="" className="h-full w-full object-cover" />
+                  {s.profile_image_url && <img src={s.profile_image_url} alt="" className="h-full w-full object-cover" />}
                 </div>
                 <div className="flex-1 text-center md:text-left">
                   <p className="font-[family-name:var(--font-editorial)] text-xl italic leading-relaxed text-[#26343B] sm:text-2xl">

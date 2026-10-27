@@ -1,6 +1,6 @@
 # UniMondo CMS 2.0 — mandatory Phase 04 item editing
 
-Status: **required future work, not implemented or completed in Phase 02**. The owner accepted Phase 02 section navigation, section-level controls and live previews with this explicit deferral. This document authorizes no implementation of Phase 03 or Phase 04.
+Status: **implemented on the Phase 04 feature branch; production release unapproved; owner Safari review pending**. The owner accepted Phase 02 section navigation, section-level controls and live previews with this explicit deferral. Phase 04 implementation was separately authorized. See [the implementation and verification report](cms-phase-04/README.md); this reference does not grant release authorization.
 
 Phase 04 must provide individual CMS editing controls for every appropriate homepage content card, process step, fact, testimonial and featured item, rather than limiting editors to section headings and descriptions.
 

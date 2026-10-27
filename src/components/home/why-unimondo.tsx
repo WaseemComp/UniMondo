@@ -4,46 +4,14 @@ import { SECTION_DEFAULTS } from "@/lib/homepage/content";
 const DEFAULT_COPY = SECTION_DEFAULTS.why_unimondo;
 
 import { motion, useInView } from "framer-motion";
-import { BarChart3, Compass, HeartHandshake, Plane, ShieldCheck, Sparkles } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-const FEATURES = [
-  {
-    icon: Sparkles,
-    title: "Personalized Matching",
-    body: "Shortlists aligned to your GPA, language scores, budget, and intake timing.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Expert Visa Support",
-    body: "Document packs, embassy prep, and finance checks that reduce surprises.",
-  },
-  {
-    icon: Compass,
-    title: "Application Guidance",
-    body: "Structured processes that keep applications on track across institutions.",
-  },
+import { resolveCollection, publicItems, type HomepageItem } from "@/lib/homepage/items";
+import { HomepageItemIcon } from "./homepage-item-icon";
 
-  {
-    icon: HeartHandshake,
-    title: "Full Student Care",
-    body: "Counselor follow-ups, tracking IDs, and reminders at every milestone.",
-  },
-  {
-    icon: Plane,
-    title: "Pre-Departure Ready",
-    body: "Housing tips, insurance guidance, and arrival checklists for your new city.",
-  },
-  {
-    icon: BarChart3,
-    title: "Transparent Progress",
-    body: "Clear timelines so you always know what comes next in your journey.",
-  },
-] as const;
+export type WhyUniMondoStat = { id?: string; value: number; suffix?: string; label: string };
 
-export type WhyUniMondoStat = { value: number; suffix?: string; label: string };
-
-function AnimatedStat({ value, suffix, label }: { value: number; suffix: string; label: string }) {
+function AnimatedStat({ value, suffix, label, id }: { value: number; suffix: string; label: string; id?: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, margin: "-40px" });
   const [n, setN] = useState(value);
@@ -64,7 +32,7 @@ function AnimatedStat({ value, suffix, label }: { value: number; suffix: string;
   if (!value || value <= 0) return null;
 
   return (
-    <div ref={ref} className="rounded-xl border border-[#E2DFD8] bg-white px-6 py-6 text-center shadow-sm">
+    <div ref={ref} data-home-item={id ? `why_stats:${id}` : undefined} className="rounded-xl border border-[#E2DFD8] bg-white px-6 py-6 text-center shadow-sm">
       <p className="font-[family-name:var(--font-editorial)] text-4xl font-bold text-[#244B50] md:text-5xl">
         {n}
         <span className="text-[#8A7345]">{suffix}</span>
@@ -78,12 +46,12 @@ export function WhyUniMondo({
   kicker = DEFAULT_COPY.kicker,
   title = DEFAULT_COPY.title,
   subtitle = DEFAULT_COPY.subtitle,
-  stats = [],
+  stats = [], cards,
 }: {
   kicker?: string;
   title?: string;
   subtitle?: string;
-  stats?: WhyUniMondoStat[];
+  stats?: WhyUniMondoStat[]; cards?: HomepageItem[];
 }) {
   const validStats = (stats || []).filter((s) => s && typeof s.value === "number" && s.value > 0);
 
@@ -102,9 +70,10 @@ export function WhyUniMondo({
         </div>
 
         <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {FEATURES.map((f, i) => (
+          {publicItems(cards ?? resolveCollection([], "why_cards").items).map((f, i) => (
             <motion.article
-              key={f.title}
+              key={f.id}
+              data-home-item={`why_cards:${f.id}`}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-40px" }}
@@ -113,18 +82,18 @@ export function WhyUniMondo({
               className="group rounded-xl border border-[#E2DFD8] bg-white p-6 shadow-sm transition hover:shadow-md"
             >
               <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-[#244B50]/10 text-[#244B50] transition group-hover:bg-[#244B50]/15">
-                <f.icon className="h-5 w-5" aria-hidden />
+                <HomepageItemIcon name={f.icon} className="h-5 w-5" />
               </div>
               <h3 className="mt-4 text-base font-semibold text-[#26343B]">{f.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-[#4D5F64]">{f.body}</p>
+              <p className="mt-2 text-sm leading-relaxed text-[#4D5F64]">{f.description}</p>
             </motion.article>
           ))}
         </div>
 
         {validStats.length > 0 ? (
           <div className="mt-14 grid gap-5 sm:grid-cols-3">
-            {validStats.slice(0, 3).map((s) => (
-              <AnimatedStat key={s.label} value={s.value} suffix={s.suffix ?? ""} label={s.label} />
+            {validStats.map((s) => (
+              <AnimatedStat key={s.id ?? s.label} id={s.id} value={s.value} suffix={s.suffix ?? ""} label={s.label} />
             ))}
           </div>
         ) : null}

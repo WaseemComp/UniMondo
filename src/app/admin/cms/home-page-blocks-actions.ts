@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { record, english } from "@/lib/homepage/content";
 import { getMediaAccess } from "@/lib/media/access";
 import { validateManagedMediaSelection } from "@/lib/media/operations";
-import { safeImage } from "@/lib/homepage/validation";
+import { safeImage, safeDestination } from "@/lib/homepage/validation";
 import { z } from "zod";
 import { assertAdminScope } from "@/lib/auth/admin-page-guard";
 import { requireAdminUser } from "@/app/admin/require-admin";
@@ -28,6 +28,7 @@ const heroSlideSchema = z.object({
   subtitle: localeTextSchema,
   buttonText: localeTextSchema,
   secondaryButtonText: localeTextSchema,
+  eyebrow: localeTextSchema, primaryHref: localeTextSchema, secondaryHref: localeTextSchema,
 });
 
 export type HeroSlideInput = z.infer<typeof heroSlideSchema>;
@@ -53,9 +54,10 @@ export async function saveHomeHeroSlide(input: unknown): Promise<{ ok: true } | 
     if (!s.id || s.imageUrl !== (media.imageUrl ?? media.src)) await validateManagedMediaSelection(s.imageUrl, await getMediaAccess(me));
     if ((!s.id || s.imageUrl !== (media.imageUrl ?? media.src)) && !safeImage(s.imageUrl, process.env.NEXT_PUBLIC_SUPABASE_URL)) return { ok: false, error: "Choose a supported public website image." };
     if (!s.imageAlt.trim()) return { ok: false, error: "Describe this image for visitors using a screen reader." };
-    for (const value of [s.line, s.title, s.subtitle, s.buttonText, s.secondaryButtonText]) {
+    for (const value of [s.line, s.title, s.subtitle, s.buttonText, s.secondaryButtonText, s.eyebrow, s.primaryHref, s.secondaryHref]) {
       if ((english(value)?.length ?? 0) > 5000) return { ok: false, error: "Slide text is too long." };
     }
+    for (const link of [s.primaryHref,s.secondaryHref]) if (english(link)?.trim() && !safeDestination(english(link)!)) return {ok:false,error:"Use a valid button destination."};
     const row = {
       page_slug: "home",
       section_key: "hero_slider",
@@ -70,6 +72,9 @@ export async function saveHomeHeroSlide(input: unknown): Promise<{ ok: true } | 
         subtitle: s.subtitle ?? "",
         buttonText: s.buttonText ?? "",
         secondaryButtonText: s.secondaryButtonText ?? "",
+        ...(s.eyebrow !== undefined ? {eyebrow:s.eyebrow} : {}),
+        ...(s.primaryHref !== undefined ? {primaryHref:s.primaryHref} : {}),
+        ...(s.secondaryHref !== undefined ? {secondaryHref:s.secondaryHref} : {}),
       },
       media: { ...media, imageUrl: s.imageUrl, imageAlt: s.imageAlt },
     };

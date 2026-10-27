@@ -15,7 +15,10 @@
     "test:agreements:standardization": "node scripts/run-agreement-tests.mjs standardization",
     "test:agreements:regressions": "node scripts/run-agreement-tests.mjs regressions",
     "test:media": "node scripts/run-media-tests.mjs",
-    "test:media:browser": "node scripts/test-media-browser.mjs"
+    "test:media:browser": "node scripts/test-media-browser.mjs",
+    "test:homepage:items": "node scripts/run-homepage-items-tests.mjs",
+    "test:homepage:dom": "node scripts/run-homepage-items-dom-tests.mjs",
+    "test:homepage:defaults": "node scripts/run-homepage-defaults-tests.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.3.0",
