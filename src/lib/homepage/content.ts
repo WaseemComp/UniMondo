@@ -113,6 +113,12 @@ export function resolveSlideCopy(site: Record<string, string>, block?: HomeBlock
     return [field, saved === undefined ? { value: inherited.value, source: "inherited", detail: `Uses global hero copy · ${inherited.source === "saved" ? "saved" : "website default"}` } : { value: saved, source: "saved", detail: "Saved override for this slide" }];
   }));
 }
+/** Open the first usable published slide; keep hidden/invalid records editable when no published slide exists. */
+export function firstHeroEditorTarget(blocks: HomeBlock[], canViewSlides: boolean): string {
+  if (!canViewSlides) return "global";
+  const slides = blocks.filter(block => block.section_key === "hero_slider" && block.block_key === "slide").sort((a, b) => a.sort_order - b.sort_order);
+  return (slides.find(block => block.is_active && Boolean(heroSlideFromBlock(block).src)) ?? slides[0])?.id ?? "builtin:0";
+}
 export function publicHeroSlides(blocks: HomeBlock[]): HeroSlide[] {
   const slides = [...blocks].filter(block => block.section_key === "hero_slider" && block.block_key === "slide" && block.is_active).sort((a, b) => a.sort_order - b.sort_order).map(heroSlideFromBlock).filter(slide => Boolean(slide.src));
   return slides.length ? slides : DEFAULT_HERO_SLIDES;

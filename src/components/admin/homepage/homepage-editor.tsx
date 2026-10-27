@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { ArrowUpRight, Check, ImageIcon, Monitor, Save } from "lucide-react";
 import { saveHomepageEditor, type HomepageSaveInput } from "@/app/admin/cms/homepage-editor-actions";
 import type { HomepageEditorData, HomepageSnapshot } from "@/lib/admin/homepage-editor";
-import { DEFAULT_HERO_SLIDES, HERO_SITE_KEYS, HOME_SECTIONS, SLIDE_COPY_KEYS, english, heroSlideFromBlock, mergeEnglish, publicHeroSlides, record, resolveGlobalHero, resolveSection, resolveSlideCopy, sectionBlock, valuesOf, type CopySection, type EffectiveValue, type HeroSlide, type SectionId } from "@/lib/homepage/content";
+import { DEFAULT_HERO_SLIDES, HERO_SITE_KEYS, HOME_SECTIONS, SLIDE_COPY_KEYS, english, firstHeroEditorTarget, heroSlideFromBlock, mergeEnglish, publicHeroSlides, record, resolveGlobalHero, resolveSection, resolveSlideCopy, sectionBlock, valuesOf, type CopySection, type EffectiveValue, type HeroSlide, type SectionId } from "@/lib/homepage/content";
 import { safeImage, validateCopyPatch, validateSlidePatch } from "@/lib/homepage/validation";
 import { CmsActionArea, CmsFieldContext, CmsNotice, CmsPageHeader } from "@/components/admin/cms/cms-foundation";
 import { CmsIcon } from "@/components/admin/cms/cms-icons";
@@ -39,14 +39,14 @@ type Props = { initial: HomepageEditorData };
 export function HomepageEditor({ initial }: Props) {
   const [data, setData] = useState(initial);
   const [section, setSection] = useState<SectionId>("hero");
-  const [target, setTarget] = useState("global");
+  const [target, setTarget] = useState(() => firstHeroEditorTarget(initial.blocks, initial.permissions.viewSlides));
   const [dirty, setDirty] = useState(false);
   const [revision, setRevision] = useState(0);
   const [busy, setBusy] = useState(false);
   const [savedMessage, setSavedMessage] = useState("");
   useUnsavedChanges(dirty);
   const sections = HOME_SECTIONS.filter(item => item.id !== "journey_cta" || data.permissions.viewCta);
-  const navigate = (nextSection: SectionId, nextTarget = "global") => {
+  const navigate = (nextSection: SectionId, nextTarget = nextSection === "hero" ? firstHeroEditorTarget(data.blocks, data.permissions.viewSlides) : "global") => {
     if (busy) return;
     if (section === nextSection && target === nextTarget) return;
     if (dirty && !window.confirm(leaveMessage)) return;

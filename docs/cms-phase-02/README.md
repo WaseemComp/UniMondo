@@ -2,13 +2,15 @@
 
 Implemented on `codex/cms-phase-02-homepage-editor`, starting from merged Phase 01 production commit `8a635fafcde00794dfac333ed857d63018384e12`. Phase 01 PR #2 was verified as merged before branching. The workspace was clean at preflight; no existing work was reset or discarded.
 
-**Release boundary:** the feature branch is authorized for commit, pull request and Vercel Preview review. Merging to main and production deployment require separate authorization. No production records, accounts, credentials, permissions, schema, RLS, environment variables or storage configuration were modified. No migration is required. Automated save verification uses isolated transports only; no save action is invoked against the deployed Preview or production Supabase. Phase 03 has not started.
+**Release boundary:** after personal inspection, the owner authorized the Phase 02 correction, PR #3 merge and production release. Individual homepage item editing is explicitly deferred and mandatory for Phase 04; see [the Phase 04 requirements](../cms-phase-04-requirements.md). No production records, accounts, credentials, permissions, schema, RLS, environment variables or storage configuration were modified. No migration is required. Automated save verification uses isolated transports only; no save action is invoked against the deployed Preview or production Supabase. Neither Phase 03 nor Phase 04 has started.
 
 ## Working editor
 
 `/admin/home` now contains the section navigation, editing controls and live public-component preview. `/admin/content/home` redirects to this one editor, keeping old links compatible.
 
 Sections: Hero & Main Banner, Marketing Announcement, Why UniMondo, Popular Destinations, Featured Universities & Programs, Success Stories, How It Works, Why Study in Europe, and Final Call to Action. Existing detailed view/edit permissions govern available controls, including the dedicated hero-slide and final-section permissions.
+
+The first available hero slide is selected automatically on opening or returning to Hero & Main Banner. Visible slides follow their existing saved order; users without slide-view access retain the global-copy view.
 
 Hero controls distinguish global copy from each saved slide’s overrides. They show the current introductory label, headline, paragraph, button text/destinations, image, image description, caption, visibility and saved slide position. Inheritance has an explicit “Use global copy” control; inherited inputs display their actual effective values. The global preview explains when a slide override takes priority.
 
@@ -31,7 +33,7 @@ Dashboard recent-content labels now map identifiers such as `home.ticker.enabled
 
 ## Boundaries and limitations
 
-- Text introductions/headings and supported links are editable. Existing benefit cards, process steps, destination cards, academic records and testimonial records remain in their existing structures. No testimonial or academic management system was built here.
+- Text introductions/headings and supported links are editable. Individual benefit cards, process steps, facts, testimonials and featured items are **not completed in Phase 02**. Item-level CMS editing, including the six Why UniMondo cards and preview-to-editor selection where practical, is a mandatory Phase 04 deliverable. Existing data structures and records remain intact.
 - The Success Stories section is public only when published stories exist; the preview explains the empty condition. This editor adds header editing and does not create sample testimonials.
 - Slide ordering uses the existing numeric positions and uniqueness constraint. There is no drag-and-drop, slide deletion or new independent slide-management system.
 - Existing image thumbnails and an existing-image chooser are available. No computer upload or new media storage backend was implemented. New image addresses must match the website’s existing supported image sources; configuration is unchanged.

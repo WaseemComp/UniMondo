@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { createClient } from "@supabase/supabase-js";
 import { randomUUID } from "node:crypto";
-import { DEFAULT_HERO_SLIDES, HERO_DEFAULTS, SECTION_DEFAULTS, EUROPE_PARTIAL_DEFAULTS, contentLabel, resolveGlobalHero, resolveSection, resolveSlideCopy, publicHeroSlides, valuesOf } from "../src/lib/homepage/content.ts";
+import { DEFAULT_HERO_SLIDES, HERO_DEFAULTS, SECTION_DEFAULTS, EUROPE_PARTIAL_DEFAULTS, contentLabel, firstHeroEditorTarget, resolveGlobalHero, resolveSection, resolveSlideCopy, publicHeroSlides, valuesOf } from "../src/lib/homepage/content.ts";
 import { safeDestination, safeImage } from "../src/lib/homepage/validation.ts";
 import { saveHomepageEditor } from "../src/app/admin/cms/homepage-editor-actions.ts";
 import { saveSiteContent } from "../src/app/admin/actions.ts";
@@ -50,6 +50,17 @@ const client = createClient("https://homepage-tests.invalid", "isolated-test-key
 } } });
 globalThis.__homepageTest = { client, session, revalidated: [] };
 function block(section, content, active = true) { return { id: randomUUID(), page_slug: "home", section_key: section, block_key: "copy", block_type: "section_copy", content, media: { retained: true }, is_active: active, sort_order: 0, updated_at: "2026-10-25T00:00:00Z" }; }
+
+const firstSlide = { ...block("hero_slider", {}), block_key: "slide", media: { imageUrl: DEFAULT_HERO_SLIDES[0].src }, sort_order: 1 };
+const laterSlide = { ...firstSlide, id: randomUUID(), sort_order: 4 };
+const hiddenSlide = { ...firstSlide, id: randomUUID(), is_active: false, sort_order: 0 };
+assert.equal(firstHeroEditorTarget([laterSlide, firstSlide], true), firstSlide.id);
+assert.equal(firstHeroEditorTarget([hiddenSlide, laterSlide, firstSlide], true), firstSlide.id);
+assert.equal(firstHeroEditorTarget([hiddenSlide], true), hiddenSlide.id);
+assert.equal(firstHeroEditorTarget([], true), "builtin:0");
+assert.equal(firstHeroEditorTarget([firstSlide], false), "global");
+assert.equal(firstHeroEditorTarget([block("destinations", {})], true), "builtin:0");
+console.log("PASS: first available hero slide selected automatically in display order, with built-in fallback and existing view restrictions");
 
 assert.deepEqual(valuesOf(resolveGlobalHero({})), HERO_DEFAULTS);
 assert.equal(resolveGlobalHero({ "home.hero.title": "Saved headline" }).title.source, "saved");
