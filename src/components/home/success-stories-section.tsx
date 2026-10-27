@@ -5,14 +5,17 @@ import { ChevronLeft, ChevronRight, Quote } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import type { SuccessStoryRow } from "@/lib/data/success-stories";
 
+import { SECTION_DEFAULTS } from "@/lib/homepage/content";
+
 type Props = {
+  copy?: { kicker?: string; title?: string };
   stories: SuccessStoryRow[];
 };
 
 const AUTO_MS = 7000;
 
 /** CMS-driven block styled like the original “Testimonials” / success stories section (single rotating story). */
-export function SuccessStoriesSection({ stories }: Props) {
+export function SuccessStoriesSection({ stories, copy = SECTION_DEFAULTS.success_stories }: Props) {
   const [i, setI] = useState(0);
 
   const next = useCallback(() => setI((x) => (x + 1) % stories.length), [stories.length]);
@@ -33,9 +36,9 @@ export function SuccessStoriesSection({ stories }: Props) {
     <section className="bg-white py-20 sm:py-28 border-b border-[#E2DFD8]">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#7D673A]">Success stories</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#7D673A]">{copy.kicker ?? SECTION_DEFAULTS.success_stories.kicker}</p>
           <h2 className="mt-3 font-[family-name:var(--font-editorial)] text-3xl font-bold tracking-tight text-[#26343B] sm:text-4xl">
-            Students who crossed borders with us
+            {copy.title ?? SECTION_DEFAULTS.success_stories.title}
           </h2>
         </div>
 

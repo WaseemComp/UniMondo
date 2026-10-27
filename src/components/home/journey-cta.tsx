@@ -1,5 +1,8 @@
 "use client";
 
+import { SECTION_DEFAULTS } from "@/lib/homepage/content";
+const DEFAULT_COPY = SECTION_DEFAULTS.journey_cta;
+
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
@@ -13,21 +16,16 @@ export type JourneyCtaCopy = {
 };
 
 export function JourneyCta({
-  copy = {
-    kicker: "Ready when you are",
-    title: "Begin your journey to Europe",
-    description: "Drop your GPA and IELTS — we'll carry these into your application flow so you skip retyping them.",
-    buttonText: "Start 5-step application",
-  },
+  copy = DEFAULT_COPY,
 }: {
   copy?: JourneyCtaCopy;
 }) {
   const c = {
-    kicker: copy?.kicker ?? "Ready when you are",
-    title: copy?.title ?? "Begin your journey to Europe",
+    kicker: copy?.kicker ?? DEFAULT_COPY.kicker,
+    title: copy?.title ?? DEFAULT_COPY.title,
     description:
-      copy?.description ?? "Drop your GPA and IELTS — we'll carry these into your application flow so you skip retyping them.",
-    buttonText: copy?.buttonText ?? "Start 5-step application",
+      copy?.description ?? DEFAULT_COPY.description,
+    buttonText: copy?.buttonText ?? DEFAULT_COPY.buttonText,
   };
   const [gpa, setGpa] = useState("");
   const [ielts, setIelts] = useState("");

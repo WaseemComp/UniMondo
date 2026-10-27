@@ -1,5 +1,8 @@
 "use client";
 
+import { SECTION_DEFAULTS } from "@/lib/homepage/content";
+const DEFAULT_COPY = SECTION_DEFAULTS.why_unimondo;
+
 import { motion, useInView } from "framer-motion";
 import { BarChart3, Compass, HeartHandshake, Plane, ShieldCheck, Sparkles } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -72,9 +75,9 @@ function AnimatedStat({ value, suffix, label }: { value: number; suffix: string;
 }
 
 export function WhyUniMondo({
-  kicker = "Why UniMondo",
-  title = "Built for ambitious students who expect clarity",
-  subtitle = "We combine European admissions know-how with human support — so you can focus on your future, not the paperwork maze.",
+  kicker = DEFAULT_COPY.kicker,
+  title = DEFAULT_COPY.title,
+  subtitle = DEFAULT_COPY.subtitle,
   stats = [],
 }: {
   kicker?: string;

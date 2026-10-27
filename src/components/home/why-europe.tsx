@@ -1,5 +1,7 @@
 "use client";
 
+import { SECTION_DEFAULTS, EUROPE_PARTIAL_DEFAULTS } from "@/lib/homepage/content";
+
 import Image from "next/image";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { useRef } from "react";
@@ -23,29 +25,19 @@ export type WhyEuropeCopy = {
 };
 
 export function WhyEurope({
-  copy = {
-    kicker: "Why Europe",
-    title: "A continent built for curious minds",
-    subtitle:
-      "From historic universities to cutting-edge labs, Europe blends academic depth with everyday adventure — trains to new cities on weekends, internships in global firms, and classmates from everywhere.",
-    quickFact1Label: "Quick fact",
-    quickFact1Value: "4000+ English-taught programs (EU/EEA)",
-    quickFact2Label: "Quick fact",
-    quickFact2Value: "Schengen mobility for study & travel",
-  },
+  copy = SECTION_DEFAULTS.why_europe,
 }: {
   copy?: WhyEuropeCopy;
 }) {
   const c = {
-    kicker: copy?.kicker ?? "GO GLOBAL. THINK BIGGER.",
-    title: copy?.title ?? "Your journey shouldn’t be limited by geography.",
+    kicker: copy?.kicker ?? EUROPE_PARTIAL_DEFAULTS.kicker,
+    title: copy?.title ?? EUROPE_PARTIAL_DEFAULTS.title,
     subtitle:
-      copy?.subtitle ??
-      "The world’s best opportunities are not in one country — they’re everywhere. Studying abroad connects you to global education, international careers, and life-changing experiences that redefine your future.",
-    quickFact1Label: copy?.quickFact1Label ?? "Quick fact",
-    quickFact1Value: copy?.quickFact1Value ?? "4000+ English-taught programs (EU/EEA)",
-    quickFact2Label: copy?.quickFact2Label ?? "Quick fact",
-    quickFact2Value: copy?.quickFact2Value ?? "Schengen mobility for study & travel",
+      copy?.subtitle ?? EUROPE_PARTIAL_DEFAULTS.subtitle,
+    quickFact1Label: copy?.quickFact1Label ?? EUROPE_PARTIAL_DEFAULTS.quickFact1Label,
+    quickFact1Value: copy?.quickFact1Value ?? EUROPE_PARTIAL_DEFAULTS.quickFact1Value,
+    quickFact2Label: copy?.quickFact2Label ?? EUROPE_PARTIAL_DEFAULTS.quickFact2Label,
+    quickFact2Value: copy?.quickFact2Value ?? EUROPE_PARTIAL_DEFAULTS.quickFact2Value,
   };
   const ref = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({

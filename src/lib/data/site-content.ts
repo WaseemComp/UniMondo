@@ -3,14 +3,9 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export type SiteContentMap = Record<string, string>;
 
-const FALLBACK: SiteContentMap = {
-  "home.hero.title": "Your Future Knows No Borders",
-  "home.hero.subtitle":
-    "Personalized admissions guidance, visa expertise, and full student support — from first call to campus arrival.",
-  "home.hero.cta_explore": "Universities",
-  "home.hero.cta_apply": "Begin Your Application",
-  "home.ticker.enabled": "true",
-};
+import { HERO_DEFAULTS, HERO_SITE_KEYS, resolveGlobalHero, valuesOf } from "@/lib/homepage/content";
+
+const FALLBACK: SiteContentMap = { ...Object.fromEntries(Object.entries(HERO_DEFAULTS).map(([key, value]) => [HERO_SITE_KEYS[key as keyof typeof HERO_SITE_KEYS], value])), "home.ticker.enabled": "true" };
 
 export async function getSiteContent(): Promise<SiteContentMap> {
   const supabase = createSupabaseServerClient();
@@ -33,10 +28,5 @@ export function getTickerEnabled(map: SiteContentMap): boolean {
 }
 
 export function siteContentToHeroCopy(map: SiteContentMap): HeroCopy {
-  return {
-    title: map["home.hero.title"] ?? FALLBACK["home.hero.title"],
-    subtitle: map["home.hero.subtitle"] ?? FALLBACK["home.hero.subtitle"],
-    ctaExplore: map["home.hero.cta_explore"] ?? FALLBACK["home.hero.cta_explore"],
-    ctaApply: map["home.hero.cta_apply"] ?? FALLBACK["home.hero.cta_apply"],
-  };
+  return valuesOf(resolveGlobalHero(map)) as HeroCopy;
 }
