@@ -21,7 +21,7 @@ const CONTENT_EDITOR_PARENT: Record<string, { label: string; href: string }> = {
 };
 
 const SEGMENT_LABELS: Record<string, string> = {
-  dashboard: "Dashboard",
+  dashboard: "Overview",
   applications: "Applications",
   universities: "Universities",
   destinations: "Destinations",
@@ -34,6 +34,9 @@ const SEGMENT_LABELS: Record<string, string> = {
   blogs: "Blog posts",
   submissions: "Submissions",
   settings: "Team & account",
+  agreements: "Agreements",
+  revisions: "Revision history",
+  new: "New agreement",
   programs: "Programs",
   home: "Home",
   content: "Page content",
@@ -75,16 +78,25 @@ export function buildAdminBreadcrumbs(pathname: string, listQuery?: string): Adm
   const q = querySuffix(listQuery);
 
   if (path === "/admin/dashboard") {
-    return [{ label: "Dashboard", href: "/admin/dashboard", current: true }];
+    return [{ label: "Overview", href: "/admin/dashboard", current: true }];
   }
 
-  const crumbs: AdminCrumb[] = [{ label: "Dashboard", href: "/admin/dashboard" }];
+  const crumbs: AdminCrumb[] = [{ label: "Overview", href: "/admin/dashboard" }];
 
   // /admin/applications/:trackingId — list is parent; avoid treating id as a slug label
   const appDetail = /^\/admin\/applications\/([^/]+)$/.exec(path);
   if (appDetail) {
     crumbs.push({ label: "Applications", href: `/admin/applications${q}` });
     crumbs.push({ label: "Applicant detail", href: `${path}${q}`, current: true });
+    return crumbs;
+  }
+
+  const agreement = /^\/admin\/agreements\/([^/]+)(?:\/(revisions|print))?$/.exec(path);
+  if (agreement) {
+    crumbs.push({ label: "Agreements", href: "/admin/agreements" });
+    const base = `/admin/agreements/${agreement[1]}`;
+    crumbs.push({ label: agreement[1] === "new" ? "New agreement" : "Agreement details", href: base, current: !agreement[2] });
+    if (agreement[2]) crumbs.push({ label: agreement[2] === "revisions" ? "Revision history" : "Print agreement", href: path, current: true });
     return crumbs;
   }
 
@@ -99,6 +111,10 @@ export function buildAdminBreadcrumbs(pathname: string, listQuery?: string): Adm
   const contentMatch = /^\/admin\/content\/([^/]+)/.exec(path);
   if (contentMatch) {
     const key = contentMatch[1];
+    if (key === "success-stories") {
+      crumbs.push({ label: "Success stories", href: path, current: true });
+      return crumbs;
+    }
     const hub = CONTENT_EDITOR_PARENT[key];
     if (hub) {
       crumbs.push({ label: hub.label, href: hub.href });

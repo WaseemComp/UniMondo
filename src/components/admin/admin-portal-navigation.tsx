@@ -2,101 +2,59 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useMemo } from "react";
-import { ChevronRight, ArrowLeft } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ArrowLeft, ArrowUpRight, ChevronDown, ChevronRight, LogOut, Menu, Search, Settings, X } from "lucide-react";
+import { signOutAdmin } from "@/app/admin/actions";
 import { buildAdminBreadcrumbs, getAdminBackFallbackHref } from "@/lib/admin/breadcrumbs";
+import type { CmsNavItem } from "@/lib/admin/navigation";
+import { CmsIcon } from "./cms/cms-icons";
 
-type Props = {
-  showApplicationsShortcut?: boolean;
-  showCountriesShortcut?: boolean;
-};
+type Props = { items: CmsNavItem[]; userName: string; roleLabel: string; mobileOpen: boolean; onOpenNavigation: () => void };
 
-export function AdminPortalNavigation({
-  showApplicationsShortcut = false,
-  showCountriesShortcut = false,
-}: Props) {
+export function AdminPortalNavigation({ items, userName, roleLabel, mobileOpen, onOpenNavigation }: Props) {
   const pathname = usePathname() || "/admin/dashboard";
   const router = useRouter();
   const searchParams = useSearchParams();
-  const crumbs = useMemo(() => {
-    const onAppDetail = /^\/admin\/applications\/[^/]+$/.test(pathname.replace(/\/$/, ""));
-    const onSubDetail = /^\/admin\/submissions\/detail\/[^/]+$/.test(pathname.replace(/\/$/, ""));
-    const listQuery =
-      onAppDetail || onSubDetail ? searchParams.toString() : undefined;
-    return buildAdminBreadcrumbs(pathname, listQuery);
-  }, [pathname, searchParams]);
-  const fallbackHref = getAdminBackFallbackHref(pathname);
-  const onDashboardOnly = crumbs.length <= 1;
+  const crumbs = buildAdminBreadcrumbs(pathname, /\/applications\/|\/submissions\/detail\//.test(pathname) ? searchParams.toString() : undefined);
+  const dialog = useRef<HTMLDialogElement>(null);
+  const search = useRef<HTMLInputElement>(null);
+  const account = useRef<HTMLDetailsElement>(null);
+  const [query, setQuery] = useState("");
+  const filtered = items.filter(item => `${item.label} ${item.group}`.toLowerCase().includes(query.trim().toLowerCase()));
+  const initials = userName.split(/\s+/).map(part => part[0]).slice(0, 2).join("").toUpperCase();
+  function openFinder() { setQuery(""); if (!dialog.current?.open) dialog.current?.showModal(); search.current?.focus(); }
 
-  const handleBack = () => {
-    if (onDashboardOnly) return;
-    try {
-      if (typeof window !== "undefined" && window.history.length <= 1) {
-        router.push(fallbackHref);
-        return;
-      }
-    } catch {
-      router.push(fallbackHref);
-      return;
-    }
-    router.back();
-  };
+  useEffect(() => {
+    const keyboard = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") { event.preventDefault(); openFinder(); }
+      if (event.key === "Escape" && account.current) account.current.open = false;
+    };
+    const outside = (event: PointerEvent) => { if (account.current && !account.current.contains(event.target as Node)) account.current.open = false; };
+    document.addEventListener("keydown", keyboard); document.addEventListener("pointerdown", outside);
+    return () => { document.removeEventListener("keydown", keyboard); document.removeEventListener("pointerdown", outside); };
+  }, []);
 
-  return (
-    <div className="mb-6 space-y-3 border-b border-zinc-200 pb-4">
-      <div className="flex flex-wrap items-center gap-2 gap-y-3">
-        {!onDashboardOnly ? (
-          <button
-            type="button"
-            onClick={handleBack}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-800 shadow-sm hover:border-zinc-400 hover:bg-zinc-50"
-          >
-            <ArrowLeft className="h-4 w-4" aria-hidden />
-            Back
-          </button>
-        ) : null}
-        <nav aria-label="Breadcrumb" className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1 gap-y-1 text-sm">
-          <ol className="flex min-w-0 flex-wrap items-center gap-x-1">
-            {crumbs.map((c, idx) => {
-              const last = idx === crumbs.length - 1;
-              return (
-                <li key={`${c.href}-${idx}`} className="flex items-center gap-x-1 text-zinc-600">
-                  {idx > 0 ? (
-                    <ChevronRight className="h-3.5 w-3.5 shrink-0 text-zinc-300" aria-hidden />
-                  ) : null}
-                  {last ? (
-                    <span className="font-medium text-zinc-900" aria-current="page">
-                      {c.label}
-                    </span>
-                  ) : (
-                    <Link href={c.href} className="text-amber-800 hover:text-amber-950 hover:underline">
-                      {c.label}
-                    </Link>
-                  )}
-                </li>
-              );
-            })}
-          </ol>
-        </nav>
+  return <>
+    <header className="cms-topbar">
+      <div className="cms-topbar-title"><button className="cms-icon-button cms-mobile-only" type="button" onClick={onOpenNavigation} aria-label="Open navigation" aria-controls="cms-sidebar" aria-expanded={mobileOpen}><Menu size={21} /></button><div><p>UniMondo Content Studio</p><span>{crumbs.at(-1)?.label || "Overview"}</span></div></div>
+      <div className="cms-topbar-actions">
+        <button type="button" className="cms-find-trigger" onClick={openFinder} aria-label="Find a section"><Search size={17} aria-hidden /><span>Find a section…</span><kbd>⌘ K</kbd></button>
+        <a className="cms-public-link" href="/" target="_blank" rel="noopener noreferrer">View website<ArrowUpRight size={15} aria-hidden /></a>
+        <details ref={account} className="cms-account-menu">
+          <summary aria-label={`${userName}, ${roleLabel}. Account menu`}><span className="cms-avatar">{initials || "U"}</span><span className="cms-user-label"><strong>{userName}</strong><small>{roleLabel}</small></span><ChevronDown size={15} aria-hidden /></summary>
+          <div className="cms-account-panel"><p>{userName}<small>{roleLabel}</small></p><a href="/admin/settings#account"><Settings size={16} aria-hidden />My account</a><form action={signOutAdmin}><button type="submit"><LogOut size={16} aria-hidden />Sign out</button></form></div>
+        </details>
       </div>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500">
-        {showApplicationsShortcut || showCountriesShortcut ? (
-          <span className="font-medium uppercase tracking-wide text-zinc-400">Shortcuts</span>
-        ) : null}
-        {showApplicationsShortcut ? (
-          <Link href="/admin/applications" className="text-zinc-600 hover:text-zinc-900 hover:underline">
-            Applications
-          </Link>
-        ) : null}
-        {showCountriesShortcut ? (
-          <Link href="/admin/destinations" className="text-zinc-600 hover:text-zinc-900 hover:underline">
-            Destinations
-          </Link>
-        ) : null}
-        <Link href="/" className="text-zinc-600 hover:text-zinc-900 hover:underline">
-          Public site
-        </Link>
-      </div>
+    </header>
+    <div className="cms-breadcrumb-row">
+      {crumbs.length > 1 && <button className="cms-back-button" type="button" aria-label="Go back" onClick={() => window.history.length > 1 ? router.back() : router.push(getAdminBackFallbackHref(pathname))}><ArrowLeft size={15} aria-hidden /></button>}
+      <nav aria-label="Breadcrumb"><ol>{crumbs.map((crumb, index) => <li key={`${crumb.href}-${index}`}>{index > 0 && <ChevronRight size={12} aria-hidden />}{index === crumbs.length - 1 ? <span aria-current="page">{crumb.label}</span> : <Link href={crumb.href}>{crumb.label}</Link>}</li>)}</ol></nav>
     </div>
-  );
+    <dialog ref={dialog} className="cms-find-dialog" aria-labelledby="cms-finder-title" onClick={event => { if (event.target === event.currentTarget) dialog.current?.close(); }}>
+      <div className="cms-finder-heading"><div><p className="cms-eyebrow">JUMP TO YOUR WORK</p><h2 id="cms-finder-title">Find a section</h2></div><button type="button" className="cms-icon-button" aria-label="Close section finder" onClick={() => dialog.current?.close()}><X size={20} /></button></div>
+      <label className="cms-finder-input"><Search size={18} aria-hidden /><span className="sr-only">Search your available sections</span><input ref={search} value={query} onChange={event => setQuery(event.target.value)} placeholder="Search your available sections" /></label>
+      <div className="cms-finder-results">{filtered.length ? filtered.map(item => <Link key={item.id} href={item.href} onClick={() => dialog.current?.close()}><span className="cms-shortcut-icon"><CmsIcon name={item.icon} /></span><span>{item.label}<small>{item.group}</small></span><ChevronRight size={15} aria-hidden /></Link>) : <p className="cms-finder-empty">No matching sections. Try another name.</p>}</div>
+      <p className="cms-finder-footnote">Search navigates the sections available to your account.</p>
+    </dialog>
+  </>;
 }
