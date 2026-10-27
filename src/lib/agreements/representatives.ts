@@ -1,13 +1,14 @@
+import { staffIdentity } from "../auth/staff-identity";
 import { createSupabaseServiceClient } from "../supabase/admin";
 import { isAdminEmail } from "../auth/admin";
 
 export type AgreementRepresentative = { name: string; designation: string };
-type StaffUser = { id: string; email?: string; user_metadata?: Record<string, unknown> };
+type StaffUser = { id: string; email?: string; user_metadata?: Record<string, unknown>; app_metadata?: Record<string, unknown> };
 
 function option(user: StaffUser): AgreementRepresentative {
   return {
-    name: String(user.user_metadata?.full_name || user.user_metadata?.name || user.email || "UniMondo Admissions Team"),
-    designation: String(user.user_metadata?.designation || "Authorised representative"),
+    name: staffIdentity(user).fullName || "UniMondo Admissions Team",
+    designation: staffIdentity(user).designation || "Authorised representative",
   };
 }
 

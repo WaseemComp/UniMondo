@@ -1,3 +1,4 @@
+import { staffIdentity } from "@/lib/auth/staff-identity";
 import { redirect } from "next/navigation";
 import { createSupabaseServerAuthClient } from "@/lib/supabase/server-auth";
 import { isAdminUser, isSuperAdmin } from "@/lib/auth/admin";
@@ -65,8 +66,8 @@ export default async function NewAgreementPage({ searchParams }: Props) {
         applicationId={applicationId}
         prefill={prefill}
         canEditDiscount={canEditDiscount}
-        representativeDesignation={String(user.user_metadata?.designation || "Authorised representative")}
-        representativeName={String(user.user_metadata?.full_name || user.email || "UniMondo Admissions Team")}
+        representativeDesignation={staffIdentity(user).designation || "Authorised representative"}
+        representativeName={staffIdentity(user).fullName || "UniMondo Admissions Team"}
       />
     </div>
   );

@@ -16,7 +16,7 @@ export function AdminSettingsContent({ access, currentUserId, adminRows }: Props
         <h1 className="text-2xl font-bold text-zinc-900">Team & account</h1>
         <p className="mt-1 text-sm text-zinc-600">
           {access.isSuper
-            ? "Invite other admins, set their site areas, and manage your own password. Only super admins can change other users’ access."
+            ? "Create staff accounts with their identity and detailed access, and manage your own password. Only Superadmins can change other users’ access."
             : "Update your own password. Contact your super admin if you need a different level of access."}
         </p>
       </div>
