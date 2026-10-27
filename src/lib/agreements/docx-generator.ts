@@ -2,192 +2,52 @@ import fs from "fs";
 import path from "path";
 import JSZip from "jszip";
 import type { AgreementRecord } from "../../types/agreement";
-import { consultantWording, studentWording, engagementWording } from "./wording";
-import { formatForeignAmount } from "./financials";
+import { agreementDocument, usesStandardAgreement, type ContractRun } from "./document-content";
+import { generateLegacyAgreementDocx } from "./legacy-docx-generator";
 
-/**
- * Generates an authentic .docx Word document by filling a controlled copy of
- * templates/UniMondo_Retainer_Agreement.docx.
- *
- * Changes applied:
- * - Page margins set to exactly 0.7 inches (1008 dxa) on all sides.
- * - Reference / Date table borders removed (no visible box).
- * - Parties clause updated to numbered format with new wording.
- * - Third-instalment unmatched parenthesis corrected.
- * - Stamp box replaced with blank space + line placeholder + small label.
- * - Exchange-rate metadata remains internal.
- * - Preserves blank signature lines.
- */
+const escapeXml = (value: string) => value.replace(/[&<>"\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, c =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c] || ""));
+
+/** Keep the existing OOXML package workflow; all live wording comes from one saved structure. */
 export async function generateAgreementDocx(record: AgreementRecord): Promise<Buffer> {
-  const templatePath = path.join(process.cwd(), "templates", "UniMondo_Retainer_Agreement.docx");
-  if (!fs.existsSync(templatePath)) {
-    throw new Error(`DOCX template not found at ${templatePath}`);
-  }
-
-  const templateBuffer = fs.readFileSync(templatePath);
-  const zip = await JSZip.loadAsync(templateBuffer);
-
-  const docXmlFile = zip.file("word/document.xml");
-  if (!docXmlFile) throw new Error("Invalid DOCX: missing word/document.xml");
-
-  let xml = await docXmlFile.async("text");
-  // Escape user data before interpolating it into Word XML.
-  const escapeXml = (value: string) => value.replace(/&/g, "&amp;").replace(/\$/g, "&#36;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  record = Object.fromEntries(Object.entries(record).map(([key, value]) => [key, typeof value === "string" ? escapeXml(value) : value])) as AgreementRecord;
-
-
-  record.financials = { ...record.financials, exchangeRateDate: record.financials.exchangeRateDate ? escapeXml(record.financials.exchangeRateDate) : null };
-
-  // 1. Set all four margins to exactly 0.7 inches (1008 dxa)
-  xml = xml.replace(
-    /<w:pgMar[^>]+>/,
-    '<w:pgMar w:top="1008" w:right="1008" w:bottom="1008" w:left="1008" w:header="720" w:footer="720" w:gutter="0"/>'
-  );
-
-  // 2. Remove borders from the first table (Reference / Date header box)
-  //    Find the first <w:tblBorders> block and replace with all-none borders.
-  const noBorders =
-    '<w:tblBorders>' +
-    '<w:top w:val="none" w:sz="0" w:space="0" w:color="auto"/>' +
-    '<w:left w:val="none" w:sz="0" w:space="0" w:color="auto"/>' +
-    '<w:bottom w:val="none" w:sz="0" w:space="0" w:color="auto"/>' +
-    '<w:right w:val="none" w:sz="0" w:space="0" w:color="auto"/>' +
-    '<w:insideH w:val="none" w:sz="0" w:space="0" w:color="auto"/>' +
-    '<w:insideV w:val="none" w:sz="0" w:space="0" w:color="auto"/>' +
-    '</w:tblBorders>';
-  // Replace only the first occurrence (the reference/date table)
-  xml = xml.replace(/<w:tblBorders>[\s\S]*?<\/w:tblBorders>/, noBorders);
-
-  // 3. Table 1: Agreement Reference and Date (plain text, no box)
-  const refText = record.referenceNumber.startsWith("UM/")
-    ? record.referenceNumber.substring(3)
-    : record.referenceNumber;
-  xml = xml.replace("UM/__________________", `UM/${refText}`);
-  xml = xml.replace("Date: _________________", `Date: ${record.agreementDate || "_________________"}`);
-
-  // Replace whole controlled paragraphs: Word splits some placeholders across runs.
-  const setParagraph = (id: string, text: string) => {
-    const pattern = new RegExp(`(<w:p[^>]*w14:paraId="${id}"[^>]*>)([\\s\\S]*?)(<\\/w:p>)`);
-    xml = xml.replace(pattern, (_match, open: string, body: string, close: string) => {
-      const properties = body.match(/<w:pPr>[\s\S]*?<\/w:pPr>/)?.[0] || "";
-      return `${open}${properties}<w:r><w:t xml:space="preserve">${text}</w:t></w:r>${close}`;
+  if (!usesStandardAgreement(record)) return generateLegacyAgreementDocx(record);
+  const content = agreementDocument(record);
+  const zip = await JSZip.loadAsync(fs.readFileSync(path.join(process.cwd(), "templates/UniMondo_Agreement_Standard.docx")));
+  const run = (r: ContractRun, size = 22) => `<w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/><w:b w:val="${r.bold ? 1 : 0}"/><w:i w:val="${r.italic ? 1 : 0}"/><w:color w:val="000000"/><w:sz w:val="${size}"/><w:szCs w:val="${size}"/></w:rPr><w:t xml:space="preserve">${escapeXml(r.text)}</w:t></w:r>`;
+  const paragraph = (runs: ContractRun[], options: { title?: boolean; heading?: boolean; keep?: boolean; left?: boolean; before?: number; after?: number } = {}) =>
+    `<w:p><w:pPr><w:pStyle w:val="${options.title ? "Title" : "Normal"}"/><w:keepNext w:val="${options.heading || options.keep ? 1 : 0}"/><w:keepLines/><w:widowControl/><w:contextualSpacing w:val="0"/><w:spacing w:before="${options.before ?? (options.heading ? 100 : 0)}" w:after="${options.after ?? 100}" w:line="276" w:lineRule="auto"/><w:jc w:val="${options.title ? "center" : options.heading || options.left ? "left" : "both"}"/></w:pPr>${runs.map(r => run({ ...r, bold: options.title || options.heading || r.bold }, options.title ? 28 : 22)).join("")}</w:p>`;
+  let body = paragraph([{ text: content.brand }], { title: true, keep: true }) +
+    paragraph([{ text: content.title }], { title: true, keep: true }) +
+    paragraph([{ text: `Reference: ${content.reference}${content.date ? `     Date: ${content.date}` : ""}` }], { left: true, keep: true });
+  for (const section of content.sections) {
+    body += paragraph([{ text: section.heading }], { heading: true, keep: true });
+    section.paragraphs.forEach((p, i) => {
+      body += paragraph(p.runs, { keep: section.heading.startsWith("8.") && i === section.paragraphs.length - 1 });
     });
-  };
-  setParagraph("0283EE34", `This Agreement is entered into between: (1) ${consultantWording(record)} (2) ${studentWording(record)} The Consultant and the Student are each referred to individually as a “Party” and collectively as the “Parties”.`);
-  setParagraph("1A55FCB0", engagementWording(record));
-  // Remove the full explanatory paragraph, including split-run Word placeholders.
-  xml = xml.replace(/<w:p[^>]*w14:paraId="64AA1854"[^>]*>[\s\S]*?<\/w:p>/, "");
-  const isNonEur = record.financials.paymentCurrency !== "EUR";
-  const currency = record.financials.paymentCurrency;
-
-  // 8. Correct third-instalment unmatched parenthesis
-  xml = xml.replace(
-    "(payable upon the Student\u2019s receipt of an embassy/consulate visa appointment date",
-    "(payable upon the Student\u2019s receipt of an embassy/consulate visa appointment date)"
-  );
-  // ASCII apostrophe fallback
-  xml = xml.replace(
-    "(payable upon the Student's receipt of an embassy/consulate visa appointment date",
-    "(payable upon the Student's receipt of an embassy/consulate visa appointment date)"
-  );
-
-  // 9. Populate Table 2 fee breakdown using paraId approach
-  function populateTableCell(targetXml: string, paraId: string, text: string): string {
-    const regex = new RegExp(
-      `(<w:p[^>]*w14:paraId="${paraId}"[^>]*>.*?<\\/w:pPr>)(<\\/w:p>)`
-    );
-    return targetXml.replace(
-      regex,
-      `$1<w:r><w:rPr><w:u w:val="single"/></w:rPr><w:t>${text}</w:t></w:r>$2`
-    );
   }
-
-  const fin = record.financials;
-  const fmtF = (v: number) => formatForeignAmount(v, currency);
-
-  const baseForeignAmt = isNonEur && fin.agreedExchangeRate
-    ? `${fmtF(fin.grossFee ?? fin.baseFeeEUR * fin.agreedExchangeRate)}/-`
-    : "\u2014";
-  const discountPct = fin.pricingVersion === 2 && fin.discountType === "amount" ? "n/a" : `${fin.discountPercent}%`;
-  const discountEur = `${(fin.pricingVersion === 2 ? formatForeignAmount(fin.discountEUR, "EUR") : fin.discountEUR.toLocaleString())}/-`;
-  const discountFgn = isNonEur && fin.discountForeign != null ? `${fmtF(fin.discountForeign)}/-` : "\u2014";
-  const netEur = `${(fin.pricingVersion === 2 ? formatForeignAmount(fin.netFeeEUR, "EUR") : fin.netFeeEUR.toLocaleString())}/-`;
-  const netFgn = isNonEur && fin.netFeeForeign != null ? `${fmtF(fin.netFeeForeign)}/-` : "\u2014";
-
-  if (fin.pricingVersion === 2) {
-    // Word may split placeholders across runs; replace the controlled paragraph
-    // contents while retaining paragraph layout instead of matching plain XML text.
-    const contractAmount = (eur: number, foreign: number | null) => fmtF(isNonEur ? foreign ?? 0 : eur);
-    const cell = (value: string) => `<w:tc><w:tcPr><w:tcW w:w="3000" w:type="dxa"/></w:tcPr><w:p><w:r><w:rPr><w:sz w:val="20"/></w:rPr><w:t>${value}</w:t></w:r></w:p></w:tc>`;
-    const rows = [
-      ["Particulars", "Discount %", currency],
-      ["Gross consultancy fee", "—", fmtF(fin.grossFee ?? 0)],
-      ["Authorised discount", discountPct, contractAmount(fin.discountEUR, fin.discountForeign)],
-      ["Net consultancy fee", "—", contractAmount(fin.netFeeEUR, fin.netFeeForeign)],
-    ];
-    const table = `<w:tbl><w:tblPr><w:tblW w:w="0" w:type="auto"/><w:tblBorders>${["top", "left", "bottom", "right", "insideH", "insideV"].map(side => `<w:${side} w:val="single" w:sz="4"/>`).join("")}</w:tblBorders></w:tblPr>${rows.map(row => `<w:tr>${row.map(cell).join("")}</w:tr>`).join("")}</w:tbl>`;
-    xml = xml.replace(/<w:tbl>[\s\S]*?<\/w:tbl>/g, original => original.includes('w14:paraId="307BA910"') ? table : original);
-    xml = xml.replace("Mr./Ms. (2)", `(2) ${record.studentTitle || ""}`).replace("son/daughter of", record.studentRelationship || "son/daughter of").replace("holding CNIC/Passport No.", `holding ${record.studentIdType || "CNIC/Passport"} No.`);
-    setParagraph("59B152CA", "Official Stamp of UniMondo");
-    for (const id of ["29DC4BEB", "0F455465", "35FDDC09", "7D6CB3A5"]) {
-      xml = xml.replace(new RegExp(`<w:p[^>]*w14:paraId="${id}"[^>]*>[\\s\\S]*?<\\/w:p>`), "");
-    }
-
-    xml = xml.replace("The base consultancy fee is EUR 1,000, or an agreed PKR equivalent.", "The agreed gross consultancy fee, authorised discount and net consultancy fee are set out below in the selected payment currency.");
-    xml = xml.replace("1,000/-", `${formatForeignAmount(fin.grossFeeEUR ?? 1000, "EUR")}/-`);
-    xml = xml.replace(/(<w:p[^>]*w14:paraId="24D2A444"[\s\S]*?<w:t[^>]*>)PKR(<\/w:t>)/, `$1${currency}$2`);
-    const amounts = [fin.firstInstalmentEUR, fin.secondInstalmentEUR, fin.thirdInstalmentEUR];
-    const foreign = [fin.firstInstalmentForeign, fin.secondInstalmentForeign, fin.thirdInstalmentForeign];
-    ["First Instalment — 30%", "Second Instalment — 40%", "Third Instalment — 30%"].forEach((label, i) => {
-      const amount = `${currency} ${contractAmount(amounts[i], foreign[i])}`;
-      xml = xml.replace(label, `${label}: ${amount}`);
-    });
-    xml = xml.replace(/<w:highlight[^>]*\/>/g, "").replace(/<w:shd[^>]*\/>/g, "").replace(/<w:color[^>]*\/>/g, '<w:color w:val="000000"/>');
-  }
-  xml = populateTableCell(xml, "7837ADEA", baseForeignAmt);
-  xml = populateTableCell(xml, "04523E70", discountPct);
-  xml = populateTableCell(xml, "7D29DFBC", discountEur);
-  xml = populateTableCell(xml, "4A792AC7", discountFgn);
-  xml = populateTableCell(xml, "27CAE1E7", netEur);
-  xml = populateTableCell(xml, "2D491058", netFgn);
-
-  // 10. Table 3: Signatures
-  xml = xml.replace(
-    "Name: _______________________________________          ",
-    `Name: ${record.repName || "_______________________________________"}          `
-  );
-  xml = xml.replace(
-    "Name: _______________________________________",
-    `Name: ${record.studentFullName || "_______________________________________"}`
-  );
-  xml = xml.replace(
-    "Designation: __________________________________",
-    `Designation: ${record.repDesignation || ""}`
-  );
-  xml = xml.replace(
-    "CNIC/Passport: _______________________________",
-    `CNIC/Passport: ${record.studentCnicPassport || "_______________________________"}`
-  );
-  xml = xml.replace(
-    "Date: ________________________________________         ",
-    `Date: ${record.repDate || record.agreementDate || "________________________________________"}         `
-  );
-  xml = xml.replace(
-    "Date: _______________________________________",
-    `Date: ${record.studentSignatureDate || record.agreementDate || "_______________________________________"}`
-  );
-
-  // 11. Stamp area: replace the boxed placeholder with plain label text
-  xml = xml.replace(
-    "[Official Stamp of UniMondo]",
-    "Official Stamp of UniMondo"
-  );
-
-  if (!record.repDesignation) setParagraph("2768A9E6", "");
-  if (fin.pricingVersion === 2) {
-    xml = xml.replace("CNIC/Passport:", `${record.studentIdType || "CNIC/Passport"}:`);
-    xml = xml.replace("; and, and (2)", "; and (2)").replace("“Student” (“Student”)", "“Student”");
-  }
-  zip.file("word/document.xml", xml);
+  // Keep four paired rows together, so wrapped names cannot misalign the dates.
+  const width = 4945;
+  const signatureRows = [
+    content.signatures.map(s => [{ text: s.heading, bold: true }]),
+    content.signatures.map(() => [{ text: "Signature: _______________________" }]),
+    content.signatures.map(s => [{ text: `Name: ${s.name}` }]),
+    content.signatures.map(s => [{ text: `Date: ${s.date || "__________________________"}` }]),
+  ];
+  const signatureTable = signatureRows.map((row, i) => `<w:tr><w:trPr><w:cantSplit/></w:trPr>${row.map(runs => `<w:tc><w:tcPr><w:tcW w:w="${width}" w:type="dxa"/></w:tcPr>${paragraph(runs, { left: true, keep: i < signatureRows.length - 1, before: i === 0 ? 120 : 0, after: i === 0 ? 480 : 100 })}</w:tc>`).join("")}</w:tr>`).join("");
+  body += `<w:tbl><w:tblPr><w:tblW w:w="9890" w:type="dxa"/><w:tblLayout w:type="fixed"/><w:tblCellMar><w:top w:w="0" w:type="dxa"/><w:left w:w="0" w:type="dxa"/><w:bottom w:w="0" w:type="dxa"/><w:right w:w="180" w:type="dxa"/></w:tblCellMar><w:tblBorders>${["top", "left", "bottom", "right", "insideH", "insideV"].map(side => `<w:${side} w:val="nil"/>`).join("")}</w:tblBorders></w:tblPr><w:tblGrid><w:gridCol w:w="${width}"/><w:gridCol w:w="${width}"/></w:tblGrid>${signatureTable}</w:tbl>`;
+  // Word requires a paragraph after a table; a normal-height one can create a blank last page.
+  body += '<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="20" w:lineRule="exact"/><w:rPr><w:sz w:val="2"/></w:rPr></w:pPr></w:p>';
+  const xml = await zip.file("word/document.xml")!.async("text");
+  const section = `<w:sectPr><w:footerReference w:type="default" r:id="rId8"/><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1008" w:right="1008" w:bottom="1008" w:left="1008" w:header="360" w:footer="480" w:gutter="0"/><w:pgNumType w:start="1"/></w:sectPr>`;
+  zip.file("word/document.xml", xml.replace(/<w:body>[\s\S]*<\/w:body>/, () => `<w:body>${body}${section}</w:body>`));
+  const field = (name: string) => `<w:fldSimple w:instr="${name}">${run({ text: "1" }, 18)}</w:fldSimple>`;
+  zip.file("word/footer1.xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:ftr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="0"/></w:pPr>${run({ text: `UniMondo | Agreement Reference ${content.reference} | Page ` }, 18)}${field("PAGE")}${run({ text: " of " }, 18)}${field("NUMPAGES")}</w:p></w:ftr>`);
+  const settings = await zip.file("word/settings.xml")!.async("text");
+  // The source's unused built-in Title style carries a blue bottom border.
+  // Remove it when assigning the title role; run/paragraph formatting above is explicitly black.
+  const styles = await zip.file("word/styles.xml")!.async("text");
+  zip.file("word/styles.xml", styles.replace(/<w:style\b[^>]*w:styleId="Title"[^>]*>[\s\S]*?<\/w:style>/g,
+    style => style.replace(/<w:pBdr>[\s\S]*?<\/w:pBdr>/g, "")));
+  zip.file("word/settings.xml", settings.replace(/<w:updateFields[^>]*\/>/g, "").replace("</w:settings>", '<w:updateFields w:val="true"/></w:settings>'));
   return zip.generateAsync({ type: "nodebuffer" });
 }

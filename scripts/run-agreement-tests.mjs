@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const mode = process.argv[2] || "suite";
-if (!["suite", "regressions"].includes(mode)) throw new Error("Unknown agreement test suite.");
+if (!["suite", "regressions", "standardization"].includes(mode)) throw new Error("Unknown agreement test suite.");
 const mock = fileURLToPath(new URL("./fixtures/agreement-services.mjs", import.meta.url));
 const alias = { "@": `${root}src`, "next/navigation": mock };
 if (mode === "regressions") {
@@ -15,5 +15,5 @@ if (mode === "regressions") {
 }
 const jiti = createJiti(import.meta.url, { jsx: { runtime: "automatic" }, alias, fsCache: false, moduleCache: false, tryNative: false });
 const { readFileSync } = await import("node:fs");
-const path = fileURLToPath(new URL(`./test-agreement-${mode === "suite" ? "suite" : "regressions"}.mjs`, import.meta.url));
+const path = fileURLToPath(new URL(`./test-agreement-${mode}.mjs`, import.meta.url));
 await jiti.evalModule(readFileSync(path, "utf8"), { filename: path, async: true });

@@ -1,0 +1,215 @@
+{
+  "sourceSha256": "dc8031e0120d38e128e76a116c42f42248ddd810dd49e08a43f2c16241124bb0",
+  "brand": "UNIMONDO",
+  "title": "STUDENT EDUCATIONAL CONSULTANCY & SERVICE RETAINER AGREEMENT",
+  "sections": [
+    {
+      "heading": "1. PARTIES AND ENGAGEMENT",
+      "paragraphs": [
+        {
+          "runs": [
+            {
+              "text": "This Student Educational Consultancy and Service Retainer Agreement (the “Agreement”) is entered into between:"
+            }
+          ]
+        },
+        {
+          "slot": "consultant"
+        },
+        {
+          "slot": "student"
+        },
+        {
+          "slot": "engagement"
+        }
+      ]
+    },
+    {
+      "heading": "2. SCOPE OF EDUCATIONAL SERVICES",
+      "paragraphs": [
+        {
+          "runs": [
+            {
+              "text": "UniMondo shall provide reasonable professional assistance with academic profile assessment; selection and shortlisting of suitable universities and programmes; eligibility and admission requirements; preparation and submission of agreed university applications; supporting academic documents, statements and motivation letters; scholarship information and application guidance where relevant; university correspondence and follow-up; and general post-admission educational and enrolment guidance. Additional destinations, programmes or intakes may require a separate written agreement."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "heading": "3. PROFESSIONAL FEE AND AUTHORISED DISCOUNT",
+      "paragraphs": [
+        {
+          "runs": [
+            {
+              "text": "In consideration of the educational consultancy services, the Parties agree to the following professional fee, approved discount and final fee, stated in the agreed payment currency. The UniMondo representative may approve a discount only within their delegated authority. The net amount recorded below becomes the agreed consultancy fee upon signature."
+            }
+          ]
+        },
+        {
+          "slot": "gross"
+        },
+        {
+          "slot": "discount"
+        },
+        {
+          "slot": "net"
+        }
+      ]
+    },
+    {
+      "heading": "4. FIXED THREE-INSTALMENT PAYMENT SCHEDULE",
+      "paragraphs": [
+        {
+          "slot": "first"
+        },
+        {
+          "slot": "second"
+        },
+        {
+          "slot": "third"
+        },
+        {
+          "runs": [
+            {
+              "text": "The third instalment is a payment-timing milestone only. UniMondo does not arrange or guarantee visa appointments, submit visa applications or provide immigration services under this Agreement."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "heading": "5. CANCELLATION AND REFUND",
+      "paragraphs": [
+        {
+          "runs": [
+            {
+              "text": "No admission:",
+              "bold": true
+            },
+            {
+              "text": " If no admission offer is obtained after completion of the agreed application cycle despite the Student’s compliance with this Agreement, UniMondo shall refund 70% of the consultancy fees actually paid, subject to mandatory law."
+            }
+          ]
+        },
+        {
+          "runs": [
+            {
+              "text": "Student cancellation before admission:",
+              "bold": true
+            },
+            {
+              "text": " If the Student voluntarily cancels before receiving an admission offer, UniMondo shall refund 50% of the first instalment received. Amounts paid for completed subsequent milestones, if any, shall be settled according to services performed and applicable law."
+            }
+          ]
+        },
+        {
+          "runs": [
+            {
+              "text": "Student cancellation after admission:",
+              "bold": true
+            },
+            {
+              "text": " If the Student cancels after receiving an admission offer, UniMondo shall retain the first instalment (30% of the final agreed fee) and refund additional consultancy fees actually paid, subject to mandatory law. Statutory withdrawal and refund rights prevail over inconsistent terms."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "heading": "6. DISCLAIMERS, EXCLUSIONS AND UNDERTAKINGS",
+      "paragraphs": [
+        {
+          "runs": [
+            {
+              "text": "Educational outcomes:",
+              "bold": true
+            },
+            {
+              "text": " University admission, academic recognition, scholarships and funding are determined independently by the relevant institutions. UniMondo shall exercise reasonable care and diligence but does not guarantee admission, scholarship awards, acceptance dates or results."
+            }
+          ]
+        },
+        {
+          "runs": [
+            {
+              "text": "Visa and immigration:",
+              "bold": true
+            },
+            {
+              "text": " UniMondo acts solely as an educational consultancy under this Agreement and is not engaged as a visa or immigration adviser or legal representative. Visa applications, appointments, evidence, submissions and immigration compliance remain the Student’s responsibility, with assistance from appropriately authorised professionals where required. General public information is incidental orientation, not immigration advice. UniMondo does not guarantee visa or residence approval; visa refusal or delay alone does not establish non-performance of educational services."
+            }
+          ]
+        },
+        {
+          "runs": [
+            {
+              "text": "Official payments and additional charges:",
+              "bold": true
+            },
+            {
+              "text": " Payments shall be made only through officially designated UniMondo channels and acknowledged by receipt. Additional consultancy charges require prior written agreement."
+            }
+          ]
+        },
+        {
+          "runs": [
+            {
+              "text": "Student obligations:",
+              "bold": true
+            },
+            {
+              "text": " The Student shall provide complete, accurate and authentic documents; disclose relevant academic circumstances; review and approve applications; cooperate promptly; attend required tests and interviews; observe deadlines; share important university correspondence; and pay agreed fees. UniMondo may suspend or terminate services on reasonable written notice for material non-cooperation, fraudulent documents or non-payment of a properly due amount, subject to applicable law."
+            }
+          ]
+        },
+        {
+          "runs": [
+            {
+              "text": "Excluded third-party charges:",
+              "bold": true
+            },
+            {
+              "text": " University application and tuition fees, tests, translations, attestations, legalisation, visa-related charges, insurance, travel and accommodation are excluded unless expressly agreed in writing. The Student shall be informed of material known third-party costs before agreeing to incur them."
+            }
+          ]
+        },
+        {
+          "runs": [
+            {
+              "text": "Liability:",
+              "bold": true
+            },
+            {
+              "text": " Nothing in this Agreement excludes liability for negligence, misrepresentation, failure to perform agreed services or any other liability that cannot lawfully be excluded."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "heading": "7. CONFIDENTIALITY, DURATION AND GENERAL TERMS",
+      "paragraphs": [
+        {
+          "runs": [
+            {
+              "text": "Both Parties shall treat personal and academic information confidentially. UniMondo may process and share necessary information with educational institutions in accordance with applicable data-protection law and its privacy notice. This Agreement takes effect on signature and continues for the agreed application cycle unless completed or lawfully terminated earlier. Changes shall be recorded in writing and accepted by both Parties. Concerns shall first be discussed in good faith, without restricting legal rights."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "heading": "8. ACCEPTANCE AND SIGNATURES",
+      "paragraphs": [
+        {
+          "runs": [
+            {
+              "text": "By signing, the Student acknowledges the agreed services, final fee and discount, three-instalment schedule, refund arrangements and express exclusion of visa and immigration consultancy services."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

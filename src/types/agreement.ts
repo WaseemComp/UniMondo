@@ -68,6 +68,7 @@ export type AgreementFinancials = {
 };
 
 export type AgreementRecord = {
+  documentSnapshot?: import("../lib/agreements/document-content").AgreementDocument;
   id: string;
   version?: number;
   revisionNumber?: number;

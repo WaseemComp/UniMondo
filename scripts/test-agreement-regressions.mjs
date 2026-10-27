@@ -116,6 +116,9 @@ const { agreement: finalized } = await expect(PATCH(request({ status: "finalized
 assert.equal(finalized.revisionNumber, 1);
 assert.equal(finalized.financials.pricingApprovedBy, superadmin.email);
 const snapshot1 = await getAgreementRevision(initial.id, 1);
+assert.equal(snapshot1.documentSnapshot.version, "3.0");
+assert.equal(snapshot1.documentSnapshot.sections[4].paragraphs.length, 3);
+assert.equal(snapshot1.documentSnapshot.sections[5].paragraphs.length, 6);
 globalThis.__agreementTestServices.user = staff;
 const revisedInput = { ...input, version: finalized.version, studentFullName: "NEW DRAFT STUDENT" };
 const { agreement: draft } = await expect(PUT(request(revisedInput), context(initial.id)), 200);
@@ -125,6 +128,8 @@ assert.equal((await getAgreementById(initial.id)).studentFullName, snapshot1.stu
 assert.equal((await getAgreementById(initial.id, true)).studentFullName, "NEW DRAFT STUDENT");
 assert.deepEqual(await getAgreementRevision(initial.id, 1), snapshot1);
 assert.deepEqual(draft.financials, finalized.financials, "Content edits must preserve approved financial snapshots exactly");
+assert(JSON.stringify(draft.documentSnapshot).includes("NEW DRAFT STUDENT"));
+assert(!JSON.stringify(snapshot1.documentSnapshot).includes("NEW DRAFT STUDENT"));
 console.log("PASS: staff/approver/Superadmin permissions, pending draft revision and immutable finalized snapshot");
 
 // Both real DB sessions read the same version; advisory and row locks allow exactly one mutation.
@@ -178,6 +183,9 @@ for (const format of ["docx", "pdf"]) {
   const result = await EXPORT(new NextRequest(`https://test.invalid/api/admin/agreements/${historicId}/export?format=${format}&revision=1`), context(historicId));
   assert.equal(result.status, 200, await result.clone().text());
 }
+const inline = await EXPORT(new NextRequest(`https://test.invalid/api/admin/agreements/${historicId}/export?format=pdf&inline=1&revision=1`), context(historicId));
+assert.equal(inline.status, 200);
+assert(inline.headers.get("content-disposition").startsWith("inline;"));
 globalThis.__agreementTestServices.user = null;
 await expect(PUT(request(input), context(historicId)), 401);
 await expect(PATCH(request({ status: "draft", version: 1 }), context(historicId)), 401);
@@ -191,6 +199,16 @@ assert.equal(sqlSync(`select count(*) from agreement_revisions where agreement_i
 assert.equal(sqlSync(`select count(*) from agreement_events where agreement_id='${historicId}' and action='delete' and snapshot is not null;`), "1");
 assert(!(await getAgreementsList()).some(record => record.id === historicId));
 console.log("PASS: history downloads, unauthorized requests and soft deletion with retained audit snapshots");
+
+// An untouched pre-standardization draft can be approved without a form save.
+const { agreement: oldDraft } = await expect(POST(request(fixture())), 201);
+sqlSync(`update agreement_state set source_snapshot = (source_snapshot - 'documentSnapshot') || jsonb_build_object('templateVersion','2.0') where agreement_id=${literal(oldDraft.id)};`);
+const { agreement: upgraded } = await expect(PATCH(request({ status: "finalized", version: oldDraft.version }), context(oldDraft.id)), 200);
+assert.equal(upgraded.documentSnapshot.version, "3.0");
+assert.equal(upgraded.templateVersion, "3.0");
+assert.deepEqual(upgraded.financials.netFeeForeign, oldDraft.financials.netFeeForeign);
+assert.deepEqual((await getAgreementRevision(oldDraft.id, 1)).documentSnapshot, upgraded.documentSnapshot);
+console.log("PASS: untouched older draft approval saves the new contract before finalization");
 
 for (const failure of ["unconfigured", "offline", "write"]) {
   globalThis.__agreementTestServices.client = failure === "unconfigured" ? null : client;

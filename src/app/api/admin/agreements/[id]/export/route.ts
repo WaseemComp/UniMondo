@@ -86,7 +86,7 @@ export async function GET(request: NextRequest, { params }: Props) {
         status: 200,
         headers: {
           "Content-Type": "application/pdf",
-          "Content-Disposition": `attachment; filename="${filename}"`,
+          "Content-Disposition": `${request.nextUrl.searchParams.get("inline") === "1" ? "inline" : "attachment"}; filename="${filename}"`,
           "Content-Length": String(pdfBuffer.length),
           "Cache-Control": "no-store, no-cache, must-revalidate",
         },

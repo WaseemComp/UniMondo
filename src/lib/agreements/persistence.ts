@@ -1,4 +1,5 @@
 import { calculateAgreementFinancials, calculateLegacyAgreementFinancials, agreementPricingUnchanged } from "./financials";
+import { buildAgreementDocument } from "./document-content";
 import { createSupabaseServiceClient } from "@/lib/supabase/admin";
 import type { AgreementFormInput, AgreementRecord, AgreementStatus, PaymentCurrency } from "../../types/agreement";
 
@@ -23,6 +24,7 @@ export function mapRowToRecord(row: Record<string, unknown>): AgreementRecord {
   });
 
   return {
+    documentSnapshot: payload.documentSnapshot as AgreementRecord["documentSnapshot"],
     id: String(row.id),
     referenceNumber: String(row.reference_number || payload.referenceNumber || ""),
     templateVersion: String(row.template_version || payload.templateVersion || "1.0"),
@@ -137,6 +139,17 @@ async function mutate(id: string, action: string, expected: number | undefined, 
 }
 export async function changeAgreementStatus(id: string, status: AgreementStatus, version: number, actor: string, isSuper: boolean) {
   if (!isSuper) throw new AgreementPersistenceError("Only Superadmin may change status.", 403);
+  // Upgrade an untouched older draft before approval, preserving its financials exactly.
+  // Both writes use optimistic versions: a concurrent edit aborts finalization.
+  if (status === "finalized") {
+    const existing = await getAgreementById(id, true);
+    if (!existing || existing.version !== version) throw conflict();
+    if (existing.status === "draft" && !existing.documentSnapshot) {
+      const upgraded = { ...existing, templateVersion: "3.0", documentSnapshot: buildAgreementDocument(existing) };
+      const saved = await mutate(id, "save", version, actor, false, upgraded);
+      version = saved.version;
+    }
+  }
   return fromState(await mutate(id, status === "finalized" ? "finalize" : "reopen", version, actor, true), true);
 }
 export async function deleteAgreement(id: string, version: number, actor: string, isSuper: boolean): Promise<boolean> {
@@ -168,7 +181,7 @@ export async function saveAgreement(
   const record: AgreementRecord = {
     id,
     referenceNumber: existing?.referenceNumber || input.referenceNumber.trim(),
-    templateVersion: "2.0",
+    templateVersion: "3.0",
     applicationId: input.applicationId?.trim() || null,
     status: "draft",
 
@@ -204,6 +217,7 @@ export async function saveAgreement(
     updatedAt: now,
   };
 
+  record.documentSnapshot = buildAgreementDocument(record);
   const dbPayload = {
     id: record.id,
     reference_number: record.referenceNumber,

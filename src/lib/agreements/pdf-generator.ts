@@ -1,408 +1,125 @@
-import { consultantWording, studentWording, engagementWording } from "./wording";
-import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
+import fs from "fs";
+import path from "path";
+import fontkit from "@pdf-lib/fontkit";
+import { PDFDocument, rgb, type PDFFont, type PDFPage } from "pdf-lib";
 import type { AgreementRecord } from "../../types/agreement";
-import { formatForeignAmount } from "./financials";
+import { AGREEMENT_LAYOUT as layout, agreementDocument, usesStandardAgreement, type ContractRun } from "./document-content";
+import { generateLegacyAgreementPdf } from "./legacy-pdf-generator";
 
-/**
- * Generates a selectable-text PDF matching the UniMondo Retainer Agreement.
- *
- * Specs:
- * - US Letter: 8.5 × 11 in (612 × 792 pt)
- * - 0.7-inch margins (50.4 pt) on all sides
- * - Times New Roman throughout
- * - Unboxed Reference / Date header
- * - Numbered parties clause per revised wording
- * - Continuous cancellation subclauses (no forced mid-paragraph breaks)
- * - Blank stamp space + short rule + small label (no box)
- * - Full multi-currency support with per-currency decimal precision
- */
+type Word = { text: string; font: PDFFont; width: number };
+
+/** Reuses pdf-lib with shared paragraphs, embedded Times New Roman and flowing A4 pagination. */
 export async function generateAgreementPdf(record: AgreementRecord): Promise<Buffer> {
+  if (!usesStandardAgreement(record)) return generateLegacyAgreementPdf(record);
+  const content = agreementDocument(record);
   const doc = await PDFDocument.create();
-
-  const fontRegular = await doc.embedFont(StandardFonts.TimesRoman);
-  const fontBold = await doc.embedFont(StandardFonts.TimesRomanBold);
-  const fontItalic = await doc.embedFont(StandardFonts.TimesRomanItalic);
-
-  const PAGE_WIDTH = 612;
-  const PAGE_HEIGHT = 792;
-  const MARGIN = 50.4; // 0.7 in
-  const CONTENT_WIDTH = PAGE_WIDTH - MARGIN * 2; // 511.2 pt
-  const BOTTOM_LIMIT = MARGIN + 20;
-
-  let currentPage: PDFPage = doc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
-  let currentY = PAGE_HEIGHT - MARGIN;
-
-  function checkNewPage(neededHeight: number) {
-    if (currentY - neededHeight < BOTTOM_LIMIT) {
-      currentPage = doc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
-      currentY = PAGE_HEIGHT - MARGIN;
-    }
-  }
-
-  function wrapText(text: string, font: PDFFont, fontSize: number, maxWidth: number): string[] {
-    const words = text.split(" ");
-    const lines: string[] = [];
-    let currentLine = "";
-    for (const word of words) {
-      const candidate = currentLine ? `${currentLine} ${word}` : word;
-      if (font.widthOfTextAtSize(candidate, fontSize) <= maxWidth) {
-        currentLine = candidate;
-      } else {
-        if (currentLine) lines.push(currentLine);
-        currentLine = word;
+  doc.registerFontkit(fontkit);
+  const fontData = ["times-new-roman.ttf", "times-new-roman-bold.ttf", "times-new-roman-italic.ttf"].map(file =>
+    fs.readFileSync(path.join(process.cwd(), "templates/fonts", file)));
+  const fonts = await Promise.all(fontData.map(data => doc.embedFont(data, { subset: true })));
+  const [regular, bold, italic] = fonts;
+  const { width, height, margin } = layout;
+  const contentWidth = width - 2 * margin;
+  // Word's auto line spacing uses the font's natural line box (not just its point size).
+  const metrics = fontkit.create(fontData[0]);
+  const lineHeight = (regular.heightAtSize(11) + metrics.lineGap / metrics.unitsPerEm * 11) * layout.lineSpacing;
+  let page: PDFPage;
+  let y = height - margin;
+  const newPage = () => { page = doc.addPage([width, height]); y = height - margin; };
+  newPage();
+  function ensure(space: number) { if (y - space < margin) newPage(); }
+  function wrap(runs: ContractRun[], size: number, available = contentWidth): Word[][] {
+    const words: Word[] = [];
+    // Preserve run boundaries inside a word (e.g. quoted defined terms).
+    for (const run of runs) {
+      const font = run.bold ? bold : run.italic ? italic : regular;
+      for (const token of run.text.match(/\S+|\s+/gu) || []) {
+        if (/^\s+$/.test(token)) { if (words.length) words.push({ text: " ", font, width: font.widthOfTextAtSize(" ", size) }); continue; }
+        const tokenWidth = font.widthOfTextAtSize(token, size);
+        if (tokenWidth <= available) { words.push({ text: token, font, width: tokenWidth }); continue; }
+        // Split pathological long identifiers so they cannot leave the printable area.
+        let part = "";
+        for (const char of token) {
+          if (part && font.widthOfTextAtSize(part + char, size) > available) {
+            words.push({ text: part, font, width: font.widthOfTextAtSize(part, size) }); part = "";
+          }
+          part += char;
+        }
+        if (part) words.push({ text: part, font, width: font.widthOfTextAtSize(part, size) });
       }
     }
-    if (currentLine) lines.push(currentLine);
+    const lines: Word[][] = []; let line: Word[] = []; let used = 0;
+    for (const word of words) {
+      if (used + word.width > available && line.length) {
+        while (line.at(-1)?.text === " ") line.pop();
+        lines.push(line); line = []; used = 0;
+      }
+      if (!line.length && word.text === " ") continue;
+      line.push(word); used += word.width;
+    }
+    while (line.at(-1)?.text === " ") line.pop();
+    if (line.length) lines.push(line);
     return lines;
   }
-
-  /** Draw a paragraph with optional leading bold segment on the same line. */
-  function drawParagraph(
-    text: string,
-    options: {
-      font?: PDFFont;
-      fontSize?: number;
-      lineHeight?: number;
-      align?: "left" | "center" | "right";
-      spaceAfter?: number;
-      /** Bold prefix drawn inline on the first line before the regular text. */
-      boldPrefix?: string;
-    } = {}
-  ) {
-    const font = options.font || fontRegular;
-    const fontSize = options.fontSize || 9.5;
-    const lineHeight = options.lineHeight || fontSize * 1.25;
-    const align = options.align || "left";
-    const spaceAfter = options.spaceAfter ?? 6;
-
-    if (options.boldPrefix) {
-      const prefixWidth = fontBold.widthOfTextAtSize(options.boldPrefix + (record.financials.pricingVersion === 2 ? " " : ""), fontSize);
-      const restLines = wrapText(text, font, fontSize, CONTENT_WIDTH - prefixWidth);
-
-      checkNewPage(Math.max(1, restLines.length) * lineHeight + spaceAfter);
-
-      currentPage.drawText(options.boldPrefix, {
-        x: MARGIN,
-        y: currentY - fontSize,
-        font: fontBold,
-        size: fontSize,
-        color: rgb(0, 0, 0),
-      });
-      if (restLines.length > 0) {
-        currentPage.drawText(restLines[0], {
-          x: MARGIN + prefixWidth,
-          y: currentY - fontSize,
-          font,
-          size: fontSize,
-          color: rgb(0, 0, 0),
-        });
-        currentY -= lineHeight;
-        for (let i = 1; i < restLines.length; i++) {
-          checkNewPage(lineHeight);
-          currentPage.drawText(restLines[i], {
-            x: MARGIN,
-            y: currentY - fontSize,
-            font,
-            size: fontSize,
-            color: rgb(0, 0, 0),
-          });
-          currentY -= lineHeight;
-        }
-      } else {
-        currentY -= lineHeight;
+  function drawLines(lines: Word[][], size: number, leading: number, align: "left" | "center" | "justify", x: number = margin, available = contentWidth) {
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]; const used = line.reduce((sum, w) => sum + w.width, 0);
+      const spaces = line.filter(w => w.text === " ").length;
+      const extra = align === "justify" && i < lines.length - 1 && spaces ? (available - used) / spaces : 0;
+      let cursor = x + (align === "center" ? (available - used) / 2 : 0);
+      for (const word of line) {
+        if (word.text !== " ") page.drawText(word.text, { x: cursor, y: y - size, font: word.font, size, color: rgb(0, 0, 0) });
+        cursor += word.width + (word.text === " " ? extra : 0);
       }
-      currentY -= spaceAfter;
-      return;
+      y -= leading;
     }
-
-    const lines = wrapText(text, font, fontSize, CONTENT_WIDTH);
-    checkNewPage(lines.length * lineHeight + spaceAfter);
-
-    for (const line of lines) {
-      let x = MARGIN;
-      if (align === "center") {
-        x = MARGIN + (CONTENT_WIDTH - font.widthOfTextAtSize(line, fontSize)) / 2;
-      } else if (align === "right") {
-        x = MARGIN + CONTENT_WIDTH - font.widthOfTextAtSize(line, fontSize);
-      }
-      currentPage.drawText(line, { x, y: currentY - fontSize, font, size: fontSize, color: rgb(0, 0, 0) });
-      currentY -= lineHeight;
-    }
-    currentY -= spaceAfter;
   }
-
-  function drawSectionHeading(title: string) {
-    checkNewPage(record.financials.pricingVersion === 2 ? 90 : 24);
-    drawParagraph(title, { font: fontBold, fontSize: 10, lineHeight: 13, spaceAfter: 4 });
+  function paragraph(runs: ContractRun[], options: { title?: boolean; heading?: boolean; keepHeight?: number; left?: boolean } = {}) {
+    const size = options.title ? layout.titleSize : layout.fontSize;
+    const leading = options.title ? lineHeight * size / 11 : lineHeight;
+    const lines = wrap(runs, size);
+    // Word collapses adjacent 6pt paragraph-after/heading-before spacing to 6pt.
+    const before = 0;
+    // Word allows paragraph-after spacing to fall beyond the bottom text margin.
+    // Reserve it only when keeping this paragraph with the next block.
+    ensure(before + lines.length * leading + (options.keepHeight ? layout.paragraphAfter + options.keepHeight : 0));
+    y -= before;
+    // Paragraphs are kept together, preventing orphan lines and split refund clauses.
+    drawLines(lines, size, leading, options.title ? "center" : options.heading || options.left ? "left" : "justify");
+    y -= layout.paragraphAfter;
   }
-
-  // ─── Currency helpers ────────────────────────────────────────────────────────
-  const isNonEur = record.financials.paymentCurrency !== "EUR";
-  const currency = record.financials.paymentCurrency;
-  const fin = record.financials;
-
-  function fmt(amount: number): string {
-    return formatForeignAmount(amount, currency);
+  paragraph([{ text: content.brand, bold: true }], { title: true, keepHeight: lineHeight * 4 });
+  paragraph([{ text: content.title, bold: true }], { title: true, keepHeight: lineHeight * 3 });
+  paragraph([{ text: `Reference: ${content.reference}${content.date ? `     Date: ${content.date}` : ""}` }], { left: true, keepHeight: lineHeight * 3 });
+  const signatureWidth = contentWidth / 2 - 9;
+  const signatureRows = content.signatures.map(s => [
+    wrap([{ text: s.heading, bold: true }], 11, signatureWidth),
+    wrap([{ text: "Signature: _______________________" }], 11, signatureWidth),
+    wrap([{ text: `Name: ${s.name}` }], 11, signatureWidth),
+    wrap([{ text: `Date: ${s.date || "__________________________"}` }], 11, signatureWidth),
+  ]);
+  const signatureHeights = [0, 1, 2, 3].map(i => Math.max(...signatureRows.map(rows => rows[i].length)) * lineHeight + (i === 0 ? 24 : layout.paragraphAfter));
+  const signatureHeight = signatureHeights.reduce((a, b) => a + b, 0) + 6;
+  for (const section of content.sections) {
+    const acceptance = section.heading.startsWith("8.");
+    const firstHeight = wrap(section.paragraphs[0].runs, 11).length * lineHeight + (acceptance ? layout.paragraphAfter : 0);
+    paragraph([{ text: section.heading, bold: true }], { heading: true, keepHeight: firstHeight + (acceptance ? signatureHeight : 0) });
+    for (const p of section.paragraphs) paragraph(p.runs, { keepHeight: acceptance ? signatureHeight : 0 });
   }
-
-  // ─── PAGE 1 ─────────────────────────────────────────────────────────────────
-
-  // Document title (centred)
-  drawParagraph("UNIMONDO", { font: fontBold, fontSize: 14, align: "center", spaceAfter: 2 });
-  drawParagraph("STUDENT EDUCATIONAL CONSULTANCY & SERVICE RETAINER AGREEMENT", {
-    font: fontBold, fontSize: 10, align: "center", spaceAfter: 10,
-  });
-
-  // ── Reference / Date — plain, unboxed ───────────────────────────────────────
-  const refText = record.referenceNumber.startsWith("UM/")
-    ? record.referenceNumber
-    : `UM/${record.referenceNumber}`;
-  const dateStr = `Date: ${record.agreementDate || "_________________"}`;
-  const refLine = `Reference: ${refText}`;
-
-  checkNewPage(22);
-  currentPage.drawText(refLine, {
-    x: MARGIN, y: currentY - 11,
-    font: fontBold, size: 9.5, color: rgb(0, 0, 0),
-  });
-  currentPage.drawText(dateStr, {
-    x: MARGIN + CONTENT_WIDTH - fontBold.widthOfTextAtSize(dateStr, 9.5),
-    y: currentY - 11,
-    font: fontBold, size: 9.5, color: rgb(0, 0, 0),
-  });
-  currentY -= 22;
-
-  // ── 1. PARTIES AND ENGAGEMENT ────────────────────────────────────────────────
-  drawSectionHeading("1. PARTIES AND ENGAGEMENT");
-
-  drawParagraph("This Agreement is entered into between:", { fontSize: 9.5, lineHeight: 12.5, spaceAfter: 4 });
-
-  const consultantLine = `(1) ${consultantWording(record)}`;
-  drawParagraph(consultantLine, { fontSize: 9.5, lineHeight: 12.5, spaceAfter: 4 });
-
-  const studentLine = `(2) ${studentWording(record)}`;
-  drawParagraph(studentLine, { fontSize: 9.5, lineHeight: 12.5, spaceAfter: 4 });
-
-  drawParagraph(
-    "The Consultant and the Student are each referred to individually as a \u201cParty\u201d and collectively as the \u201cParties\u201d.",
-    { fontSize: 9.5, lineHeight: 12.5, spaceAfter: 5 }
-  );
-
-  const engagementText = engagementWording(record);
-  drawParagraph(engagementText, { fontSize: 9.5, lineHeight: 12.5, spaceAfter: 8 });
-
-  // ── 2. SCOPE OF EDUCATIONAL SERVICES ────────────────────────────────────────
-  drawSectionHeading("2. SCOPE OF EDUCATIONAL SERVICES");
-  drawParagraph(
-    "UniMondo will provide reasonable professional assistance with academic profile assessment; " +
-    "selection and shortlisting of suitable universities and programmes; eligibility and admission requirements; " +
-    "preparation and submission of agreed university applications; supporting academic documentation, statements " +
-    "and motivation letters; scholarship information and application guidance where relevant; correspondence and " +
-    "application status follow-up; and general post-admission educational and enrolment guidance. Any university, " +
-    "destination or intake not agreed under this engagement may require a separate written arrangement.",
-    { fontSize: 9.5, lineHeight: 12.5, spaceAfter: 8 }
-  );
-
-  // ── 3. PROFESSIONAL FEE AND AUTHORISED DISCOUNT ──────────────────────────────
-  drawSectionHeading("3. PROFESSIONAL FEE AND AUTHORISED DISCOUNT");
-  drawParagraph(
-    "The Parties agree that UniMondo\u2019s educational consultancy services shall be provided against a professional " +
-    "service fee. " + (fin.pricingVersion === 2 ? "The agreed gross consultancy fee, authorised discount and net consultancy fee are set out below in the selected payment currency. " : "The base consultancy fee is EUR 1,000, or an agreed equivalent in the selected payment currency. ") +
-    "The authorised UniMondo administrator may approve a discount within delegated authority. The discounted net " +
-    "amount entered below shall be the final agreed fee upon signature.",
-    { fontSize: 9.5, lineHeight: 12.5, spaceAfter: 4 }
-  );
-
-  // Exchange rate line (italic)
-  // Table 2: Fees
-  const colWidths = fin.pricingVersion === 2 ? [270, 60, 181.2] : [190, 60, 130, 131.2];
-  const rowHeight = 17;
-  const baseForeignAmt = isNonEur && fin.agreedExchangeRate
-    ? `${fmt(fin.grossFee ?? fin.baseFeeEUR * fin.agreedExchangeRate)}/-`
-    : "\u2014";
-  const tableRows = fin.pricingVersion === 2 ? [
-    ["Particulars", "%", currency],
-    ["Gross consultancy fee", "n/a", fmt(fin.grossFee ?? 0)],
-    ["Authorised discount", fin.discountType === "amount" ? "n/a" : `${fin.discountPercent}%`, fmt(isNonEur ? fin.discountForeign ?? 0 : fin.discountEUR)],
-    ["Net consultancy fee", "n/a", fmt(isNonEur ? fin.netFeeForeign ?? 0 : fin.netFeeEUR)],
-  ] : [
-    ["Particulars", "%", "EUR", currency],
-    ["Consultancy Fee:", "n/a", fin.pricingVersion === 2 ? `${formatForeignAmount(fin.grossFeeEUR ?? 1000, "EUR")}/-` : "1,000/-", baseForeignAmt],
-    ["Discount:", fin.pricingVersion === 2 && fin.discountType === "amount" ? "n/a" : `${fin.discountPercent}%`, `${(fin.pricingVersion === 2 ? formatForeignAmount(fin.discountEUR, "EUR") : fin.discountEUR.toLocaleString())}/-`,
-      isNonEur && fin.discountForeign != null ? `${fmt(fin.discountForeign)}/-` : "\u2014"],
-    ["Net Consultancy Fee:", "n/a", `${(fin.pricingVersion === 2 ? formatForeignAmount(fin.netFeeEUR, "EUR") : fin.netFeeEUR.toLocaleString())}/-`,
-      isNonEur && fin.netFeeForeign != null ? `${fmt(fin.netFeeForeign)}/-` : "\u2014"],
-  ];
-
-  checkNewPage(tableRows.length * rowHeight + 10);
-  let tblY = currentY;
-  tableRows.forEach((row, rIdx) => {
-    const isHeader = rIdx === 0;
-    const rowFont = isHeader ? fontBold : fontRegular;
-    currentPage.drawRectangle({
-      x: MARGIN, y: tblY - rowHeight, width: CONTENT_WIDTH, height: rowHeight,
-      borderColor: rgb(0.2, 0.2, 0.2), borderWidth: 0.5,
-      color: isHeader ? rgb(0.95, 0.95, 0.95) : undefined,
+  ensure(signatureHeight); y -= 6;
+  for (let i = 0; i < 4; i++) {
+    const rowY = y;
+    signatureRows.forEach((rows, column) => {
+      y = rowY;
+      drawLines(rows[i], 11, lineHeight, "left", margin + column * contentWidth / 2, signatureWidth);
     });
-    let curX = MARGIN;
-    row.forEach((cellText, cIdx) => {
-      const colW = colWidths[cIdx];
-      if (cIdx > 0) {
-        currentPage.drawLine({
-          start: { x: curX, y: tblY }, end: { x: curX, y: tblY - rowHeight },
-          color: rgb(0.2, 0.2, 0.2), thickness: 0.5,
-        });
-      }
-      const tw = rowFont.widthOfTextAtSize(cellText, 9);
-      let cx = curX + 6;
-      if (cIdx === 1) cx = curX + (colW - tw) / 2;
-      else if (cIdx >= 2) cx = curX + colW - tw - 8;
-      currentPage.drawText(cellText, { x: cx, y: tblY - 12, font: rowFont, size: 9, color: rgb(0, 0, 0) });
-      curX += colW;
-    });
-    tblY -= rowHeight;
-  });
-  currentY = tblY - 8;
-
-  // ── 4. FIXED THREE-INSTALMENT PAYMENT SCHEDULE ───────────────────────────────
-  drawSectionHeading("4. FIXED THREE-INSTALMENT PAYMENT SCHEDULE");
-
-  const i1EurStr = `EUR ${(fin.pricingVersion === 2 ? formatForeignAmount(fin.firstInstalmentEUR, "EUR") : fin.firstInstalmentEUR.toLocaleString())}`;
-  const i1Str = fin.pricingVersion === 2 ? `${currency} ${fmt(isNonEur ? fin.firstInstalmentForeign ?? 0 : fin.firstInstalmentEUR)}` : isNonEur && fin.firstInstalmentForeign != null
-    ? `${i1EurStr} / ${currency} ${fmt(fin.firstInstalmentForeign)}`
-    : i1EurStr;
-  drawParagraph(
-    `First Instalment \u2014 30% (${i1Str}) payable upon signing this Agreement and commencement of the engagement.`,
-    { fontSize: 9.5, lineHeight: 12.5, spaceAfter: 3 }
-  );
-
-  const i2EurStr = `EUR ${(fin.pricingVersion === 2 ? formatForeignAmount(fin.secondInstalmentEUR, "EUR") : fin.secondInstalmentEUR.toLocaleString())}`;
-  const i2Str = fin.pricingVersion === 2 ? `${currency} ${fmt(isNonEur ? fin.secondInstalmentForeign ?? 0 : fin.secondInstalmentEUR)}` : isNonEur && fin.secondInstalmentForeign != null
-    ? `${i2EurStr} / ${currency} ${fmt(fin.secondInstalmentForeign)}`
-    : i2EurStr;
-  drawParagraph(
-    `Second Instalment \u2014 40% (${i2Str}) payable upon submission of the first agreed university admission application.`,
-    { fontSize: 9.5, lineHeight: 12.5, spaceAfter: 3 }
-  );
-
-  const i3EurStr = `EUR ${(fin.pricingVersion === 2 ? formatForeignAmount(fin.thirdInstalmentEUR, "EUR") : fin.thirdInstalmentEUR.toLocaleString())}`;
-  const i3Str = fin.pricingVersion === 2 ? `${currency} ${fmt(isNonEur ? fin.thirdInstalmentForeign ?? 0 : fin.thirdInstalmentEUR)}` : isNonEur && fin.thirdInstalmentForeign != null
-    ? `${i3EurStr} / ${currency} ${fmt(fin.thirdInstalmentForeign)}`
-    : i3EurStr;
-  drawParagraph(
-    `Third Instalment \u2014 30% (${i3Str}) (payable upon the Student\u2019s receipt of an embassy/consulate visa appointment date).`,
-    { fontSize: 9.5, lineHeight: 12.5, spaceAfter: 3 }
-  );
-
-  drawParagraph(
-    "The third instalment is an agreed payment timing milestone only: UniMondo does not arrange or guarantee appointments, undertake visa applications, or provide immigration services under this Agreement.",
-    { font: fontItalic, fontSize: 8.5, lineHeight: 11.5, spaceAfter: 8 }
-  );
-
-  // ── 5. CANCELLATION AND REFUND ───────────────────────────────────────────────
-  drawSectionHeading("5. CANCELLATION AND REFUND");
-
-  drawParagraph(
-    " If no admission offer is obtained following completion of the agreed application cycle despite the Student\u2019s compliance with this Agreement, UniMondo shall refund 70% of the consultancy fees actually paid, subject to mandatory law.",
-    { boldPrefix: "No admission:", fontSize: 9, lineHeight: 12, spaceAfter: 4 }
-  );
-  drawParagraph(
-    " If the Student voluntarily cancels before receiving an admission offer, UniMondo shall refund 50% of the first instalment received. Payments relating to completed later milestones, if any, shall be settled according to services performed and applicable law.",
-    { boldPrefix: "Student cancellation before admission:", fontSize: 9, lineHeight: 12, spaceAfter: 4 }
-  );
-  drawParagraph(
-    " If the Student cancels after receiving an admission offer, UniMondo shall retain the first instalment (30% of the final agreed fee) and refund all additional consultancy fees actually paid, subject to mandatory law. Statutory withdrawal and refund rights prevail over any inconsistent term.",
-    { boldPrefix: "Student cancellation after admission:", fontSize: 9, lineHeight: 12, spaceAfter: 12 }
-  );
-
-  // Preserve historical pagination; new agreements flow continuously.
-  if (fin.pricingVersion !== 2) {
-    currentPage = doc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
-    currentY = PAGE_HEIGHT - MARGIN;
+    y = rowY - signatureHeights[i];
   }
-
-  // ── 6. DISCLAIMERS, EXCLUSIONS AND UNDERTAKINGS ──────────────────────────────
-  drawSectionHeading("6. DISCLAIMERS, EXCLUSIONS AND UNDERTAKINGS");
-  drawParagraph(
-    " University admission, academic recognition, scholarships and funding decisions are determined independently by the relevant institutions. UniMondo undertakes reasonable care and diligence, but does not guarantee admission, scholarships, an acceptance date or any particular result.",
-    { boldPrefix: "Educational outcomes:", fontSize: 9, lineHeight: 12, spaceAfter: 3 }
-  );
-  drawParagraph(
-    " UniMondo is an educational consultancy, not a visa or immigration consultancy or legal representative under this Agreement. Visa applications, appointments, evidence, submissions and immigration compliance are the Student\u2019s responsibility, assisted by appropriately authorised professionals if needed. Any general public information shared by UniMondo is incidental orientation, not individual immigration advice. UniMondo does not promise or guarantee visa or residence approval. Visa refusal or delay alone does not establish non-performance of educational services.",
-    { boldPrefix: "Visa and immigration:", fontSize: 9, lineHeight: 12, spaceAfter: 3 }
-  );
-  drawParagraph(
-    " Payments shall be made only through officially designated UniMondo channels and acknowledged by receipt. Additional consultancy charges require prior written agreement.",
-    { boldPrefix: "Official payments and additional charges:", fontSize: 9, lineHeight: 12, spaceAfter: 3 }
-  );
-  drawParagraph(
-    " The Student shall provide complete, accurate and authentic documents; disclose relevant academic circumstances; review and approve applications; cooperate promptly; meet examinations, interviews and deadlines; share important university correspondence; and pay the agreed fees. UniMondo may suspend or end the engagement on reasonable written notice for material non-cooperation, fraudulent documents or non-payment of an amount properly due, subject to applicable law.",
-    { boldPrefix: "Student obligations:", fontSize: 9, lineHeight: 12, spaceAfter: 3 }
-  );
-  drawParagraph(
-    " University application and tuition fees, tests, translations, attestations, legalisation, visa-related charges, insurance, travel and accommodation are not included unless expressly stated otherwise in writing. The Student must be informed of material known third-party costs before agreeing to incur them.",
-    { boldPrefix: "Excluded third-party charges:", fontSize: 9, lineHeight: 12, spaceAfter: 3 }
-  );
-  drawParagraph(
-    " Nothing in this Agreement excludes liability for negligence, misrepresentation, failure to perform agreed services, or other liability that cannot lawfully be excluded.",
-    { boldPrefix: "Liability:", fontSize: 9, lineHeight: 12, spaceAfter: 8 }
-  );
-
-  // ── 7. CONFIDENTIALITY, DURATION AND GENERAL TERMS ──────────────────────────
-  drawSectionHeading("7. CONFIDENTIALITY, DURATION AND GENERAL TERMS");
-  drawParagraph(
-    "Both Parties shall treat personal and academic information confidentially. UniMondo may process and share necessary information with relevant educational institutions in accordance with applicable data-protection law and its privacy notice. This Agreement takes effect on signature and continues for the agreed application cycle, unless completed or lawfully terminated sooner. Amendments must be recorded in writing and accepted by both Parties. Concerns shall first be raised and discussed in good faith, without limiting available legal rights.",
-    { fontSize: 9, lineHeight: 12, spaceAfter: 8 }
-  );
-
-  // ── 8. ACCEPTANCE AND SIGNATURES ────────────────────────────────────────────
-  drawSectionHeading("8. ACCEPTANCE AND SIGNATURES");
-  drawParagraph(
-    "By signing, the Student acknowledges the agreed services, total fee and discount, fixed three-instalment schedule, refund terms and the express exclusion of visa and immigration consultancy services.",
-    { fontSize: 9, lineHeight: 12, spaceAfter: 10 }
-  );
-
-  // Signature table (2 columns, no borders)
-  const halfW = CONTENT_WIDTH / 2;
-  const sigRowH = fin.pricingVersion === 2 ? 20 : 22;
-  const sigRows: { left: string; right: string; bold?: boolean }[] = [
-    { left: "FOR UNIMONDO", right: "FOR THE STUDENT", bold: true },
-    { left: "Signature: ____________________________________", right: "Signature: ____________________________________" },
-    { left: `Name: ${record.repName || "_______________________________________"}`, right: `Name: ${record.studentFullName || "_______________________________________"}` },
-    { left: record.repDesignation ? `Designation: ${record.repDesignation}` : "", right: `${fin.pricingVersion === 2 ? record.studentIdType || "CNIC/Passport" : "CNIC/Passport"}: ${record.studentCnicPassport || "_______________________________"}` },
-    { left: `Date: ${record.repDate || record.agreementDate || "________________________________________"}`, right: `Date: ${record.studentSignatureDate || record.agreementDate || "_______________________________________"}` },
-  ];
-
-  checkNewPage(sigRows.length * sigRowH + (fin.pricingVersion === 2 ? 70 : 80));
-  let sigY = currentY;
-  sigRows.forEach((row) => {
-    const f = row.bold ? fontBold : fontRegular;
-    currentPage.drawText(row.left, { x: MARGIN, y: sigY - 14, font: f, size: 9.5, color: rgb(0, 0, 0) });
-    currentPage.drawText(row.right, { x: MARGIN + halfW, y: sigY - 14, font: f, size: 9.5, color: rgb(0, 0, 0) });
-    sigY -= sigRowH;
+  const pages = doc.getPages();
+  pages.forEach((p, i) => {
+    const text = `UniMondo | Agreement Reference ${content.reference} | Page ${i + 1} of ${pages.length}`;
+    const size = Math.min(9, contentWidth / regular.widthOfTextAtSize(text, 1));
+    p.drawText(text, { x: margin + (contentWidth - regular.widthOfTextAtSize(text, size)) / 2, y: 26, font: regular, size, color: rgb(0, 0, 0) });
   });
-  currentY = sigY - (fin.pricingVersion === 2 ? 12 : 20);
-
-  // ── Stamp area — blank space, horizontal rule, small label ──────────────────
-  checkNewPage(fin.pricingVersion === 2 ? 60 : 80);
-  currentY -= fin.pricingVersion === 2 ? 40 : 50; // blank space for physical stamp
-
-  currentPage.drawLine({
-    start: { x: MARGIN, y: currentY },
-    end: { x: MARGIN + 120, y: currentY },
-    color: rgb(0, 0, 0),
-    thickness: 0.6,
-  });
-
-  const stampLabel = "Official Stamp of UniMondo";
-  currentPage.drawText(stampLabel, {
-    x: MARGIN,
-    y: currentY - 12,
-    font: fontItalic,
-    size: 8,
-    color: rgb(0.35, 0.35, 0.35),
-  });
-
-  const pdfBytes = await doc.save();
-  return Buffer.from(pdfBytes);
+  return Buffer.from(await doc.save());
 }
