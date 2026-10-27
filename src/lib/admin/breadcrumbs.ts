@@ -22,6 +22,7 @@ const CONTENT_EDITOR_PARENT: Record<string, { label: string; href: string }> = {
 
 const SEGMENT_LABELS: Record<string, string> = {
   dashboard: "Overview",
+  media: "Media Library",
   applications: "Applications",
   universities: "Universities",
   destinations: "Destinations",

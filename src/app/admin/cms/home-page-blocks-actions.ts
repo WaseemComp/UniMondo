@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { record, english } from "@/lib/homepage/content";
+import { getMediaAccess } from "@/lib/media/access";
+import { validateManagedMediaSelection } from "@/lib/media/operations";
 import { safeImage } from "@/lib/homepage/validation";
 import { z } from "zod";
 import { assertAdminScope } from "@/lib/auth/admin-page-guard";
@@ -19,7 +21,7 @@ const heroSlideSchema = z.object({
   expected_updated_at: z.string().optional(),
   is_active: z.boolean().default(true),
   sort_order: z.number().int().min(0).default(0),
-  imageUrl: z.string().url().min(1),
+  imageUrl: z.string().min(1),
   imageAlt: z.string().min(1),
   line: localeTextSchema,
   title: localeTextSchema,
@@ -48,6 +50,7 @@ export async function saveHomeHeroSlide(input: unknown): Promise<{ ok: true } | 
     const { data: existing, error: readError } = s.id ? await svc.from("cms_content_blocks").select("content,media").eq("id", s.id).eq("page_slug", "home").eq("section_key", "hero_slider").eq("block_key", "slide").maybeSingle() : { data: null, error: null };
     if (s.id && (readError || !existing)) return { ok: false, error: "Slide is no longer available." };
     const media = record(existing?.media);
+    if (!s.id || s.imageUrl !== (media.imageUrl ?? media.src)) await validateManagedMediaSelection(s.imageUrl, await getMediaAccess(me));
     if ((!s.id || s.imageUrl !== (media.imageUrl ?? media.src)) && !safeImage(s.imageUrl, process.env.NEXT_PUBLIC_SUPABASE_URL)) return { ok: false, error: "Choose a supported public website image." };
     if (!s.imageAlt.trim()) return { ok: false, error: "Describe this image for visitors using a screen reader." };
     for (const value of [s.line, s.title, s.subtitle, s.buttonText, s.secondaryButtonText]) {

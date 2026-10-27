@@ -46,7 +46,7 @@ assert.deepEqual(ids(items), ids(CMS_NAVIGATION));
 assert.equal(requests.length, 0, "Superadmin navigation needs no extra fine-permission queries");
 fine = { "home.view": true, "applications.view": true, "countries.view": true, "users.create": true };
 items = await getCmsNavigation(user, { isSuper: false, permissions: { ...areas, academic: false } });
-assert.deepEqual(ids(items), ["overview", "home", "applications", "agreements", "settings"]);
+assert.deepEqual(ids(items), ["overview", "home", "media", "applications", "agreements", "settings"]);
 assert(!ids(items).includes("team"), "Manipulated users.create must never expose Superadmin team management");
 items = await getCmsNavigation(user, { isSuper: false, permissions: { ...areas, applications: false, content: false } });
 assert(!ids(items).includes("home") && !ids(items).includes("agreements"), "Existing area gates stay in force");
