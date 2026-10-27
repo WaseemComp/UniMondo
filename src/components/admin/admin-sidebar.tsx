@@ -2,116 +2,45 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { signOutAdmin } from "@/app/admin/actions";
-import { cn } from "@/lib/utils";
-import type { AdminAccessContext, AdminAreaPermission } from "@/lib/auth/admin";
-import {
-  BookOpen,
-  FileText,
-  Gift,
-  GraduationCap,
-  Home,
-  Inbox,
-  LayoutDashboard,
-  LogOut,
-  Map,
-  Newspaper,
-  Phone,
-  ScrollText,
-  Settings,
-} from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { useSyncExternalStore } from "react";
+import { ArrowUpRight, ChevronRight, X } from "lucide-react";
+import { activeCmsItem, type CmsNavItem } from "@/lib/admin/navigation";
+import { CmsIcon } from "./cms/cms-icons";
 
-type NavItem =
-  | { section: string }
-  | { href: string; label: string; icon: LucideIcon; scope?: AdminAreaPermission; superOnly?: boolean };
+const subscribeHash = (callback: () => void) => { window.addEventListener("hashchange", callback); return () => window.removeEventListener("hashchange", callback); };
 
-function destinationsNavActive(pathname: string): boolean {
-  return (
-    pathname === "/admin/destinations" ||
-    pathname.startsWith("/admin/destinations/") ||
-    pathname.startsWith("/admin/programs") ||
-    pathname.startsWith("/admin/featured-universities")
-  );
-}
-
-const NAV: NavItem[] = [
-  { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/admin/home", label: "Home", icon: Home, scope: "content" },
-  { href: "/admin/destinations", label: "Destinations", icon: Map, scope: "academic" },
-  { href: "/admin/packages", label: "Packages", icon: Gift, scope: "academic" },
-  { href: "/admin/courses", label: "Language Courses", icon: BookOpen, scope: "academic" },
-  { href: "/admin/about", label: "About", icon: ScrollText, scope: "content" },
-  { href: "/admin/contact", label: "Contact", icon: Phone, scope: "content" },
-  { href: "/admin/blog", label: "Blog", icon: Newspaper, scope: "academic" },
-  { href: "/admin/applications", label: "Applications", icon: GraduationCap, scope: "applications" },
-  { href: "/admin/agreements", label: "Agreements", icon: FileText, scope: "applications" },
-  { href: "/admin/submissions", label: "Submissions", icon: Inbox, scope: "submissions" },
-  { href: "/admin/settings", label: "Settings", icon: Settings },
-] as const;
-
-type Props = {
-  access: AdminAccessContext;
-};
-
-function canSeeScope(access: AdminAccessContext, scope: AdminAreaPermission | undefined) {
-  if (!scope) return true;
-  if (access.isSuper) return true;
-  return access.permissions[scope] !== false;
-}
-
-export function AdminSidebar({ access }: Props) {
-  const pathname = usePathname();
-
-  return (
-    <aside className="flex w-full flex-col border-r border-zinc-200 bg-white lg:min-h-screen lg:w-64 lg:shrink-0">
-      <div className="border-b border-zinc-200 p-4">
-        <Link href="/admin/dashboard" className="font-[family-name:var(--font-heading)] text-lg font-semibold text-[#0a1628]">
-          <span className="text-amber-600">Uni</span>Mondo Admin
-        </Link>
-        <p className="mt-1 text-xs text-zinc-500">CMS dashboard</p>
-      </div>
-      <nav className="flex max-h-[calc(100vh-8rem)] flex-1 flex-col gap-1 overflow-y-auto p-3">
-        {NAV.map((item, i) =>
-          "section" in item ? (
-            <p key={`s-${i}`} className="mt-3 px-2 text-xs font-semibold uppercase tracking-wide text-zinc-400 first:mt-0">
-              {item.section}
-            </p>
-          ) : item.superOnly && !access.isSuper ? null : canSeeScope(access, item.scope) ? (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition",
-                item.href === "/admin/destinations"
-                  ? destinationsNavActive(pathname)
-                    ? "bg-amber-50 text-amber-900"
-                    : "text-zinc-700 hover:bg-zinc-50"
-                  : pathname === item.href || pathname.startsWith(item.href + "/")
-                    ? "bg-amber-50 text-amber-900"
-                    : "text-zinc-700 hover:bg-zinc-50",
-              )}
-            >
-              <item.icon className="h-4 w-4 shrink-0" />
-              {item.label}
-            </Link>
-          ) : null,
-        )}
-      </nav>
-      <div className="border-t border-zinc-200 p-3">
-        <Link href="/" className="mb-2 block rounded-lg px-3 py-2 text-sm text-zinc-600 hover:bg-zinc-50">
-          ← Public site
-        </Link>
-        <form action={signOutAdmin}>
-          <button
-            type="submit"
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50"
-          >
-            <LogOut className="h-4 w-4" />
-            Sign out
-          </button>
-        </form>
-      </div>
-    </aside>
-  );
+export function AdminSidebar({ items, mobileOpen, desktop, onClose }: { items: CmsNavItem[]; mobileOpen: boolean; desktop: boolean; onClose: () => void }) {
+  const pathname = usePathname() || "/admin/dashboard";
+  const hash = useSyncExternalStore(subscribeHash, () => window.location.hash, () => "");
+  const active = activeCmsItem(items, pathname, hash);
+  const showMediaBoundary = items.some(item => ["home", "stories", "about", "contact"].includes(item.id));
+  return <aside id="cms-sidebar" className="cms-sidebar" aria-label="Content Studio navigation"
+    aria-hidden={!desktop && !mobileOpen} inert={!desktop && !mobileOpen}
+    role={!desktop && mobileOpen ? "dialog" : undefined} aria-modal={!desktop && mobileOpen ? true : undefined}>
+    <div className="cms-brand-row">
+      <Link href="/admin/dashboard" className="cms-brand" onClick={onClose} aria-label="UniMondo Content Studio overview">
+        <span className="cms-brand-mark"><CmsIcon name="destinations" size={27} /></span>
+        <span><strong>UniMondo</strong><small>CONTENT STUDIO</small></span>
+      </Link>
+      <button type="button" className="cms-icon-button cms-mobile-only" aria-label="Close navigation" onClick={onClose}><X size={20} /></button>
+    </div>
+    <nav className="cms-navigation" aria-label="Administration">
+      {["Workspace", "Website", "Operations", "Administration"].map(group => {
+        const groupItems = items.filter(item => item.group === group);
+        if (!groupItems.length) return null;
+        return <div className="cms-nav-group" key={group}>
+          <p className="cms-nav-heading">{group}</p>
+          {groupItems.map(item => {
+            const Anchor = item.href.includes("#") ? "a" : Link;
+            return <Anchor key={item.id} href={item.href} className={`cms-nav-link${active === item.id ? " is-active" : ""}`}
+              aria-current={active === item.id ? "page" : undefined} onClick={onClose}>
+              <CmsIcon name={item.icon} /><span>{item.label}</span>{active === item.id && <ChevronRight className="cms-nav-chevron" size={14} aria-hidden />}
+            </Anchor>;
+          })}
+          {group === "Website" && showMediaBoundary && <div className="cms-nav-planned"><CmsIcon name="media" /><span>Media Library</span><small>Later</small><span className="sr-only">Planned for a later phase; not available yet.</span></div>}
+        </div>;
+      })}
+    </nav>
+    <div className="cms-sidebar-footer"><a href="/" target="_blank" rel="noopener noreferrer"><CmsIcon name="destinations" size={17} />Public website<ArrowUpRight size={15} aria-hidden /></a><p>A more open world.</p></div>
+  </aside>;
 }

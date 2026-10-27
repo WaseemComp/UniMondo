@@ -20,8 +20,8 @@ export function AdminSettingsContent({ access, currentUserId, adminRows }: Props
             : "Update your own password. Contact your super admin if you need a different level of access."}
         </p>
       </div>
-      {access.isSuper ? <AdminUsersManager initialRows={adminRows} currentUserId={currentUserId} /> : null}
-      <AdminChangePasswordForm />
+      {access.isSuper ? <section id="team" className="scroll-mt-28" aria-label="Team and permissions"><AdminUsersManager initialRows={adminRows} currentUserId={currentUserId} /></section> : null}
+      <section id="account" className="scroll-mt-28" aria-label="My account"><AdminChangePasswordForm /></section>
     </div>
   );
 }

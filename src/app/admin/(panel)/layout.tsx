@@ -1,7 +1,8 @@
-import { Suspense } from "react";
 import { redirect } from "next/navigation";
-import { AdminPortalNavigation } from "@/components/admin/admin-portal-navigation";
-import { AdminSidebar } from "@/components/admin/admin-sidebar";
+import { AdminShell } from "@/components/admin/admin-shell";
+import { getCmsNavigation } from "@/lib/admin/navigation-access";
+import { staffIdentity } from "@/lib/auth/staff-identity";
+import "@/components/admin/cms-theme.css";
 import { getAdminAccess, isAdminUser } from "@/lib/auth/admin";
 import { createSupabaseServerAuthClient } from "@/lib/supabase/server-auth";
 
@@ -18,27 +19,7 @@ export default async function AdminPanelLayout({ children }: { children: React.R
 
   const access = await getAdminAccess(user);
 
-  return (
-    <div className="min-h-screen bg-zinc-100">
-      <div className="mx-auto flex max-w-[1400px] flex-col lg:flex-row">
-        <AdminSidebar access={access} />
-        <main className="min-h-screen flex-1 p-6 lg:p-10">
-          <Suspense
-            fallback={
-              <div
-                className="mb-6 h-14 animate-pulse rounded-lg bg-zinc-200/80"
-                aria-hidden
-              />
-            }
-          >
-            <AdminPortalNavigation
-              showApplicationsShortcut={access.permissions.applications}
-              showCountriesShortcut={access.permissions.academic}
-            />
-          </Suspense>
-          {children}
-        </main>
-      </div>
-    </div>
-  );
+  const items = await getCmsNavigation(user, access);
+  const identity = staffIdentity(user);
+  return <AdminShell items={items} userName={identity.fullName || user.email || "UniMondo staff"} roleLabel={access.isSuper ? "Superadmin" : "Staff"}>{children}</AdminShell>;
 }
