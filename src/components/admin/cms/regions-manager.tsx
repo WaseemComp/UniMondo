@@ -1,183 +1,335 @@
 "use client";
-
-import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useTransition } from "react";
-import { toast } from "sonner";
-import { deleteRegion, saveRegion } from "@/app/admin/cms/regions-actions";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import type { RegionGroupRow } from "@/components/admin/cms/countries-manager";
-
-type Props = {
-  regions: RegionGroupRow[];
-};
-
-const emptyDraft = (): Partial<RegionGroupRow> & { id?: number } => ({
-  label: "",
-  continent: "Europe",
-  sort_order: 0,
-});
-
-export function RegionsManager({ regions: initial }: Props) {
-  const router = useRouter();
-  const [regions, setRegions] = useState(initial);
-  const [draft, setDraft] = useState<Partial<RegionGroupRow> & { id?: number }>(emptyDraft());
-  const dialogRef = useRef<HTMLDialogElement>(null);
-  const [pending, startTransition] = useTransition();
-
-  useEffect(() => {
-    setRegions(initial);
-  }, [initial]);
-
-  const openCreate = () => {
-    setDraft({
-      ...emptyDraft(),
-      sort_order: (regions[regions.length - 1]?.sort_order ?? -1) + 1,
-    });
-    dialogRef.current?.showModal();
+import { useUnsaved } from "@/components/admin/catalogue/use-unsaved";
+import { useState, useTransition } from "react";
+import { WorkflowPanel } from "@/components/admin/publishing/workflow-panel";
+import {
+  rowsFor,
+  isWorking,
+  type ContentRow,
+  type WorkflowView,
+} from "@/lib/publishing/model";
+import { saveRegionsDraft } from "@/app/admin/cms/regions-actions";
+export function RegionsManager({
+  grants,
+}: {
+  grants: Record<string, boolean>;
+}) {
+  const [view, setView] = useState<WorkflowView>(),
+    [regions, setRegions] = useState<ContentRow[]>([]),
+    [countries, setCountries] = useState<ContentRow[]>([]),
+    [search, setSearch] = useState(""),
+    [dirty, setDirty] = useState(false),
+    [refresh, setRefresh] = useState(0),
+    [message, setMessage] = useState(""),
+    [busy, start] = useTransition(),
+    [published, setPublished] = useState(false);
+  useUnsaved(dirty);
+  const locked =
+    busy ||
+    published ||
+    !view?.ready ||
+    !(grants.edit || grants.create) ||
+    (!!view?.document &&
+      ["in_review", "approved"].includes(view.document.status));
+  const load = (v: WorkflowView, live: boolean) => {
+    setView(v);
+    setPublished(live);
+    const p =
+      !live && isWorking(v.document) ? v.document!.proposed : v.published;
+    setRegions(
+      rowsFor(p, "region_groups").sort(
+        (a, b) => Number(a.sort_order) - Number(b.sort_order),
+      ),
+    );
+    setCountries(
+      rowsFor(p, "countries").sort(
+        (a, b) => Number(a.sort_order) - Number(b.sort_order),
+      ),
+    );
+    setDirty(false);
   };
-
-  const openEdit = (row: RegionGroupRow) => {
-    setDraft({ ...row });
-    dialogRef.current?.showModal();
+  const regionPatch = (id: unknown, key: string, value: unknown) => {
+    setDirty(true);
+    setRegions((old) =>
+      old.map((r) => (r.id === id ? { ...r, [key]: value } : r)),
+    );
   };
-
-  const onSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    startTransition(async () => {
-      const res = await saveRegion({
-        id: draft.id,
-        label: draft.label ?? "",
-        continent: draft.continent ?? "Europe",
-        sort_order: Number(draft.sort_order ?? 0),
-      });
-      if (!res.ok) {
-        toast.error(res.error);
-        return;
-      }
-      toast.success("Region saved");
-      dialogRef.current?.close();
-      router.refresh();
-    });
-  };
-
-  const onDelete = (id: number) => {
-    if (!confirm("Delete this region? Countries must be reassigned first if they use it.")) return;
-    startTransition(async () => {
-      const res = await deleteRegion(id);
-      if (!res.ok) {
-        toast.error(res.error);
-        return;
-      }
-      toast.success("Region deleted");
-      router.refresh();
-    });
-  };
-
+  function move(
+    index: number,
+    delta: number,
+    kind: "regions" | "countries",
+    region?: unknown,
+  ) {
+    const source =
+      kind === "regions"
+        ? regions
+        : countries.filter((r) => r.region_group_id === region);
+    if (index + delta < 0 || index + delta >= source.length) return;
+    const rows = [...source];
+    [rows[index], rows[index + delta]] = [rows[index + delta], rows[index]];
+    const orders = new Map(rows.map((r, i) => [r.id, i]));
+    (kind === "regions" ? setRegions : setCountries)((old) =>
+      old
+        .map((r) =>
+          orders.has(r.id) ? { ...r, sort_order: orders.get(r.id) } : r,
+        )
+        .sort((a, b) => Number(a.sort_order) - Number(b.sort_order)),
+    );
+    setDirty(true);
+  }
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-zinc-900">Regions</h1>
-          <p className="mt-1 text-sm text-zinc-600">
-            Region labels appear in the Countries admin form and on the public Destinations page. Add a continent label
-            to group regions geographically (e.g. Europe, Asia).
-          </p>
-        </div>
-        <Button type="button" onClick={openCreate} className="bg-amber-600 text-white hover:bg-amber-500">
+    <div className="space-y-4">
+      <h1 className="text-2xl font-semibold">Destination regions</h1>
+      <p className="text-sm text-zinc-600">
+        Manage existing regional groups and country assignments. Country
+        identities, URLs, academic associations and content remain intact.
+        Hidden or archived regions leave direct country pages available.
+      </p>
+      <WorkflowPanel
+        resource={{ type: "regions", key: "catalogue" }}
+        dirty={dirty}
+        busy={busy}
+        refresh={refresh}
+        onLoad={load}
+      />
+      <div className="flex flex-wrap gap-3">
+        <button
+          className="cms-button-primary"
+          disabled={locked || !dirty}
+          onClick={() =>
+            start(async () => {
+              const result = await saveRegionsDraft({
+                version: view?.document?.version ?? 0,
+                regions: regions.map((r) => ({
+                  id: r.id,
+                  label: r.label,
+                  continent: r.continent ?? "Europe",
+                  sort_order: r.sort_order ?? 0,
+                  is_published: r.is_published !== false,
+                  archived_at: r.archived_at ?? null,
+                })),
+                countries: countries.map((r) => ({
+                  id: r.id,
+                  region_group_id: r.region_group_id ?? null,
+                  sort_order: r.sort_order ?? 0,
+                })),
+              });
+              if (result.ok) {
+                setDirty(false);
+                setRefresh((n) => n + 1);
+                setMessage("Private region draft saved.");
+              } else setMessage(result.error);
+            })
+          }
+        >
+          Save Draft
+        </button>
+        <button
+          className="cms-button-secondary"
+          disabled={busy || !dirty}
+          onClick={() => {
+            if (confirm("Discard unsaved region changes?")) {
+              setDirty(false);
+              setRefresh((n) => n + 1);
+            }
+          }}
+        >
+          Discard changes
+        </button>
+        <button
+          className="cms-button-secondary"
+          disabled={locked || !grants.create}
+          onClick={() => {
+            setRegions((old) => [
+              ...old,
+              {
+                id: Math.max(0, ...old.map((r) => Number(r.id))) + 1,
+                label: "",
+                continent: "Europe",
+                sort_order: old.length,
+                is_published: grants.publish,
+                archived_at: null,
+              },
+            ]);
+            setDirty(true);
+          }}
+        >
           Add region
-        </Button>
+        </button>
       </div>
-
-      <Card>
-        <CardHeader className="p-0">
-          <CardTitle className="px-5 py-4">All regions</CardTitle>
-        </CardHeader>
-        <CardContent className="overflow-x-auto p-0">
-          <table className="min-w-full text-left text-sm">
-            <thead className="border-y border-zinc-200 bg-zinc-50 text-xs font-semibold uppercase text-zinc-500">
-              <tr>
-                <th className="px-4 py-3">Label</th>
-                <th className="px-4 py-3">Continent</th>
-                <th className="px-4 py-3">Sort</th>
-                <th className="px-4 py-3 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-100">
+      <p role="status">{message}</p>
+      <label className="block text-sm">
+        Search countries
+        <input
+          className="mt-1 w-full max-w-md rounded border p-2"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </label>
+      {regions.map((r, index) => (
+        <section
+          key={String(r.id)}
+          className="space-y-3 rounded-xl border bg-white p-4"
+        >
+          <fieldset
+            disabled={
+              locked ||
+              (!grants.edit &&
+                view?.published.tables.region_groups.some(
+                  (old) => old.id === r.id,
+                ))
+            }
+            className="flex flex-wrap items-end gap-3"
+          >
+            <label className="text-sm">
+              Region name
+              <input
+                className="block rounded border p-2"
+                value={String(r.label)}
+                onChange={(e) => regionPatch(r.id, "label", e.target.value)}
+              />
+            </label>
+            <label className="text-sm">
+              Continent
+              <input
+                className="block rounded border p-2"
+                value={String(r.continent ?? "Europe")}
+                onChange={(e) => regionPatch(r.id, "continent", e.target.value)}
+              />
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                disabled={!grants.publish}
+                checked={r.is_published !== false}
+                onChange={(e) =>
+                  regionPatch(r.id, "is_published", e.target.checked)
+                }
+              />{" "}
+              Visible
+            </label>
+            <button
+              type="button"
+              disabled={index === 0}
+              onClick={() => move(index, -1, "regions")}
+            >
+              Move up
+            </button>
+            <button
+              type="button"
+              disabled={index === regions.length - 1}
+              onClick={() => move(index, 1, "regions")}
+            >
+              Move down
+            </button>
+            <button
+              disabled={!grants.delete || !!r.archived_at}
+              type="button"
+              onClick={() => {
+                if (
+                  confirm(
+                    "Archive this region? Its countries and links will be retained.",
+                  )
+                ) {
+                  regionPatch(r.id, "archived_at", new Date().toISOString());
+                  regionPatch(r.id, "is_published", false);
+                }
+              }}
+            >
+              {r.archived_at ? "Archived" : "Archive region"}
+            </button>
+          </fieldset>
+          <ul className="space-y-2">
+            {countries
+              .filter((c) => c.region_group_id === r.id)
+              .map(
+                (c, i, group) =>
+                  String(c.name)
+                    .toLowerCase()
+                    .includes(search.toLowerCase()) && (
+                    <li
+                      key={String(c.id)}
+                      className="flex flex-wrap items-center gap-3 rounded border p-2"
+                    >
+                      <span className="min-w-32 font-medium">
+                        {String(c.name)}
+                      </span>
+                      <select
+                        className="min-w-0 max-w-full rounded border p-2"
+                        aria-label={`Region for ${c.name}`}
+                        disabled={locked || !grants.edit}
+                        value={String(c.region_group_id)}
+                        onChange={(e) => {
+                          setCountries((old) =>
+                            old.map((row) =>
+                              row.id === c.id
+                                ? {
+                                    ...row,
+                                    region_group_id: Number(e.target.value),
+                                  }
+                                : row,
+                            ),
+                          );
+                          setDirty(true);
+                        }}
+                      >
+                        {regions.map((region) => (
+                          <option
+                            key={String(region.id)}
+                            value={String(region.id)}
+                          >
+                            {String(region.label) || "New region"}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        disabled={locked || !grants.edit || i === 0}
+                        onClick={() => move(i, -1, "countries", r.id)}
+                      >
+                        Move up
+                      </button>
+                      <button
+                        disabled={
+                          locked || !grants.edit || i === group.length - 1
+                        }
+                        onClick={() => move(i, 1, "countries", r.id)}
+                      >
+                        Move down
+                      </button>
+                    </li>
+                  ),
+              )}
+          </ul>
+        </section>
+      ))}
+      {countries
+        .filter((c) => c.region_group_id == null)
+        .map((c) => (
+          <label key={String(c.id)} className="block">
+            {String(c.name)} · Unassigned
+            <select
+              disabled={locked || !grants.edit}
+              value=""
+              onChange={(e) => {
+                setCountries((old) =>
+                  old.map((row) =>
+                    row.id === c.id
+                      ? { ...row, region_group_id: Number(e.target.value) }
+                      : row,
+                  ),
+                );
+                setDirty(true);
+              }}
+            >
+              <option value="">Choose region</option>
               {regions.map((r) => (
-                <tr key={r.id} className="hover:bg-zinc-50/80">
-                  <td className="px-4 py-3 font-medium text-zinc-900">{r.label}</td>
-                  <td className="px-4 py-3 text-zinc-600">{r.continent ?? "—"}</td>
-                  <td className="px-4 py-3 text-zinc-600">{r.sort_order}</td>
-                  <td className="px-4 py-3 text-right">
-                    <Button type="button" variant="outline" size="sm" className="mr-2" onClick={() => openEdit(r)}>
-                      Edit
-                    </Button>
-                    <Button type="button" variant="outline" size="sm" className="text-red-700" onClick={() => onDelete(r.id)}>
-                      Delete
-                    </Button>
-                  </td>
-                </tr>
+                <option key={String(r.id)} value={String(r.id)}>
+                  {String(r.label)}
+                </option>
               ))}
-              {regions.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-sm text-zinc-500">
-                    No regions loaded.
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </CardContent>
-      </Card>
-
-      <dialog ref={dialogRef} className="w-full max-w-lg rounded-xl border border-zinc-200 p-0 shadow-xl backdrop:bg-black/40">
-        <form onSubmit={onSubmit} className="space-y-4 p-6">
-          <h2 className="text-lg font-semibold text-zinc-900">{draft.id ? "Edit region" : "New region"}</h2>
-          <div>
-            <Label htmlFor="rlabel">Region label</Label>
-            <Input
-              id="rlabel"
-              required
-              value={draft.label ?? ""}
-              onChange={(e) => setDraft((d) => ({ ...d, label: e.target.value }))}
-              placeholder="e.g. Western Europe"
-              className="mt-1.5"
-            />
-          </div>
-          <div>
-            <Label htmlFor="rcont">Continent</Label>
-            <Input
-              id="rcont"
-              value={draft.continent ?? ""}
-              onChange={(e) => setDraft((d) => ({ ...d, continent: e.target.value }))}
-              placeholder="e.g. Europe"
-              className="mt-1.5"
-            />
-            <p className="mt-1 text-xs text-zinc-500">Shown next to the region in admin pickers; free text.</p>
-          </div>
-          <div>
-            <Label htmlFor="rsort">Sort order</Label>
-            <Input
-              id="rsort"
-              type="number"
-              value={draft.sort_order ?? 0}
-              onChange={(e) => setDraft((d) => ({ ...d, sort_order: Number(e.target.value) }))}
-              className="mt-1.5 max-w-[120px]"
-            />
-          </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={() => dialogRef.current?.close()}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={pending} className="bg-amber-600 text-white hover:bg-amber-500">
-              {pending ? "Saving…" : "Save"}
-            </Button>
-          </div>
-        </form>
-      </dialog>
+            </select>
+          </label>
+        ))}
     </div>
   );
 }

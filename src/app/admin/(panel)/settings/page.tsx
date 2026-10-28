@@ -1,16 +1,36 @@
-import { AdminSettingsContent } from "@/components/admin/admin-settings-content";
-import { listAdminUsers, type AdminProfileRow } from "@/app/admin/cms/admin-users-actions";
-import { getAdminAccess } from "@/lib/auth/admin";
+import Link from "next/link";
+import { AdminChangePasswordForm } from "@/components/admin/admin-change-password-form";
+import { AdminProfileForm } from "@/components/admin/admin-profile-form";
 import { requireAdminUser } from "@/app/admin/require-admin";
-
-export default async function AdminSiteSettingsPage() {
+import { isSuperAdmin } from "@/lib/auth/admin";
+import { staffDisplayName } from "@/lib/auth/staff-identity";
+export default async function SettingsPage() {
   const user = await requireAdminUser();
-  const access = await getAdminAccess(user);
-  let adminRows: AdminProfileRow[] = [];
-  if (access.isSuper) {
-    const result = await listAdminUsers();
-    if (result.ok) adminRows = result.rows;
-  }
-
-  return <AdminSettingsContent access={access} currentUserId={user.id} adminRows={adminRows} />;
+  return (
+    <div className="space-y-6">
+      <header>
+        <h1 className="text-2xl font-semibold">Settings</h1>
+        <p className="mt-2 text-zinc-600">
+          Your profile, password and available site settings.
+        </p>
+      </header>
+      <section id="account">
+        <AdminProfileForm displayName={staffDisplayName(user)} />
+      </section>
+      <AdminChangePasswordForm />
+      {(await isSuperAdmin(user)) && (
+        <div className="flex flex-wrap gap-3">
+          <Link
+            className="cms-button-secondary"
+            href="/admin/settings/currencies"
+          >
+            Currencies
+          </Link>
+          <Link className="cms-button-secondary" href="/admin/team">
+            Team &amp; Permissions
+          </Link>
+        </div>
+      )}
+    </div>
+  );
 }

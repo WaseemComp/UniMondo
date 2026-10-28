@@ -1,6 +1,7 @@
 import type { HomepageEditorData } from "@/lib/admin/homepage-editor";
 import type { AcademicRow } from "@/lib/academic/model";
 import {
+  TABLE_FOR,
   belongs,
   rowsFor,
   projectedRows,
@@ -59,12 +60,7 @@ export function academicWorkflowRow(view: WorkflowView, published = false) {
       !published && isWorking(view.document)
         ? view.document!.proposed
         : view.published,
-    table =
-      view.resource.type === "universities"
-        ? "featured_universities"
-        : view.resource.type === "programmes"
-          ? "programs"
-          : "countries",
+    table = TABLE_FOR[view.resource.type as keyof typeof TABLE_FOR],
     row = rowsFor(payload, table)[0];
   if (!row) return undefined;
   return {

@@ -94,19 +94,12 @@ export const programmeExtraSchema = z
       .union([z.number().finite().min(0).max(10000000), z.null()])
       .optional(),
     currency: z
-      .enum([
-        "",
-        "EUR",
-        "GBP",
-        "USD",
-        "CAD",
-        "AUD",
-        "CHF",
-        "SEK",
-        "NOK",
-        "PLN",
-        "Other",
-      ])
+      .string()
+      .refine(
+        (value) =>
+          value === "" || value === "Other" || /^[A-Z]{3}$/.test(value),
+        "Choose a valid currency.",
+      )
       .optional(),
     admission_status: z
       .enum(["unknown", "open", "closed", "upcoming"])
@@ -197,6 +190,7 @@ export const academicInput = z
     expectedUpdatedAt: z.string().nullable(),
     operation: z.enum(["save", "archive", "restore"]).default("save"),
     values: z.unknown(),
+    currencyChangeConfirmed: z.boolean().optional(),
   })
   .strict();
 export function rowTitle(kind: AcademicKind, row: AcademicRow) {

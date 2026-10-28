@@ -13,6 +13,8 @@ export interface CountryDetail {
   catalogue?: Record<string,unknown>;
   /** Resolved from CMS `region_groups.label` — may include non-European regions (e.g. North America). */
   regionGroup: string;
+  regionVisible?: boolean;
+  regionSortOrder?: number;
   highlighted?: boolean;
   whyStudyThere: string;
   popularUniversities: string[];

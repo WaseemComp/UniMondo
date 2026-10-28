@@ -72,7 +72,7 @@ export function DestinationsUnified({ countries, openings, featuredUniversities 
   }, [openings]);
 
   const regionOptions = useMemo(() => {
-    const values = [...new Set(countries.map((c) => c.regionGroup).filter(Boolean))].sort();
+    const values = [...new Set(countries.filter((c) => c.regionVisible !== false).sort((a, b) => (a.regionSortOrder ?? 0) - (b.regionSortOrder ?? 0)).map((c) => c.regionGroup).filter(Boolean))];
     return ["All", ...values];
   }, [countries]);
 
@@ -124,7 +124,7 @@ export function DestinationsUnified({ countries, openings, featuredUniversities 
       filterScholarship ||
       filterField.trim().length > 0;
 
-    let base = countries;
+    let base = countries.filter((c) => c.regionVisible !== false || c === activeCountry);
 
     if (filterRegion !== "All") {
       base = base.filter((c) => c.regionGroup === filterRegion);
@@ -148,6 +148,7 @@ export function DestinationsUnified({ countries, openings, featuredUniversities 
 
     return base;
   }, [
+    activeCountry,
     countries,
     filterRegion,
     filterCountry,

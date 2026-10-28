@@ -2,6 +2,10 @@
 
 /* eslint-disable @next/next/no-img-element -- Existing public image thumbnails; library and existing-image thumbnails. */
 
+import {
+  HERO_PRESENTATION_DEFAULTS,
+  HERO_PRESENTATION_KEYS,
+} from "@/lib/homepage/hero-presentation";
 import { WorkflowPanel } from "@/components/admin/publishing/workflow-panel";
 import { homepageWorkflowPreview } from "@/lib/publishing/preview";
 import { useEffect, useState } from "react";
@@ -232,17 +236,21 @@ export function HomepageEditor({
         eyebrow="WEBSITE / HOME"
         title="Homepage editor"
         description="Shape your homepage one section at a time, with the content your visitors actually see."
-        actions={<>
-          <a href="/admin/content/footer" className="cms-button-secondary">Website Pages / Footer</a>
-          <a
-            href="/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="cms-button-secondary"
-          >
-            View public homepage
-            <ArrowUpRight size={15} aria-hidden />
-          </a></>
+        actions={
+          <>
+            <a href="/admin/content/footer" className="cms-button-secondary">
+              Website Pages / Footer
+            </a>
+            <a
+              href="/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="cms-button-secondary"
+            >
+              View public homepage
+              <ArrowUpRight size={15} aria-hidden />
+            </a>
+          </>
         }
       />
       <WorkflowPanel
@@ -531,6 +539,12 @@ function SectionEditor({
   const initialValues = isSlide
     ? {
         ...valuesOf(copySource),
+        ...Object.fromEntries(
+          HERO_PRESENTATION_KEYS.map((key) => [
+            key,
+            sourceSlide[key] ?? HERO_PRESENTATION_DEFAULTS[key],
+          ]),
+        ),
         line: sourceSlide.line,
         imageUrl: sourceSlide.src,
         imageAlt: sourceSlide.alt,
@@ -657,6 +671,15 @@ function SectionEditor({
     previewSlide = publicSlides[Number(previewChoice) || 0] ?? publicSlides[0];
   } else if (isSlide) {
     previewSlide = {
+      ...Object.fromEntries(
+        HERO_PRESENTATION_KEYS.map((key) => [key, values[key]]),
+      ),
+      textMode:
+        isNew ||
+        sourceSlide.textMode ||
+        values.textMode !== initialValues.textMode
+          ? values.textMode
+          : undefined,
       src: values.imageUrl,
       alt: values.imageAlt,
       line: values.line,
@@ -966,6 +989,66 @@ function SectionEditor({
           })}
           {isSlide && (
             <>
+              <fieldset
+                disabled={locked}
+                className="space-y-3 rounded-xl border p-3"
+              >
+                <legend className="px-1 font-semibold">
+                  Image and text appearance
+                </legend>
+                <label className="block text-sm">
+                  Text colour
+                  <select
+                    className="mt-1 w-full rounded border p-2"
+                    value={values.textMode}
+                    onChange={(e) => change("textMode", e.target.value)}
+                  >
+                    <option value="dark">Dark</option>
+                    <option value="light">Light</option>
+                    <option value="custom">Custom</option>
+                  </select>
+                </label>
+                {values.textMode === "custom" && (
+                  <label className="block text-sm">
+                    Custom text colour
+                    <input
+                      type="color"
+                      value={values.textColor}
+                      onChange={(e) => change("textColor", e.target.value)}
+                    />
+                  </label>
+                )}
+                <label className="block text-sm">
+                  Overlay colour
+                  <input
+                    type="color"
+                    value={values.overlayColor}
+                    onChange={(e) => change("overlayColor", e.target.value)}
+                  />
+                </label>
+                {[
+                  ["overlayOpacity", "Overlay opacity", 0, 100],
+                  ["brightness", "Image brightness", 50, 150],
+                  ["contrast", "Image contrast", 50, 150],
+                ].map(([key, label, min, max]) => (
+                  <label key={String(key)} className="block text-sm">
+                    {label}: {values[String(key)]}%
+                    <input
+                      className="block w-full"
+                      type="range"
+                      min={Number(min)}
+                      max={Number(max)}
+                      value={values[String(key)]}
+                      onChange={(e) => change(String(key), e.target.value)}
+                    />
+                  </label>
+                ))}
+                <p className="text-xs text-zinc-600">
+                  Image adjustments affect the photograph only. Local text
+                  backing keeps the selected text readable; buttons retain their
+                  own contrast.
+                </p>
+              </fieldset>
               <div className="hp-field hp-image-field">
                 <p className="hp-field-label">
                   <ImageIcon size={16} aria-hidden />

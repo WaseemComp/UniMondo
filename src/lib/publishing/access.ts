@@ -16,23 +16,46 @@ export async function requireRestorationAccess(
   after: Payload,
   user: { id: string; email?: string | null },
 ) {
-  const scope = resource.type === "home"
-    ? resource.key === "hero_slides" ? "home.hero_slider"
-      : resource.key === "testimonials" ? "blog" : null
-    : resource.type === "countries" ? "countries" : "universities";
+  if (["regions", "courses", "packages", "addons"].includes(resource.type)) {
+    const { validateExtendedContent } =
+      await import("@/lib/catalogue/validation");
+    await validateExtendedContent(resource, after, user, before);
+    return;
+  }
+  const scope =
+    resource.type === "home"
+      ? resource.key === "hero_slides"
+        ? "home.hero_slider"
+        : resource.key === "testimonials"
+          ? "blog"
+          : null
+      : resource.type === "countries"
+        ? "countries"
+        : "universities";
   if (!scope) return; // Other homepage sections have only their existing edit key.
-  const table = resource.type === "home"
-    ? resource.key === "hero_slides" ? "cms_content_blocks" : "success_stories"
-    : TABLE_FOR[resource.type];
+  const table =
+    resource.type === "home"
+      ? resource.key === "hero_slides"
+        ? "cms_content_blocks"
+        : "success_stories"
+      : TABLE_FOR[resource.type];
   for (const row of rowsFor(after, table)) {
     const old = rowsFor(before, table).find((item) => item.id === row.id);
     if (isDeepStrictEqual(old, row)) continue;
-    if (!(await hasAdminPermission(user, `${scope}.${old ? "edit" : "create"}`)))
-      throw new Error("Restoring this version requires the original content create or edit permission.");
-    if ((row.archived_at && !old?.archived_at) ||
-      (scope === "blog" && old?.is_published && !row.is_published)) {
+    if (
+      !(await hasAdminPermission(user, `${scope}.${old ? "edit" : "create"}`))
+    )
+      throw new Error(
+        "Restoring this version requires the original content create or edit permission.",
+      );
+    if (
+      (row.archived_at && !old?.archived_at) ||
+      (scope === "blog" && old?.is_published && !row.is_published)
+    ) {
       if (!(await hasAdminPermission(user, `${scope}.delete`)))
-        throw new Error("Restoring this version would archive content and requires archiving permission.");
+        throw new Error(
+          "Restoring this version would archive content and requires archiving permission.",
+        );
     }
   }
 }
@@ -54,6 +77,39 @@ export async function workflowAccess(
   resource: Resource,
   identity?: Awaited<ReturnType<typeof workflowIdentity>>,
 ) {
+  if (["regions", "courses", "packages", "addons"].includes(resource.type)) {
+    const auth = identity ?? (await workflowIdentity()),
+      scope =
+        resource.type === "regions"
+          ? "countries"
+          : resource.type === "courses"
+            ? "courses"
+            : "packages";
+    const view =
+      (auth.context.isSuper || auth.context.permissions.academic !== false) &&
+      (await hasAdminPermission(auth.user, scope + ".view"));
+    return {
+      user: auth.user,
+      label:
+        staffIdentity(auth.user).fullName ||
+        auth.user.email ||
+        "UniMondo staff",
+      permissions: {
+        view,
+        edit:
+          view &&
+          ((await hasAdminPermission(auth.user, scope + ".edit")) ||
+            (await hasAdminPermission(auth.user, scope + ".create"))),
+        review:
+          view && (auth.superuser || auth.fine["publishing.review"] === true),
+        publish:
+          view &&
+          (auth.superuser || auth.fine["publishing.publish"] === true) &&
+          (await hasAdminPermission(auth.user, scope + ".publish")),
+        isSuper: auth.superuser,
+      },
+    };
+  }
   const auth = identity ?? (await workflowIdentity()),
     { user, context, superuser, fine } = auth;
   const can = (key: string) => {

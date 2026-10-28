@@ -1,3 +1,4 @@
+import { displayTitle } from "@/lib/catalogue/model";
 import { isDeepStrictEqual } from "node:util";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { randomUUID } from "node:crypto";
@@ -5,6 +6,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
 import { createSupabaseServiceClient as realClient } from "@/lib/supabase/admin";
 import {
+  TABLE_FOR,
   canonical,
   belongs,
   isWorking,
@@ -111,6 +113,9 @@ export async function planDraft<T extends { ok: boolean; error?: string }>(
         "region_groups",
         "news_ticker_items",
         "site_settings",
+        "language_courses",
+        "packages",
+        "add_ons",
       ].includes(table)
     )
       throw new Error("This table is outside content drafting.");
@@ -259,11 +264,7 @@ export async function planDraft<T extends { ok: boolean; error?: string }>(
       isNew:
         resource.type !== "home" &&
         !view.published.tables[
-          resource.type === "universities"
-            ? "featured_universities"
-            : resource.type === "programmes"
-              ? "programs"
-              : resource.type
+          TABLE_FOR[resource.type as keyof typeof TABLE_FOR]
         ]?.length,
     },
     async () => {
@@ -284,7 +285,11 @@ export async function planDraft<T extends { ok: boolean; error?: string }>(
       const saved = await service.rpc("cms_content_save_draft", {
         t: resource.type,
         k: resource.key,
-        p_title: String(row?.name ?? row?.title ?? (resource.key === "footer" ? "Website footer" : resource.key)),
+        p_title: String(
+          row?.name ??
+            (row?.title ? displayTitle(row) : undefined) ??
+            (resource.key === "footer" ? "Website footer" : resource.key),
+        ),
         p_expected: view.document?.version ?? 0,
         p_base: view.published,
         p_proposed: payload,
@@ -294,13 +299,13 @@ export async function planDraft<T extends { ok: boolean; error?: string }>(
           ? resource.type === "home" && resource.key === "footer"
             ? await footerBaseline(view.published, payload)
             : effectiveBaseline(
-              resource,
-              view.published,
-              payload,
-              resource.type === "home"
-                ? await loadHomepageReferences(access.user)
-                : undefined,
-            )
+                resource,
+                view.published,
+                payload,
+                resource.type === "home"
+                  ? await loadHomepageReferences(access.user)
+                  : undefined,
+              )
           : null,
       });
       if (saved.error || !saved.data)

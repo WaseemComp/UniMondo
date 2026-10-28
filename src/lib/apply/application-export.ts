@@ -1,5 +1,13 @@
+import { readCurrencies } from "@/lib/currencies/server";
+import { DEFAULT_CURRENCIES, type Currency } from "@/lib/currencies/model";
 import JSZip from "jszip";
-import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
+import {
+  PDFDocument,
+  StandardFonts,
+  rgb,
+  type PDFFont,
+  type PDFPage,
+} from "pdf-lib";
 import {
   DOCUMENT_CATEGORY_LABELS,
   PROGRAM_LEVEL_LABELS,
@@ -10,7 +18,8 @@ import type { ApplicationRecord, ApplicationType } from "@/types/application";
 
 type ExportLineItem = {
   name: string;
-  priceFull: number;
+  currencyCode: string;
+  priceFull: number | null;
   priceInstallment: number | null;
 };
 
@@ -20,6 +29,7 @@ type ExportContext = {
   addonNames: string[];
   packageItem: ExportLineItem | null;
   addonItems: ExportLineItem[];
+  currencies?: Currency[];
 };
 
 const A4: [number, number] = [595.28, 841.89];
@@ -56,11 +66,17 @@ function asNumber(value: unknown): number | null {
 
 function docCategoryLabel(category: string | undefined) {
   if (!category) return "Document";
-  return DOCUMENT_CATEGORY_LABELS[category as DocumentCategory] ?? category.replace(/_/g, " ");
+  return (
+    DOCUMENT_CATEGORY_LABELS[category as DocumentCategory] ??
+    category.replace(/_/g, " ")
+  );
 }
 
 function safeFilePart(value: string): string {
-  return value.replace(/[<>:"/\\|?*\u0000-\u001f]/g, "_").replace(/\s+/g, " ").trim();
+  return value
+    .replace(/[<>:"/\\|?*\u0000-\u001f]/g, "_")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function applicationTypeLabel(type: ApplicationType): string {
@@ -79,7 +95,9 @@ function applicationTypeLabel(type: ApplicationType): string {
 }
 
 function pdfFilename(record: ApplicationRecord): string {
-  const studentName = safeFilePart(record.payload.personalInfo.fullName || "Applicant");
+  const studentName = safeFilePart(
+    record.payload.personalInfo.fullName || "Applicant",
+  );
   return `${record.trackingId} - Application form - ${studentName}.pdf`;
 }
 
@@ -89,7 +107,15 @@ async function createPdfWriter(): Promise<PdfWriter> {
   const boldFont = await doc.embedFont(StandardFonts.HelveticaBold);
   const page = doc.addPage(A4);
   const { width, height } = page.getSize();
-  return { doc, page, font, boldFont, y: height - MARGIN, pageWidth: width, pageHeight: height };
+  return {
+    doc,
+    page,
+    font,
+    boldFont,
+    y: height - MARGIN,
+    pageWidth: width,
+    pageHeight: height,
+  };
 }
 
 function ensureSpace(writer: PdfWriter, needed: number) {
@@ -98,7 +124,12 @@ function ensureSpace(writer: PdfWriter, needed: number) {
   writer.y = writer.pageHeight - MARGIN;
 }
 
-function wrapText(text: string, font: PDFFont, size: number, maxWidth: number): string[] {
+function wrapText(
+  text: string,
+  font: PDFFont,
+  size: number,
+  maxWidth: number,
+): string[] {
   const normalized = text.replace(/\s+/g, " ").trim();
   if (!normalized) return [""];
 
@@ -122,7 +153,7 @@ function wrapText(text: string, font: PDFFont, size: number, maxWidth: number): 
 function drawLines(
   writer: PdfWriter,
   lines: string[],
-  opts?: { bold?: boolean; size?: number; indent?: number; gap?: number }
+  opts?: { bold?: boolean; size?: number; indent?: number; gap?: number },
 ) {
   const size = opts?.size ?? 10;
   const font = opts?.bold ? writer.boldFont : writer.font;
@@ -145,12 +176,23 @@ function drawLines(
   }
 }
 
-function formatUsdPrice(amount: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(amount);
+function priceText(
+  amount: number | null,
+  item: ExportLineItem,
+  context: ExportContext,
+): string {
+  if (amount == null) return "Price unavailable";
+  const currency = (context.currencies ?? DEFAULT_CURRENCIES).find(
+    (c) => c.code === item.currencyCode,
+  );
+  const amountText = currency
+    ? new Intl.NumberFormat("en-GB", {
+        minimumFractionDigits: currency.decimals,
+        maximumFractionDigits: currency.decimals,
+      }).format(amount)
+    : String(amount);
+  // ISO codes retain the denomination without requiring currency-symbol glyphs in the legacy PDF font.
+  return `${item.currencyCode} ${amountText}`;
 }
 
 function startNewPage(writer: PdfWriter) {
@@ -158,24 +200,31 @@ function startNewPage(writer: PdfWriter) {
   writer.y = writer.pageHeight - MARGIN;
 }
 
-function pricingTotals(context: ExportContext): { totalFull: number; totalInstallment: number | null } {
-  const totalFull =
-    (context.packageItem?.priceFull ?? 0) +
-    context.addonItems.reduce((sum, item) => sum + item.priceFull, 0);
-
-  const installmentValues = [
-    context.packageItem?.priceInstallment ?? null,
-    ...context.addonItems.map((item) => item.priceInstallment),
-  ];
-
-  if (!context.packageItem || installmentValues.some((value) => value == null)) {
-    return { totalFull, totalInstallment: null };
-  }
-
-  return {
-    totalFull,
-    totalInstallment: installmentValues.reduce<number>((sum, value) => sum + (value ?? 0), 0),
-  };
+function pricingTotals(
+  context: ExportContext,
+): Array<{
+  currencyCode: string;
+  totalFull: number | null;
+  totalInstallment: number | null;
+}> {
+  const items = [
+      ...(context.packageItem ? [context.packageItem] : []),
+      ...context.addonItems,
+    ],
+    codes = [...new Set(items.map((i) => i.currencyCode))];
+  return codes.map((currencyCode) => {
+    const group = items.filter((i) => i.currencyCode === currencyCode);
+    return {
+      currencyCode,
+      totalFull: group.some((i) => i.priceFull == null)
+        ? null
+        : group.reduce((sum, i) => sum + (i.priceFull ?? 0), 0),
+      totalInstallment:
+        !context.packageItem || group.some((i) => i.priceInstallment == null)
+          ? null
+          : group.reduce((sum, i) => sum + (i.priceInstallment ?? 0), 0),
+    };
+  });
 }
 
 function drawPricingSummary(writer: PdfWriter, context: ExportContext) {
@@ -184,40 +233,72 @@ function drawPricingSummary(writer: PdfWriter, context: ExportContext) {
   const lines: Array<[string, string] | string> = [];
 
   if (context.packageItem) {
-    lines.push(["Support package", `${context.packageItem.name} — ${formatUsdPrice(context.packageItem.priceFull)}`]);
+    lines.push([
+      "Support package",
+      `${context.packageItem.name} — ${priceText(context.packageItem.priceFull, context.packageItem, context)}`,
+    ]);
     if (context.packageItem.priceInstallment != null) {
       lines.push([
         "Support package (installments)",
-        formatUsdPrice(context.packageItem.priceInstallment),
+        priceText(
+          context.packageItem.priceInstallment,
+          context.packageItem,
+          context,
+        ),
       ]);
     }
   } else if (context.packageName && context.packageName !== "—") {
-    lines.push(["Support package", `${context.packageName} — price unavailable`]);
+    lines.push([
+      "Support package",
+      `${context.packageName} — price unavailable`,
+    ]);
   }
 
   if (context.addonItems.length) {
     for (const addon of context.addonItems) {
-      lines.push([`Add-on — ${addon.name}`, formatUsdPrice(addon.priceFull)]);
+      lines.push([
+        `Add-on — ${addon.name}`,
+        priceText(addon.priceFull, addon, context),
+      ]);
       if (addon.priceInstallment != null) {
-        lines.push([`Add-on — ${addon.name} (installments)`, formatUsdPrice(addon.priceInstallment)]);
+        lines.push([
+          `Add-on — ${addon.name} (installments)`,
+          priceText(addon.priceInstallment, addon, context),
+        ]);
       }
     }
   } else {
     lines.push(["Add-ons", "None selected"]);
   }
 
-  const { totalFull, totalInstallment } = pricingTotals(context);
-  if (context.packageItem || context.addonItems.length) {
-    lines.push(["Total amount due (full pay)", formatUsdPrice(totalFull)]);
-    if (totalInstallment != null) {
-      lines.push(["Total amount due (installments)", formatUsdPrice(totalInstallment)]);
-    }
+  for (const total of pricingTotals(context)) {
+    const item = {
+      name: "Total",
+      priceFull: total.totalFull,
+      priceInstallment: total.totalInstallment,
+      currencyCode: total.currencyCode,
+    };
+    lines.push([
+      `Total amount due (full pay, ${total.currencyCode})`,
+      priceText(total.totalFull, item, context),
+    ]);
+    if (total.totalInstallment != null)
+      lines.push([
+        `Total amount due (installments, ${total.currencyCode})`,
+        priceText(total.totalInstallment, item, context),
+      ]);
   }
+  if (pricingTotals(context).length > 1)
+    lines.push("Separate currency totals; no currency conversion applied.");
 
   drawSection(writer, "6. Pricing summary", lines);
 }
 
-function drawSection(writer: PdfWriter, title: string, lines: Array<[string, string] | string>) {
+function drawSection(
+  writer: PdfWriter,
+  title: string,
+  lines: Array<[string, string] | string>,
+) {
   drawLines(writer, [title], { bold: true, size: 12, gap: 6 });
   writer.y -= 2;
 
@@ -235,12 +316,14 @@ function drawSection(writer: PdfWriter, title: string, lines: Array<[string, str
 
 async function resolvePackagePricing(
   packageId: string | undefined,
-  packageSlug: string | undefined
+  packageSlug: string | undefined,
 ): Promise<ExportLineItem | null> {
   const supabase = createSupabaseServerClient();
   if (!supabase) return null;
 
-  let query = supabase.from("packages").select("name,price_full,price_installment");
+  let query = supabase
+    .from("packages")
+    .select("name,price_full,price_installment,currency_code");
   if (packageId) {
     query = query.eq("id", packageId);
   } else if (packageSlug) {
@@ -254,27 +337,41 @@ async function resolvePackagePricing(
 
   return {
     name: String(data.name),
-    priceFull: Number(data.price_full),
-    priceInstallment: data.price_installment == null ? null : Number(data.price_installment),
+    currencyCode: data.currency_code || "USD",
+    priceFull: data.price_full == null ? null : Number(data.price_full),
+    priceInstallment:
+      data.price_installment == null ? null : Number(data.price_installment),
   };
 }
 
-async function resolveAddonPricing(addonIds: string[]): Promise<ExportLineItem[]> {
+async function resolveAddonPricing(
+  addonIds: string[],
+): Promise<ExportLineItem[]> {
   const uniqueIds = [...new Set(addonIds.filter(Boolean))];
   if (!uniqueIds.length) return [];
 
   const supabase = createSupabaseServerClient();
   if (!supabase) {
-    return uniqueIds.map((id) => ({ name: id, priceFull: 0, priceInstallment: null }));
+    return uniqueIds.map((id) => ({
+      name: id,
+      currencyCode: "USD",
+      priceFull: null,
+      priceInstallment: null,
+    }));
   }
 
   const { data, error } = await supabase
     .from("add_ons")
-    .select("id,name,price_full,price_installment")
+    .select("id,name,price_full,price_installment,currency_code")
     .in("id", uniqueIds);
 
   if (error || !data?.length) {
-    return uniqueIds.map((id) => ({ name: id, priceFull: 0, priceInstallment: null }));
+    return uniqueIds.map((id) => ({
+      name: id,
+      currencyCode: "USD",
+      priceFull: null,
+      priceInstallment: null,
+    }));
   }
 
   const byId = new Map(
@@ -282,16 +379,28 @@ async function resolveAddonPricing(addonIds: string[]): Promise<ExportLineItem[]
       String(row.id),
       {
         name: String(row.name),
-        priceFull: Number(row.price_full),
-        priceInstallment: row.price_installment == null ? null : Number(row.price_installment),
+        currencyCode: row.currency_code || "USD",
+        priceFull: row.price_full == null ? null : Number(row.price_full),
+        priceInstallment:
+          row.price_installment == null ? null : Number(row.price_installment),
       },
-    ])
+    ]),
   );
 
-  return uniqueIds.map((id) => byId.get(id) ?? { name: id, priceFull: 0, priceInstallment: null });
+  return uniqueIds.map(
+    (id) =>
+      byId.get(id) ?? {
+        name: id,
+        currencyCode: "USD",
+        priceFull: null,
+        priceInstallment: null,
+      },
+  );
 }
 
-async function buildExportContext(record: ApplicationRecord): Promise<ExportContext> {
+async function buildExportContext(
+  record: ApplicationRecord,
+): Promise<ExportContext> {
   const packageSelection = record.payload.packageSelection;
   const addonIds = [
     ...(packageSelection?.addonIds ?? []),
@@ -301,21 +410,34 @@ async function buildExportContext(record: ApplicationRecord): Promise<ExportCont
   const [packageItem, addonItems] = await Promise.all([
     resolvePackagePricing(
       packageSelection?.packageId,
-      packageSelection?.packageSlug || record.formData?.selectedPackageSlug || undefined
+      packageSelection?.packageSlug ||
+        record.formData?.selectedPackageSlug ||
+        undefined,
     ),
     resolveAddonPricing(addonIds),
   ]);
 
   return {
-    packageName: packageSelection?.packageName || packageItem?.name || record.formData?.selectedPackageSlug || "—",
-    packageSlug: packageSelection?.packageSlug || record.formData?.selectedPackageSlug || "—",
+    packageName:
+      packageSelection?.packageName ||
+      packageItem?.name ||
+      record.formData?.selectedPackageSlug ||
+      "—",
+    packageSlug:
+      packageSelection?.packageSlug ||
+      record.formData?.selectedPackageSlug ||
+      "—",
     addonNames: addonItems.map((item) => item.name),
     packageItem,
     addonItems,
+    currencies: (await readCurrencies()).currencies,
   };
 }
 
-function buildPackageSummary(record: ApplicationRecord, context: ExportContext): string {
+function buildPackageSummary(
+  record: ApplicationRecord,
+  context: ExportContext,
+): string {
   const lines = [
     `Tracking ID: ${record.trackingId}`,
     `Submitted: ${new Date(record.submittedAt).toLocaleString()}`,
@@ -327,9 +449,13 @@ function buildPackageSummary(record: ApplicationRecord, context: ExportContext):
   ];
 
   if (context.packageItem) {
-    lines.push(`Price (full pay): ${formatUsdPrice(context.packageItem.priceFull)}`);
+    lines.push(
+      `Price (full pay): ${priceText(context.packageItem.priceFull, context.packageItem, context)}`,
+    );
     if (context.packageItem.priceInstallment != null) {
-      lines.push(`Price (installments): ${formatUsdPrice(context.packageItem.priceInstallment)}`);
+      lines.push(
+        `Price (installments): ${priceText(context.packageItem.priceInstallment, context.packageItem, context)}`,
+      );
     }
   }
 
@@ -340,25 +466,40 @@ function buildPackageSummary(record: ApplicationRecord, context: ExportContext):
   } else {
     for (const addon of context.addonItems) {
       lines.push(
-        `- ${addon.name}: ${formatUsdPrice(addon.priceFull)}${
-          addon.priceInstallment != null ? ` (installments ${formatUsdPrice(addon.priceInstallment)})` : ""
-        }`
+        `- ${addon.name}: ${priceText(addon.priceFull, addon, context)}${
+          addon.priceInstallment != null
+            ? ` (installments ${priceText(addon.priceInstallment, addon, context)})`
+            : ""
+        }`,
       );
     }
   }
 
-  const { totalFull, totalInstallment } = pricingTotals(context);
-  if (context.packageItem || context.addonItems.length) {
-    lines.push("", `Total amount due (full pay): ${formatUsdPrice(totalFull)}`);
-    if (totalInstallment != null) {
-      lines.push(`Total amount due (installments): ${formatUsdPrice(totalInstallment)}`);
-    }
+  for (const total of pricingTotals(context)) {
+    const item = {
+      name: "Total",
+      priceFull: total.totalFull,
+      priceInstallment: total.totalInstallment,
+      currencyCode: total.currencyCode,
+    };
+    lines.push(
+      "",
+      `Total amount due (full pay, ${total.currencyCode}): ${priceText(total.totalFull, item, context)}`,
+    );
+    if (total.totalInstallment != null)
+      lines.push(
+        `Total amount due (installments, ${total.currencyCode}): ${priceText(total.totalInstallment, item, context)}`,
+      );
   }
+  if (pricingTotals(context).length > 1)
+    lines.push("Separate currency totals; no currency conversion applied.");
 
   return lines.join("\n");
 }
 
-function academicResultLines(record: ApplicationRecord): Array<[string, string]> {
+function academicResultLines(
+  record: ApplicationRecord,
+): Array<[string, string]> {
   const academic = record.formData?.academicInfo ?? {};
   const fallback = record.payload.academicBackground;
   const gradeType = asString(academic.gradeType);
@@ -392,27 +533,44 @@ function graduationLines(record: ApplicationRecord): Array<[string, string]> {
     return [["Graduation date", asString(academic.graduationDate) || "—"]];
   }
   if (graduated === false) {
-    return [["Expected graduation date", asString(academic.expectedGraduationDate) || "—"]];
+    return [
+      [
+        "Expected graduation date",
+        asString(academic.expectedGraduationDate) || "—",
+      ],
+    ];
   }
 
-  return [["Graduation year", record.payload.academicBackground.graduationYear || "—"]];
+  return [
+    [
+      "Graduation year",
+      record.payload.academicBackground.graduationYear || "—",
+    ],
+  ];
 }
 
-function destinationLines(record: ApplicationRecord, prefs: Record<string, unknown>): string[] {
+function destinationLines(
+  record: ApplicationRecord,
+  prefs: Record<string, unknown>,
+): string[] {
   const rawDestinations = Array.isArray(prefs.destinations)
     ? (prefs.destinations as Array<{ rank?: number; country?: string }>)
     : null;
 
   if (rawDestinations?.length) {
-    return rawDestinations.map((d) => `Destination #${d.rank ?? "?"}: ${asString(d.country) || "—"}`);
+    return rawDestinations.map(
+      (d) => `Destination #${d.rank ?? "?"}: ${asString(d.country) || "—"}`,
+    );
   }
 
   return record.payload.programPreferences.destinationChoices.map(
-    (d) => `Destination #${d.rank}: ${d.country}`
+    (d) => `Destination #${d.rank}: ${d.country}`,
   );
 }
 
-function submissionDetailLines(record: ApplicationRecord): Array<[string, string] | string> {
+function submissionDetailLines(
+  record: ApplicationRecord,
+): Array<[string, string] | string> {
   const data = record.payload.submission?.data;
   if (!data || typeof data !== "object") {
     return [["Details", "—"]];
@@ -460,7 +618,10 @@ function submissionDetailLines(record: ApplicationRecord): Array<[string, string
         if (key === "contact" && value && typeof value === "object") {
           return Object.entries(value as Record<string, unknown>).map(
             ([contactKey, contactValue]) =>
-              [`Contact — ${contactKey}`, asString(contactValue)] as [string, string]
+              [`Contact — ${contactKey}`, asString(contactValue)] as [
+                string,
+                string,
+              ],
           );
         }
         if (typeof value === "object") {
@@ -473,16 +634,14 @@ function submissionDetailLines(record: ApplicationRecord): Array<[string, string
 
 export async function buildApplicationPdfBuffer(
   record: ApplicationRecord,
-  context?: ExportContext
+  context?: ExportContext,
 ): Promise<Buffer> {
   const exportContext = context ?? (await buildExportContext(record));
   const type = (record.applicationType ?? "university") as ApplicationType;
   const personal = record.formData?.personalInfo ?? record.payload.personalInfo;
   const academic = record.formData?.academicInfo ?? {};
-  const prefs = (record.formData?.studyPreferences ?? record.payload.programPreferences) as Record<
-    string,
-    unknown
-  >;
+  const prefs = (record.formData?.studyPreferences ??
+    record.payload.programPreferences) as Record<string, unknown>;
   const programLevel = asString(prefs.programLevel);
   const levelLabel =
     programLevel && programLevel in PROGRAM_LEVEL_LABELS
@@ -491,7 +650,11 @@ export async function buildApplicationPdfBuffer(
 
   const writer = await createPdfWriter();
 
-  drawLines(writer, ["UniMondo Application Form"], { bold: true, size: 18, gap: 8 });
+  drawLines(writer, ["UniMondo Application Form"], {
+    bold: true,
+    size: 18,
+    gap: 8,
+  });
   drawLines(writer, [applicationTypeLabel(type)], { size: 11, gap: 10 });
   writer.y -= 6;
 
@@ -515,34 +678,47 @@ export async function buildApplicationPdfBuffer(
     drawSection(writer, "2. Academic information", [
       [
         "Highest qualification",
-        asString(academic.highestQualification) || record.payload.academicBackground.highestQualification,
+        asString(academic.highestQualification) ||
+          record.payload.academicBackground.highestQualification,
       ],
       [
         "Institution",
-        asString(academic.institutionName) || record.payload.academicBackground.institutionName,
+        asString(academic.institutionName) ||
+          record.payload.academicBackground.institutionName,
       ],
       ...academicResultLines(record),
       [
         "IELTS score",
-        String(asNumber(academic.ieltsScore) ?? record.payload.academicBackground.ieltsScore),
+        String(
+          asNumber(academic.ieltsScore) ??
+            record.payload.academicBackground.ieltsScore,
+        ),
       ],
       ...graduationLines(record),
     ]);
 
     const destinations = destinationLines(record, prefs);
     drawSection(writer, "3. Study preferences", [
-      ["Intake", asString(prefs.intake) || record.payload.programPreferences.intake],
+      [
+        "Intake",
+        asString(prefs.intake) || record.payload.programPreferences.intake,
+      ],
       ["Program level", levelLabel],
       [
         "Preferred region",
-        asString(prefs.preferredContinent) || record.payload.programPreferences.preferredContinent,
+        asString(prefs.preferredContinent) ||
+          record.payload.programPreferences.preferredContinent,
       ],
       ...destinations,
       [
         "Program / field of interest",
-        asString(prefs.programInterest) || record.payload.programPreferences.programInterest,
+        asString(prefs.programInterest) ||
+          record.payload.programPreferences.programInterest,
       ],
-      ["Notes", asString(prefs.notes) || record.payload.programPreferences.notes || "—"],
+      [
+        "Notes",
+        asString(prefs.notes) || record.payload.programPreferences.notes || "—",
+      ],
     ]);
 
     drawSection(writer, "4. Support package", [
@@ -550,7 +726,9 @@ export async function buildApplicationPdfBuffer(
       ["Package slug", exportContext.packageSlug],
       [
         "Add-ons",
-        exportContext.addonNames.length ? exportContext.addonNames.join(", ") : "None selected",
+        exportContext.addonNames.length
+          ? exportContext.addonNames.join(", ")
+          : "None selected",
       ],
     ]);
   } else {
@@ -572,9 +750,9 @@ export async function buildApplicationPdfBuffer(
           (document, index) =>
             `${index + 1}. ${document.name} (${docCategoryLabel(document.category)}${
               document.description?.trim() ? ` — ${document.description}` : ""
-            })`
+            })`,
         )
-      : ["No files attached."]
+      : ["No files attached."],
   );
 
   if (type === "university") {
@@ -595,7 +773,9 @@ async function fetchDocumentBuffer(url: string): Promise<Buffer | null> {
   }
 }
 
-export async function buildApplicationZipBuffer(record: ApplicationRecord): Promise<Buffer> {
+export async function buildApplicationZipBuffer(
+  record: ApplicationRecord,
+): Promise<Buffer> {
   const context = await buildExportContext(record);
   const zip = new JSZip();
   const root = zip.folder(record.trackingId);
@@ -605,7 +785,10 @@ export async function buildApplicationZipBuffer(record: ApplicationRecord): Prom
 
   const pdfBuffer = await buildApplicationPdfBuffer(record, context);
   root.file(pdfFilename(record), pdfBuffer);
-  root.file(`${record.trackingId} - Package and add-ons.txt`, buildPackageSummary(record, context));
+  root.file(
+    `${record.trackingId} - Package and add-ons.txt`,
+    buildPackageSummary(record, context),
+  );
 
   const attachments = root.folder("attachments");
   if (!attachments) {
@@ -628,7 +811,7 @@ export async function buildApplicationZipBuffer(record: ApplicationRecord): Prom
     } else {
       attachments.file(
         `${category}/${fileName}.missing.txt`,
-        `Could not download: ${document.url}`
+        `Could not download: ${document.url}`,
       );
     }
   }

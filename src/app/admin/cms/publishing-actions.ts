@@ -8,7 +8,11 @@ import {
   type Resource,
   type WorkflowView,
 } from "@/lib/publishing/model";
-import { workflowAccess, workflowIdentity, requireRestorationAccess } from "@/lib/publishing/access";
+import {
+  workflowAccess,
+  workflowIdentity,
+  requireRestorationAccess,
+} from "@/lib/publishing/access";
 import { workflowState, publishingService } from "@/lib/publishing/store";
 import { validateProposed } from "@/lib/publishing/validation";
 export async function readContentWorkflow(
@@ -65,7 +69,9 @@ export async function transitionContent(
         throw new Error("Content publication permission is required.");
       if (v.approvedRevisionId !== d.approved_revision_id)
         throw new Error("This approval is stale. Reload before publishing.");
-      if (v.resource.type !== "home") {
+      if (
+        ["countries", "universities", "programmes"].includes(v.resource.type)
+      ) {
         const table =
           v.resource.type === "universities"
             ? "featured_universities"
@@ -93,6 +99,11 @@ export async function transitionContent(
         d.proposed,
         access.user,
         view.published,
+        v.action === "approve"
+          ? "review"
+          : v.action === "publish"
+            ? "publish"
+            : "edit",
       );
     const service = publishingService();
     if (v.action === "restore") {
@@ -110,7 +121,12 @@ export async function transitionContent(
       if (historic.error || !revision)
         throw new Error("Choose an available revision.");
       const proposed = restorePayload(revision.proposed, view.published);
-      await requireRestorationAccess(v.resource, view.published, proposed, access.user);
+      await requireRestorationAccess(
+        v.resource,
+        view.published,
+        proposed,
+        access.user,
+      );
       await validateProposed(v.resource, proposed, access.user, view.published);
       const saved = await service.rpc("cms_content_save_draft", {
         t: v.resource.type,
@@ -145,11 +161,20 @@ export async function transitionContent(
         "/admin/destinations/countries",
         "/admin/universities",
         "/admin/programs",
+        "/courses",
+        "/packages",
+        "/apply",
+        "/admin/courses",
+        "/admin/packages",
+        "/admin/data/regions",
         "/admin/content/ticker",
       ])
         revalidatePath(path);
       revalidatePath("/destinations/[countrySlug]", "page");
-      if (v.resource.type === "home" && ["ticker", "footer"].includes(v.resource.key))
+      if (
+        v.resource.type === "home" &&
+        ["ticker", "footer"].includes(v.resource.key)
+      )
         revalidatePath("/", "layout");
     }
     revalidatePath("/admin/publishing");

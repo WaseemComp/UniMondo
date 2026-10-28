@@ -10,7 +10,7 @@ import { staffIdentity } from "../src/lib/auth/staff-identity.ts";
 import { DETAILED_PERMISSION_KEYS, deniedDetailedPermissions, completePermissionSelection, areasForDetailedPermissions } from "../src/lib/auth/permission-selection.ts";
 import { PERMISSION_TREE } from "../src/lib/auth/permission-definitions.ts";
 import { AdminUsersManager } from "../src/components/admin/admin-users-manager.tsx";
-import { AdminSettingsContent } from "../src/components/admin/admin-settings-content.tsx";
+import { AdminChangePasswordForm } from "../src/components/admin/admin-change-password-form.tsx";
 import { PermissionMatrix } from "../src/components/admin/permission-matrix.tsx";
 
 // Actual Supabase SDK + server actions/guards/checkers. Only session and HTTP transport are isolated.
@@ -209,7 +209,7 @@ const creation = html.slice(0, html.indexOf("</form>"));
 assert(!creation.includes('checked=""')); assert(creation.includes("<details") && creation.includes("overflow-y-auto"));
 for (const key of DETAILED_PERMISSION_KEYS.filter(key => !["home.hero_slider", "home.stats", "home.cta"].includes(key))) assert(creation.includes(`data-permission-key="${key}"`));
 assert(html.includes(">Detailed</button>"));
-const staffHtml = renderToStaticMarkup(createElement(AdminSettingsContent, { access: await getAdminAccess(newUser), currentUserId: newId, adminRows: [] }));
+const staffHtml = renderToStaticMarkup(createElement(AdminChangePasswordForm));
 assert(staffHtml.includes("Change your password") && !staffHtml.includes("Create Staff Account") && !staffHtml.includes("nu-designation"));
 assert(staffHtml.includes('type="password"') && !staffHtml.includes(syntheticSecret));
 const matrix = renderToStaticMarkup(createElement(PermissionMatrix, { value: deniedDetailedPermissions(), onChange() {}, idPrefix: "test" }));

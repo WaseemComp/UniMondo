@@ -11,7 +11,8 @@ export const CMS_NAVIGATION: CmsNavItem[] = [
   { id: "publishing", label: "Drafts & Reviews", href: "/admin/publishing", group: "Workspace", icon: "stories" },
   { id: "home", label: "Home / Website Pages", href: "/admin/home", group: "Website", icon: "home", scope: "content", permission: "home.view", aliases: ["/admin/content/home", "/admin/content/ticker"] },
   { id: "footer", label: "Website Pages / Footer", href: "/admin/content/footer", group: "Website", icon: "home", scope: "content", permission: "home.view" },
-  { id: "destinations", label: "Destinations", href: "/admin/destinations", group: "Website", icon: "destinations", scope: "academic", permission: "countries.view", aliases: ["/admin/countries", "/admin/data/countries", "/admin/data/regions"] },
+  { id: "destinations", label: "Destinations", href: "/admin/destinations", group: "Website", icon: "destinations", scope: "academic", permission: "countries.view", aliases: ["/admin/countries", "/admin/data/countries"] },
+  { id: "regions", label: "Destination Regions", href: "/admin/data/regions", group: "Website", icon: "destinations", scope: "academic", permission: "countries.view" },
   { id: "universities", label: "Universities & Programmes", href: "/admin/universities", group: "Website", icon: "universities", scope: "academic", permission: "universities.view", aliases: ["/admin/programs", "/admin/data/programs", "/admin/featured-universities"] },
   { id: "courses", label: "Language Courses", href: "/admin/courses", group: "Website", icon: "courses", scope: "academic", permission: "courses.view" },
   { id: "stories", label: "Success Stories", href: "/admin/content/success-stories", group: "Website", icon: "stories", scope: "content", permission: "blog.view" },
@@ -24,12 +25,13 @@ export const CMS_NAVIGATION: CmsNavItem[] = [
   // Keep the Agreement module's existing area visibility; do not add a new agreement permission.
   { id: "agreements", label: "Agreements", href: "/admin/agreements", group: "Operations", icon: "agreements", scope: "applications" },
   { id: "submissions", label: "Submissions", href: "/admin/submissions", group: "Operations", icon: "submissions", scope: "submissions", permission: "submissions.view" },
-  { id: "team", label: "Team & Permissions", href: "/admin/settings#team", group: "Administration", icon: "team", superOnly: true },
+  { id: "team", label: "Team & Permissions", href: "/admin/team", aliases: ["/admin/users"], group: "Administration", icon: "team", superOnly: true },
   { id: "settings", label: "Settings", href: "/admin/settings#account", group: "Administration", icon: "settings" },
 ];
 
-export function activeCmsItem(items: CmsNavItem[], pathname: string, hash = ""): string | undefined {
-  if (pathname === "/admin/settings") return hash === "#account" || !items.some(item => item.id === "team") ? "settings" : "team";
+export function activeCmsItem(items: CmsNavItem[], pathname: string, _hash = ""): string | undefined {
+  void _hash;
+  if (pathname === "/admin/settings") return "settings";
   return [...items].sort((a, b) => b.href.length - a.href.length).find(item => {
     const paths = [item.href.split("#")[0], ...(item.aliases ?? [])];
     return paths.some(path => pathname === path || (path !== "/admin/dashboard" && pathname.startsWith(`${path}/`)));

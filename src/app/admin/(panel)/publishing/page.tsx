@@ -28,19 +28,30 @@ export default async function Page() {
               ? row.record_key === "footer"
                 ? "/admin/content/footer"
                 : row.record_key === "testimonials"
-                ? "/admin/content/success-stories"
-                : row.record_key === "ticker"
-                  ? "/admin/content/ticker"
-                  : "/admin/home?section=" + encodeURIComponent(row.record_key)
+                  ? "/admin/content/success-stories"
+                  : row.record_key === "ticker"
+                    ? "/admin/content/ticker"
+                    : "/admin/home?section=" +
+                      encodeURIComponent(row.record_key)
               : {
+                  regions: "/admin/data/regions",
+                  courses: "/admin/courses",
+                  packages: "/admin/packages",
+                  addons: "/admin/packages?kind=addons",
                   countries: "/admin/destinations/countries",
                   universities: "/admin/universities",
                   programmes: "/admin/programs",
                 }[
                   row.content_type as
-                    "countries" | "universities" | "programmes"
+                    | "countries"
+                    | "universities"
+                    | "programmes"
+                    | "regions"
+                    | "courses"
+                    | "packages"
+                    | "addons"
                 ] +
-                "?record=" +
+                (row.content_type === "addons" ? "&record=" : "?record=") +
                 encodeURIComponent(row.record_key);
           return (
             <Link

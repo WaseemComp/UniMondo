@@ -38,7 +38,7 @@ import { saveHomeHeroSlide } from "./home-page-blocks-actions";
 
 const patch = z
   .record(z.string(), z.string())
-  .refine((value) => Object.keys(value).length <= 12);
+  .refine((value) => Object.keys(value).length <= 20);
 const inherit = z
   .array(
     z.enum([

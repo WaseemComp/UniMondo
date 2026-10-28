@@ -24,7 +24,7 @@ export async function getPublishedPackages(): Promise<StudyPackagePublic[]> {
     return [];
   }
 
-  return ((data ?? []) as PackageRowDb[]).map(mapPackageRow);
+  return ((data ?? []) as PackageRowDb[]).filter(row => !row.archived_at).map(mapPackageRow);
 }
 
 export async function getPublishedAddOns(): Promise<StudyAddOnPublic[]> {
@@ -43,5 +43,5 @@ export async function getPublishedAddOns(): Promise<StudyAddOnPublic[]> {
     return [];
   }
 
-  return ((data ?? []) as AddOnRowDb[]).map(mapAddOnRow);
+  return ((data ?? []) as AddOnRowDb[]).filter(row => !row.archived_at).map(mapAddOnRow);
 }

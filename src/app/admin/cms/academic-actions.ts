@@ -1,4 +1,5 @@
 "use server";
+import { validateProgrammeCurrency } from "@/lib/currencies/programme";
 import {
   planDraft,
   plannedNewRecord,
@@ -86,6 +87,12 @@ async function applysaveAcademicRecord(input: unknown): Promise<Result> {
           values.error.issues[0]?.message || "Check the record fields.",
         );
       patch = { ...values.data };
+      if (kind === "programmes")
+        await validateProgrammeCurrency(
+          object(patch.details),
+          current ? object(current.details) : undefined,
+          parsed.data.currencyChangeConfirmed === true,
+        );
       // Visibility is a private proposal. Actual publication requires existing publish grants and workflow approval.
       if (current?.archived_at && patch.is_published)
         throw new Error("Restore this record before publishing it.");

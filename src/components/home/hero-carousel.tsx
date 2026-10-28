@@ -6,8 +6,15 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-import { DEFAULT_HERO_SLIDES, HERO_DEFAULTS, type HeroCopy, type HeroSlide } from "@/lib/homepage/content";
+import {
+  DEFAULT_HERO_SLIDES,
+  HERO_DEFAULTS,
+  type HeroCopy,
+  type HeroSlide,
+} from "@/lib/homepage/content";
 export type { HeroCopy, HeroSlide } from "@/lib/homepage/content";
+
+import { heroTextStyle } from "@/lib/homepage/hero-presentation";
 
 const INTERVAL_MS = 6500;
 
@@ -20,13 +27,23 @@ export function HeroCarousel({
   slides?: HeroSlide[];
   preview?: boolean;
 }) {
-  const activeSlides = (slides ?? DEFAULT_HERO_SLIDES).filter((s) => s && (s as HeroSlide).isActive !== false);
-  const normalizedSlides = activeSlides.length ? activeSlides : DEFAULT_HERO_SLIDES;
+  const activeSlides = (slides ?? DEFAULT_HERO_SLIDES).filter(
+    (s) => s && (s as HeroSlide).isActive !== false,
+  );
+  const normalizedSlides = activeSlides.length
+    ? activeSlides
+    : DEFAULT_HERO_SLIDES;
   const [index, setIndex] = useState(0);
 
-  const next = useCallback(() => setIndex((i) => (i + 1) % normalizedSlides.length), [normalizedSlides.length]);
+  const next = useCallback(
+    () => setIndex((i) => (i + 1) % normalizedSlides.length),
+    [normalizedSlides.length],
+  );
   const prev = useCallback(
-    () => setIndex((i) => (i - 1 + normalizedSlides.length) % normalizedSlides.length),
+    () =>
+      setIndex(
+        (i) => (i - 1 + normalizedSlides.length) % normalizedSlides.length,
+      ),
     [normalizedSlides.length],
   );
 
@@ -37,6 +54,7 @@ export function HeroCarousel({
   }, [next, preview]);
 
   const slide = normalizedSlides[index % normalizedSlides.length];
+  const textStyle = slide.textMode ? heroTextStyle(slide) : undefined;
   const effectiveCopy: HeroCopy = {
     title: slide.title ?? copy.title,
     subtitle: slide.subtitle ?? copy.subtitle,
@@ -61,6 +79,9 @@ export function HeroCarousel({
             fill
             priority={index === 0}
             className="object-cover"
+            style={{
+              filter: `brightness(${slide.brightness ?? 100}%) contrast(${slide.contrast ?? 100}%)`,
+            }}
             sizes="100vw"
             quality={75}
           />
@@ -68,7 +89,13 @@ export function HeroCarousel({
       </AnimatePresence>
 
       {/* Gradient overlays */}
-      <div className="absolute inset-0 bg-[#244B50]/15" />
+      <div
+        className="absolute inset-0"
+        style={{
+          backgroundColor: slide.overlayColor ?? "#244B50",
+          opacity: Number(slide.overlayOpacity ?? 15) / 100,
+        }}
+      />
       <div className="absolute inset-0 bg-gradient-to-t from-[#F4F3EF]/40 via-transparent to-transparent" />
 
       {/* Content */}
@@ -81,31 +108,51 @@ export function HeroCarousel({
             className="um-hero-copy max-w-3xl"
           >
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#244B50]">
-              {slide.eyebrow ?? copy.eyebrow ?? HERO_DEFAULTS.eyebrow}
+              <span style={textStyle}>
+                {slide.eyebrow ?? copy.eyebrow ?? HERO_DEFAULTS.eyebrow}
+              </span>
             </p>
             <h1 className="mt-4 font-[family-name:var(--font-editorial)] text-4xl font-normal leading-[1.08] tracking-tight text-[#2F3E46] sm:text-5xl md:text-6xl lg:text-7xl">
-              {effectiveCopy.title}
+              <span style={textStyle}>{effectiveCopy.title}</span>
             </h1>
-            <p className="mt-5 max-w-xl text-lg leading-relaxed text-[#2F3E46] sm:text-xl">{effectiveCopy.subtitle}</p>
+            <p className="mt-5 max-w-xl text-lg leading-relaxed text-[#2F3E46] sm:text-xl">
+              <span style={textStyle}>{effectiveCopy.subtitle}</span>
+            </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
-              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+              <motion.div
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
                 <Link
-                  href={slide.primaryHref ?? copy.primaryHref ?? HERO_DEFAULTS.primaryHref}
+                  href={
+                    slide.primaryHref ??
+                    copy.primaryHref ??
+                    HERO_DEFAULTS.primaryHref
+                  }
                   className="inline-flex w-full items-center justify-center rounded-lg bg-[#244B50] px-8 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#1D3E42] sm:w-auto"
                 >
                   {effectiveCopy.ctaExplore}
                 </Link>
               </motion.div>
-              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+              <motion.div
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
                 <Link
-                  href={slide.secondaryHref ?? copy.secondaryHref ?? HERO_DEFAULTS.secondaryHref}
+                  href={
+                    slide.secondaryHref ??
+                    copy.secondaryHref ??
+                    HERO_DEFAULTS.secondaryHref
+                  }
                   className="inline-flex w-full items-center justify-center rounded-lg border border-[#244B50]/30 bg-white px-8 py-3.5 text-sm font-semibold text-[#244B50] transition hover:bg-[#E4F1F7] sm:w-auto"
                 >
                   {effectiveCopy.ctaApply}
                 </Link>
               </motion.div>
             </div>
-            <p className="mt-6 text-sm text-[#4D5F64]">{slide.line}</p>
+            <p className="mt-6 text-sm text-[#4D5F64]">
+              <span style={textStyle}>{slide.line}</span>
+            </p>
           </motion.div>
         </div>
       </div>
