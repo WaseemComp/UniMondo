@@ -32,8 +32,12 @@ export const AGREEMENT_LAYOUT = {
   margin: 50.4,
   fontSize: 11,
   titleSize: 14,
-  lineSpacing: 1.15,
-  paragraphAfter: 5,
+  lineSpacing: 1,
+  paragraphAfter: 2,
+  signatureSplit: 0.56,
+  signatureSpace: 18,
+  stampSpace: 18,
+  tablePadding: 2,
 } as const;
 export function usesStandardAgreement(record: AgreementRecord) {
   return (

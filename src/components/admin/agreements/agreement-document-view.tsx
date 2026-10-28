@@ -1,4 +1,4 @@
-import type { AgreementDocument } from "@/lib/agreements/document-content";
+import { AGREEMENT_LAYOUT as layout, type AgreementDocument } from "@/lib/agreements/document-content";
 
 /** One flowing document view for unsaved edits and the browser print fallback. */
 export function AgreementDocumentView({
@@ -77,23 +77,23 @@ export function AgreementDocumentView({
         </div>
       </div>
       <style>{`
-      .agreement-document { box-sizing:border-box; width:210mm; max-width:100%; padding:.7in; background:#fff; color:#000; font-family:"Times New Roman",Times,serif; font-size:11pt; line-height:1.15; overflow-wrap:anywhere; }
-      .agreement-document h1 { font-size:14pt; font-weight:700; text-align:center; margin:0 0 5pt; }
-      .agreement-document h2 { font-size:11pt; font-weight:700; margin:5pt 0; break-after:avoid; }
-      .agreement-document p { margin:0 0 5pt; text-align:justify; orphans:2; widows:2; }
+      .agreement-document { box-sizing:border-box; width:210mm; max-width:100%; padding:.7in; background:#fff; color:#000; font-family:"Times New Roman",Times,serif; font-size:11pt; line-height:${layout.lineSpacing}; overflow-wrap:anywhere; }
+      .agreement-document h1 { font-size:14pt; font-weight:700; text-align:center; margin:0 0 ${layout.paragraphAfter}pt; }
+      .agreement-document h2 { font-size:11pt; font-weight:700; margin:${layout.paragraphAfter}pt 0; break-after:avoid; }
+      .agreement-document p { margin:0 0 ${layout.paragraphAfter}pt; text-align:justify; orphans:2; widows:2; }
       .agreement-document .agreement-meta {text-align:left;}
-      .agreement-document table {width:100%;border-collapse:collapse;margin:0 0 5pt;table-layout:fixed;}
-      .agreement-document td,.agreement-document th {border:.5pt solid #000;padding:4pt 5pt;text-align:left;font-weight:400;}
+      .agreement-document table {width:100%;border-collapse:collapse;margin:0 0 ${layout.paragraphAfter}pt;table-layout:fixed;}
+      .agreement-document td,.agreement-document th {border:.5pt solid #000;padding:${layout.tablePadding}pt 5pt;text-align:left;font-weight:400;}
       .agreement-document th,.agreement-document tbody tr:last-child {font-weight:700;}
       .agreement-document th:first-child {width:56%;}.agreement-document td:nth-child(2),.agreement-document th:nth-child(2){text-align:center;}
       .agreement-document td:last-child,.agreement-document th:last-child{text-align:right;}
       .agreement-signing-group {break-inside:avoid;}
-      .agreement-document .agreement-signatures {display:grid;grid-template-columns:1fr 1fr;gap:0 18pt;margin-top:6pt;}
+      .agreement-document .agreement-signatures {display:grid;grid-template-columns:calc(${layout.signatureSplit * 100}% - 9pt) calc(${(1-layout.signatureSplit) * 100}% - 9pt);gap:0 18pt;margin-top:6pt;}
       .agreement-document .agreement-signatures > div {display:grid;grid-template-rows:subgrid;grid-row:span 6;}
-      .agreement-document .agreement-signatures > div > p {min-height:1.15em;}
+      .agreement-document .agreement-signatures > div > p {min-height:${layout.lineSpacing}em;}
       .agreement-document .agreement-signatures p {text-align:left;}
-      .agreement-signature-line {width:3.5cm;max-width:100%;border-bottom:.5pt solid #000;margin-top:24pt;margin-bottom:3pt;}
-      .agreement-stamp {text-align:center;margin-top:24pt;}.agreement-stamp .agreement-signature-line {margin:0 auto 3pt;}
+      .agreement-signature-line {width:3.5cm;max-width:100%;border-bottom:.5pt solid #000;margin-top:${layout.signatureSpace}pt;margin-bottom:3pt;}
+      .agreement-stamp {text-align:center;margin-top:${layout.stampSpace}pt;}.agreement-stamp .agreement-signature-line {margin:0 auto 3pt;}
       .agreement-document .agreement-stamp p {text-align:center;font-size:6pt;}
       @media(max-width:640px){.agreement-document{padding:20px;}.agreement-document .agreement-signatures{gap:12pt;}}
       @media print {.agreement-document{width:auto;max-width:none;padding:0;}.agreement-document .agreement-signatures{gap:18pt;}}

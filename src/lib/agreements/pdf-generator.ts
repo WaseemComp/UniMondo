@@ -184,7 +184,7 @@ export async function generateAgreementPdf(
       }
       if (at < lines.length) newPage();
     }
-    y -= 5;
+    y -= layout.paragraphAfter;
   }
   paragraph([{ text: content.brand, bold: true }], {
     title: true,
@@ -202,11 +202,15 @@ export async function generateAgreementPdf(
     left: true,
     keep: leading * 2,
   });
-  const columnWidth = available / 2 - 9;
-  const signatureRows = content.signatures.map((s) => [
-    wrap([{ text: s.heading, bold: true }], 11, columnWidth),
-    wrap([{ text: "Signature" }], 11, columnWidth),
-    wrap([{ text: `Name: ${s.name}` }], 11, columnWidth),
+  const columnStarts = [margin, margin + available * layout.signatureSplit];
+  const columnWidths = [
+    available * layout.signatureSplit - 9,
+    available * (1 - layout.signatureSplit) - 9,
+  ];
+  const signatureRows = content.signatures.map((s, column) => [
+    wrap([{ text: s.heading, bold: true }], 11, columnWidths[column]),
+    wrap([{ text: "Signature" }], 11, columnWidths[column]),
+    wrap([{ text: `Name: ${s.name}` }], 11, columnWidths[column]),
     wrap(
       [
         {
@@ -216,17 +220,18 @@ export async function generateAgreementPdf(
         },
       ],
       11,
-      columnWidth,
+      columnWidths[column],
     ),
-    wrap([{ text: `Date: ${s.date}` }], 11, columnWidth),
+    wrap([{ text: `Date: ${s.date}` }], 11, columnWidths[column]),
   ]);
   const rowHeights = [0, 1, 2, 3, 4].map(
     (i) =>
       Math.max(...signatureRows.map((rows) => rows[i].length)) * leading +
-      5 +
-      (i === 0 ? 26 : 0),
+      layout.paragraphAfter +
+      (i === 0 ? layout.signatureSpace + 2 : 0),
   );
-  const signatureHeight = rowHeights.reduce((sum, h) => sum + h, 0) + 36;
+  const signatureHeight =
+    rowHeights.reduce((sum, h) => sum + h, 0) + layout.stampSpace + 12;
   if (signatureHeight > height - 2 * margin - leading * 5)
     throw new Error(
       "Signature details are too long. Shorten them before exporting.",
@@ -236,13 +241,18 @@ export async function generateAgreementPdf(
       ensure(
         signatureHeight +
           wrap(section.paragraphs[0].runs).length * leading +
-          5 +
+          layout.paragraphAfter +
           leading +
-          5,
+          layout.paragraphAfter,
       );
+    // A three-line opening paragraph cannot split 2/1 under widow control.
+    // Reserve all three lines so its heading cannot be stranded above a page break.
+    const openingLines = wrap(section.paragraphs[0].runs).length;
     paragraph([{ text: section.heading, bold: true }], {
       heading: true,
-      keep: Math.min(2, wrap(section.paragraphs[0].runs).length) * leading + 5,
+      keep:
+        (openingLines === 3 ? 3 : Math.min(2, openingLines)) * leading +
+        layout.paragraphAfter,
     });
     for (const p of section.paragraphs) paragraph(p.runs);
     if (section.financialTable) {
@@ -257,14 +267,16 @@ export async function generateAgreementPdf(
         ),
       );
       const heights = cells.map(
-        (row) => Math.max(...row.map((lines) => lines.length)) * leading + 8,
+        (row) =>
+          Math.max(...row.map((lines) => lines.length)) * leading +
+          layout.tablePadding * 2,
       );
-      ensure(heights.reduce((sum, h) => sum + h, 0) + 5);
+      ensure(heights.reduce((sum, h) => sum + h, 0) + layout.paragraphAfter);
       cells.forEach((row, i) => {
         const top = y;
         let x = margin;
         row.forEach((lines, j) => {
-          y = top - 4;
+          y = top - layout.tablePadding;
           for (const parts of lines) {
             line(
               parts,
@@ -287,7 +299,7 @@ export async function generateAgreementPdf(
         });
         y = top - heights[i];
       });
-      y -= 5;
+      y -= layout.paragraphAfter;
     }
   }
   ensure(signatureHeight);
@@ -296,17 +308,17 @@ export async function generateAgreementPdf(
     signatureRows.forEach((rows, column) => {
       y = top;
       for (const parts of rows[i]) {
-        line(parts, 11, "left", margin + (column * available) / 2, columnWidth);
+        line(parts, 11, "left", columnStarts[column], columnWidths[column]);
         y -= leading;
       }
       if (i === 0)
         page.drawLine({
           start: {
-            x: margin + (column * available) / 2,
+            x: columnStarts[column],
             y: top - rowHeights[0] + 8,
           },
           end: {
-            x: margin + (column * available) / 2 + 99.2,
+            x: columnStarts[column] + 99.2,
             y: top - rowHeights[0] + 8,
           },
           thickness: 0.5,
@@ -315,7 +327,7 @@ export async function generateAgreementPdf(
     });
     y = top - rowHeights[i];
   }
-  y -= 24;
+  y -= layout.stampSpace;
   page.drawLine({
     start: { x: width / 2 - 49.6, y },
     end: { x: width / 2 + 49.6, y },

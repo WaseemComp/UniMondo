@@ -1,6 +1,6 @@
 # Agreement Generator refinement — implementation review
 
-Branch: `codex/agreement-generator-refinement` (based on production `5d07c25e89d00cec3f64f567e748a6c7a4b70f29`). Preview preparation is authorized; merging to main and production deployment require separate owner approval.
+Branch: `codex/agreement-generator-refinement` (based on production `5d07c25e89d00cec3f64f567e748a6c7a4b70f29`). Owner has approved the compact layout correction, merge of PR #9 and production deployment after successful checks.
 
 ## Implemented behavior
 
@@ -9,7 +9,7 @@ Branch: `codex/agreement-generator-refinement` (based on production `5d07c25e89d
 - Agreement Details / Edit Clauses / Live Preview tabs, explicit Save Agreement Draft, discard and restore controls, and unsaved navigation warnings. No email or telephone inputs; stored contact data is retained privately and omitted from new documents.
 - All eight headings and required paragraphs remain present. Plain-text overrides preserve named dynamic fields and bold subsection labels. Empty text, unknown clauses, HTML, incomplete field markers, unsafe controls and hardcoded financial values in fee/payment prose are rejected.
 - Fee/payment/refund overrides require Superadmin, explicit confirmation, and server-owned author/time metadata. Existing discount authority, calculation functions, currency precision, frozen exchange rates and 30/40/30 calculations are unchanged.
-- A4 / 0.7 inch margins / Times New Roman 11 pt / 14 pt centered title / 1.15 spacing / 5 pt paragraph spacing; justified flowing paragraphs, financial table, native page fields, paired short signature lines, designation/identity, formatted dates and centered 6 pt official-stamp label.
+- A4 / 0.7 inch margins / Times New Roman 11 pt / 14 pt centered title / single line spacing / 2 pt paragraph spacing; justified flowing paragraphs, financial table, native page fields, paired short signature lines, designation/identity, formatted dates and centered 6 pt official-stamp label.
 - Status is separate from the Actions menu. Existing Superadmin-only status/deletion enforcement and optimistic version checks remain; deletion retains finalized revisions and audit records.
 - Print uses the official generated PDF for pagination and Page X of Y. Its HTML fallback and live preview share the same contract structure. Live preview is a flowing document, not a promise of browser-independent page breaks.
 
@@ -30,7 +30,7 @@ Other Appendix wording differences are also retained, including its Party/Partie
 
 **No SQL migration is required.** Clause overrides, approval metadata and the generated document structure fit the existing JSON agreement snapshots. No database, RLS, account or CMS publishing configuration changes were made. No production writes were used for verification.
 
-EUR and long-name TND Word/PDF samples are available in `output/agreement-refinement/` for owner review. Preview preparation has been authorized; the production release remains pending separate approval. These files contain clearly labelled synthetic QA identities only and are local review artifacts; exclude rendered intermediate images and QA binaries from the application commit.
+EUR and long-name TND Word/PDF samples are available in `output/agreement-refinement/` for owner review. Preview preparation has been authorized; the owner subsequently authorized merging PR #9 and deploying after successful checks. These files contain clearly labelled synthetic QA identities only and are local review artifacts; exclude rendered intermediate images and QA binaries from the application commit.
 
 The existing Agreement revision SQL must remain installed; this work neither reruns it nor integrates with CMS content publishing. Release must retain the bundled Times New Roman files and existing DOCX template.
 
@@ -52,7 +52,7 @@ The old standardization suite covers v3 reference wording, seven currencies × t
 
 DOM interaction tests exercise the rendered React form, field-to-preview changes, all eight editors, explicit saves, discard, standard-wording restore, and restricted controls with isolated data. These are not Safari/browser visual tests. No repeated Safari automation was attempted.
 
-Two sample pairs (EUR and TND with long names/designation/address) are rendered with bundled LibreOffice and Poppler. Each export is three A4 pages with all wording present, no blank pages, consistent numbering and an intact signature/stamp group. Every generated page is visually reviewed; minor font/layout differences between Word and PDF are expected.
+Two sample pairs (EUR and TND with long names/designation/address) are rendered with bundled LibreOffice and Poppler. Each compact export is two A4 pages with all wording present, no blank pages, consistent numbering and an intact signature/stamp group. Every generated page is visually reviewed; minor font/layout differences between Word and PDF are expected.
 
 ## Changed files
 
@@ -90,3 +90,7 @@ Checks and review notes:
 - `scripts/test-agreement-refinement-dom.mjs` (new)
 - `package.json` (two focused test commands)
 - `docs/agreement-refinement/README.md` (this report)
+
+## Compact layout follow-up
+
+At the owner’s request, the Appendix A layout uses single line spacing, 2 pt paragraph spacing and reduced table padding. Body text remains 11 pt, title remains 14 pt, and A4 / 0.7 inch margins are unchanged. The student signature starts 56% across the usable width (about 30 pt farther right), with aligned dates and a centered stamp. EUR and long-name TND samples both render to two pages in Word and native PDF. The seven-currency regression suite asserts the standard PDF remains two pages. Long custom clauses can still require additional space; content is never truncated or hidden to force a page count. Historical v3 rendering and all contractual wording/calculations remain unchanged.

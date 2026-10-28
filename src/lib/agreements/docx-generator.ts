@@ -3,6 +3,7 @@ import path from "path";
 import JSZip from "jszip";
 import type { AgreementRecord } from "../../types/agreement";
 import {
+  AGREEMENT_LAYOUT as layout,
   agreementDocument,
   usesStandardAgreement,
   type ContractRun,
@@ -43,7 +44,7 @@ export async function generateAgreementDocx(
       after?: number;
     } = {},
   ) =>
-    `<w:p><w:pPr><w:pStyle w:val="${options.title ? "Title" : "Normal"}"/><w:keepNext w:val="${options.heading || options.keep ? 1 : 0}"/><w:widowControl/><w:contextualSpacing w:val="0"/><w:spacing w:before="${options.before ?? (options.heading ? 100 : 0)}" w:after="${options.after ?? 100}" w:line="276" w:lineRule="auto"/><w:jc w:val="${options.title || options.center ? "center" : options.heading || options.left ? "left" : "both"}"/></w:pPr>${runs.map((r) => run({ ...r, bold: options.title || options.heading || r.bold }, options.title ? 28 : 22)).join("")}</w:p>`;
+    `<w:p><w:pPr><w:pStyle w:val="${options.title ? "Title" : "Normal"}"/><w:keepNext w:val="${options.heading || options.keep ? 1 : 0}"/><w:widowControl/><w:contextualSpacing w:val="0"/><w:spacing w:before="${options.before ?? (options.heading ? layout.paragraphAfter * 20 : 0)}" w:after="${options.after ?? layout.paragraphAfter * 20}" w:line="${layout.lineSpacing * 240}" w:lineRule="auto"/><w:jc w:val="${options.title || options.center ? "center" : options.heading || options.left ? "left" : "both"}"/></w:pPr>${runs.map((r) => run({ ...r, bold: options.title || options.heading || r.bold }, options.title ? 28 : 22)).join("")}</w:p>`;
   let body =
     paragraph([{ text: content.brand }], { title: true, keep: true }) +
     paragraph([{ text: content.title }], { title: true, keep: true }) +
@@ -62,23 +63,27 @@ export async function generateAgreementDocx(
     });
     if (section.financialTable) {
       const widths = [5590, 1800, 2500];
-      body += `<w:tbl><w:tblPr><w:tblW w:w="9890" w:type="dxa"/><w:tblLayout w:type="fixed"/><w:tblCellMar><w:top w:w="80" w:type="dxa"/><w:bottom w:w="80" w:type="dxa"/><w:left w:w="100" w:type="dxa"/><w:right w:w="100" w:type="dxa"/></w:tblCellMar><w:tblBorders>${["top", "left", "bottom", "right", "insideH", "insideV"].map((side) => `<w:${side} w:val="single" w:sz="4" w:color="000000"/>`).join("")}</w:tblBorders></w:tblPr><w:tblGrid>${widths.map((w) => `<w:gridCol w:w="${w}"/>`).join("")}</w:tblGrid>${[section.financialTable.headers, ...section.financialTable.rows].map((row, i) => `<w:tr><w:trPr><w:cantSplit/>${i === 0 ? "<w:tblHeader/>" : ""}</w:trPr>${row.map((cell, j) => `<w:tc><w:tcPr><w:tcW w:w="${widths[j]}" w:type="dxa"/></w:tcPr>${paragraph([{ text: cell, bold: i === 0 || i === 3 }], { left: true, after: 0 }).replace('<w:jc w:val="left"/>', `<w:jc w:val="${j === 2 ? "right" : j === 1 ? "center" : "left"}"/>`)}</w:tc>`).join("")}</w:tr>`).join("")}</w:tbl>`;
+      body += `<w:tbl><w:tblPr><w:tblW w:w="9890" w:type="dxa"/><w:tblLayout w:type="fixed"/><w:tblCellMar><w:top w:w="${layout.tablePadding * 20}" w:type="dxa"/><w:bottom w:w="${layout.tablePadding * 20}" w:type="dxa"/><w:left w:w="100" w:type="dxa"/><w:right w:w="100" w:type="dxa"/></w:tblCellMar><w:tblBorders>${["top", "left", "bottom", "right", "insideH", "insideV"].map((side) => `<w:${side} w:val="single" w:sz="4" w:color="000000"/>`).join("")}</w:tblBorders></w:tblPr><w:tblGrid>${widths.map((w) => `<w:gridCol w:w="${w}"/>`).join("")}</w:tblGrid>${[section.financialTable.headers, ...section.financialTable.rows].map((row, i) => `<w:tr><w:trPr><w:cantSplit/>${i === 0 ? "<w:tblHeader/>" : ""}</w:trPr>${row.map((cell, j) => `<w:tc><w:tcPr><w:tcW w:w="${widths[j]}" w:type="dxa"/></w:tcPr>${paragraph([{ text: cell, bold: i === 0 || i === 3 }], { left: true, after: 0 }).replace('<w:jc w:val="left"/>', `<w:jc w:val="${j === 2 ? "right" : j === 1 ? "center" : "left"}"/>`)}</w:tc>`).join("")}</w:tr>`).join("")}</w:tbl>`;
       body +=
         '<w:p><w:pPr><w:spacing w:after="0" w:line="20" w:lineRule="exact"/></w:pPr></w:p>';
     }
   }
   // Paired rows keep dates aligned even when names or designations wrap.
+  const signatureWidths = [
+    Math.round(9890 * layout.signatureSplit),
+    9890 - Math.round(9890 * layout.signatureSplit),
+  ];
   const signatureRows = [
     content.signatures.map((s) =>
       paragraph([{ text: s.heading, bold: true }], {
         left: true,
         keep: true,
-        after: 480,
+        after: layout.signatureSpace * 20,
       }),
     ),
     content.signatures.map(
-      () =>
-        `<w:p><w:pPr><w:keepNext/><w:pBdr><w:bottom w:val="single" w:sz="4" w:space="1" w:color="000000"/></w:pBdr><w:ind w:right="2790"/><w:spacing w:after="40" w:line="20" w:lineRule="exact"/></w:pPr></w:p>`,
+      (_, column) =>
+        `<w:p><w:pPr><w:keepNext/><w:pBdr><w:bottom w:val="single" w:sz="4" w:space="1" w:color="000000"/></w:pBdr><w:ind w:right="${signatureWidths[column] - 180 - 1984}"/><w:spacing w:after="40" w:line="20" w:lineRule="exact"/></w:pPr></w:p>`,
     ),
     content.signatures.map(() =>
       paragraph([{ text: "Signature" }], { left: true, keep: true }),
@@ -102,8 +107,8 @@ export async function generateAgreementDocx(
       paragraph([{ text: `Date: ${s.date}` }], { left: true, keep: true }),
     ),
   ];
-  body += `<w:tbl><w:tblPr><w:tblW w:w="9890" w:type="dxa"/><w:tblLayout w:type="fixed"/><w:tblCellMar><w:top w:w="0" w:type="dxa"/><w:left w:w="0" w:type="dxa"/><w:bottom w:w="0" w:type="dxa"/><w:right w:w="180" w:type="dxa"/></w:tblCellMar><w:tblBorders>${["top", "left", "bottom", "right", "insideH", "insideV"].map((side) => `<w:${side} w:val="nil"/>`).join("")}</w:tblBorders></w:tblPr><w:tblGrid><w:gridCol w:w="4945"/><w:gridCol w:w="4945"/></w:tblGrid>${signatureRows.map((row) => `<w:tr><w:trPr><w:cantSplit/></w:trPr>${row.map((p) => `<w:tc><w:tcPr><w:tcW w:w="4945" w:type="dxa"/><w:vAlign w:val="top"/></w:tcPr>${p}</w:tc>`).join("")}</w:tr>`).join("")}</w:tbl>`;
-  body += `<w:p><w:pPr><w:keepNext/><w:ind w:left="3953" w:right="3953"/><w:pBdr><w:bottom w:val="single" w:sz="4" w:space="1" w:color="000000"/></w:pBdr><w:spacing w:before="480" w:after="40" w:line="20" w:lineRule="exact"/></w:pPr></w:p>`;
+  body += `<w:tbl><w:tblPr><w:tblW w:w="9890" w:type="dxa"/><w:tblLayout w:type="fixed"/><w:tblCellMar><w:top w:w="0" w:type="dxa"/><w:left w:w="0" w:type="dxa"/><w:bottom w:w="0" w:type="dxa"/><w:right w:w="180" w:type="dxa"/></w:tblCellMar><w:tblBorders>${["top", "left", "bottom", "right", "insideH", "insideV"].map((side) => `<w:${side} w:val="nil"/>`).join("")}</w:tblBorders></w:tblPr><w:tblGrid>${signatureWidths.map((width) => `<w:gridCol w:w="${width}"/>`).join("")}</w:tblGrid>${signatureRows.map((row) => `<w:tr><w:trPr><w:cantSplit/></w:trPr>${row.map((p, column) => `<w:tc><w:tcPr><w:tcW w:w="${signatureWidths[column]}" w:type="dxa"/><w:vAlign w:val="top"/></w:tcPr>${p}</w:tc>`).join("")}</w:tr>`).join("")}</w:tbl>`;
+  body += `<w:p><w:pPr><w:keepNext/><w:ind w:left="3953" w:right="3953"/><w:pBdr><w:bottom w:val="single" w:sz="4" w:space="1" w:color="000000"/></w:pBdr><w:spacing w:before="${layout.stampSpace * 20}" w:after="40" w:line="20" w:lineRule="exact"/></w:pPr></w:p>`;
   body += `<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="0"/></w:pPr>${run({ text: "Official Stamp of UniMondo" }, 12)}</w:p>`;
   const xml = await zip.file("word/document.xml")!.async("text");
   const section = `<w:sectPr><w:footerReference w:type="default" r:id="rId8"/><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1008" w:right="1008" w:bottom="1008" w:left="1008" w:header="360" w:footer="480" w:gutter="0"/><w:pgNumType w:start="1"/></w:sectPr>`;

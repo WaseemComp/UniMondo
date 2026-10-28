@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import JSZip from "jszip";
+import { PDFDocument } from "pdf-lib";
 import { PGlite } from "@electric-sql/pglite";
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest } from "next/server";
@@ -145,12 +146,19 @@ for (const currency of ["EUR", "PKR", "LYD", "TND", "TRY", "USD", "BDT"])
     assert(xml.includes("28-Oct-2026"));
     assert(xml.includes("<w:tbl>"));
     assert(xml.includes("w:widowControl"));
+    assert(xml.includes('w:line="240"'));
+    assert(xml.includes('w:gridCol w:w="5538"'));
     assert(!xml.includes("<w:keepLines/>"));
     assert(
       (await zip.file("word/footer1.xml").async("text")).includes("NUMPAGES"),
     );
     const pdf = await generateAgreementPdf(r);
     assert.equal(pdf.subarray(0, 5).toString(), "%PDF-");
+    assert.equal(
+      (await PDFDocument.load(pdf)).getPageCount(),
+      2,
+      `Compact standard contract in ${currency}`,
+    );
   }
 const out = path.resolve("output/agreement-refinement");
 fs.mkdirSync(out, { recursive: true });
