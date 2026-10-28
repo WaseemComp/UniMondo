@@ -26,7 +26,7 @@ Editable:
 - Copyright line with automatic `{year}`, notices/disclaimers and their inline/additional links.
 - Section headings, section order/visibility and whole-footer visibility.
 
-The bottom copyright, editable tagline and notices share a left-aligned stack with consistent spacing on desktop and mobile. Notice order, visibility and editing remain controlled by the same CMS configuration.
+Footer line spacing is compact. Copyright, the editable tagline and general notices remain left-aligned; the existing staff-sign-in disclaimer is vertically centered in the right-hand column on desktop and stacks below on mobile. Its content, links and visibility remain CMS-controlled; other notices retain their configured order.
 
 Before the first explicit save, the editor loads the exact existing footer wording, navigation and effective inherited Contact summary. No defaults are written to the database. Blank optional information is omitted as before. Existing footer text, emails, phones, addresses and link destinations are covered by preservation tests against the deployed source. Contact records remain the existing source until an explicit footer override is published; footer edits never change Contact records.
 

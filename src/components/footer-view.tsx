@@ -55,6 +55,8 @@ export function FooterView({
   year?: number;
 }) {
   if (!config.visible) return null;
+  const notices = config.notices.filter((notice) => notice.visible);
+  const staffNotice = notices.find((notice) => notice.id === "staff-notice");
   return (
     <footer className="um-footer border-t border-[#D9E2E8] bg-[#E4F1F7] text-[#2F3E46]">
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:grid-cols-2 sm:px-6 lg:grid-cols-4 lg:px-8">
@@ -81,7 +83,7 @@ export function FooterView({
                       {config.brandName}
                     </p>
                   )}
-                  <p className="mt-3 max-w-xs whitespace-pre-line text-sm leading-relaxed">
+                  <p className="mt-3 max-w-xs whitespace-pre-line text-sm leading-snug">
                     {config.description}
                   </p>
                   <div className="mt-5 flex flex-wrap gap-3">
@@ -124,7 +126,7 @@ export function FooterView({
                     {section.title}
                   </h3>
                   {section.id === "contact" ? (
-                    <ul className="mt-4 space-y-3 text-sm">
+                    <ul className="mt-4 space-y-1 text-sm leading-snug">
                       {config.contacts
                         .filter((item) => item.visible)
                         .map((item) => {
@@ -171,7 +173,7 @@ export function FooterView({
                         })}
                     </ul>
                   ) : (
-                    <ul className="mt-4 space-y-2 text-sm">
+                    <ul className="mt-4 space-y-1 text-sm leading-snug">
                       {config[section.id]
                         .filter((link) => link.visible)
                         .map((link) => (
@@ -192,15 +194,16 @@ export function FooterView({
           ))}
       </div>
       <div className="border-t border-[#D9E2E8]">
-        <div className="um-footer-bottom mx-auto max-w-7xl space-y-4 px-4 py-6 text-left text-xs sm:px-6 lg:px-8">
-          <p>{config.copyright.replaceAll("{year}", String(year))}</p>
-          <div className="max-w-3xl space-y-4 leading-relaxed">
-            {config.notices
-              .filter((item) => item.visible)
+        <div className={`um-footer-bottom mx-auto grid max-w-7xl items-center gap-x-10 gap-y-2 px-4 py-4 text-left text-xs leading-snug sm:px-6 lg:px-8 ${staffNotice ? "md:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)]" : ""}`}>
+          <div className="space-y-0.5">
+            <p>{config.copyright.replaceAll("{year}", String(year))}</p>
+            {notices
+              .filter((notice) => notice.id !== "staff-notice")
               .map((notice) => (
                 <Notice key={notice.id} notice={notice} />
               ))}
           </div>
+          {staffNotice && <div className="min-w-0 md:justify-self-end md:text-right"><Notice notice={staffNotice} /></div>}
         </div>
       </div>
     </footer>
