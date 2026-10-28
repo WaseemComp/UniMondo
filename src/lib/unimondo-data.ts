@@ -8,6 +8,9 @@ export type RegionGroup =
 
 export interface CountryDetail {
   country: string;
+  imageUrl?: string;
+  imageAlt?: string;
+  catalogue?: Record<string,unknown>;
   /** Resolved from CMS `region_groups.label` — may include non-European regions (e.g. North America). */
   regionGroup: string;
   highlighted?: boolean;
@@ -32,6 +35,7 @@ export interface Opening {
   logoText: string;
   programName: string;
   deadline: string;
+  details?: Record<string,unknown>;
   tuitionRange: string;
   logoUrl?: string | null;
   description?: string;

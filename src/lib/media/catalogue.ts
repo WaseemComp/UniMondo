@@ -46,6 +46,7 @@ export async function readImageInventory(service: SupabaseClient) {
   const sources: [string, string, MediaCategory, string][] = [
     ["cms_content_blocks", "page_slug,section_key,content,media", "general", "Website content"],
     ["site_content", "key,value,page", "general", "Website copy"],
+    ["countries", "*", "destinations", "Destinations"],
     ["featured_universities", "id,hero_image_url,logo_url", "universities", "Universities & Programs"],
     ["programs", "id,logo_url", "universities", "Programs"],
     ["success_stories", "id,profile_image_url", "stories", "Success Stories"],

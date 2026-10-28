@@ -1,3 +1,4 @@
+import { publicProgramme } from "@/lib/academic/public";
 import type { Opening } from "@/lib/unimondo-data";
 import { openings as staticOpenings } from "@/lib/unimondo-data";
 import { programRowToOpening, type ProgramRow } from "@/lib/cms/maps";
@@ -36,12 +37,12 @@ function mapLegacyRow(row: LegacyOpeningRow): Opening {
   };
 }
 
-async function loadFromPrograms(supabase: NonNullable<ReturnType<typeof createSupabaseServerClient>>): Promise<Opening[] | null> {
+async function loadFromPrograms(
+  supabase: NonNullable<ReturnType<typeof createSupabaseServerClient>>,
+): Promise<Opening[] | null> {
   const { data, error } = await supabase
     .from("programs")
-    .select(
-      "id, title, university, country, degree, intake, deadline, tuition_range, description, logo_url, logo_text, continent, region, is_published, sort_order",
-    )
+    .select("*")
     .eq("is_published", true)
     .order("sort_order", { ascending: true });
 
@@ -50,13 +51,27 @@ async function loadFromPrograms(supabase: NonNullable<ReturnType<typeof createSu
       return null;
     }
     console.error("[getOpenings] programs", error.message);
-    return null;
+    return [];
   }
-  if (!data?.length) return null;
-  return (data as ProgramRow[]).map(programRowToOpening);
+  const [countries, universities] = await Promise.all([
+    supabase.from("countries").select("*"),
+    supabase.from("featured_universities").select("*"),
+  ]);
+  if (countries.error || universities.error) return [];
+  return ((data ?? []) as ProgramRow[])
+    .filter((row) =>
+      publicProgramme(
+        row as unknown as Record<string, unknown>,
+        countries.data ?? [],
+        universities.data ?? [],
+      ),
+    )
+    .map(programRowToOpening);
 }
 
-async function loadFromLegacy(supabase: NonNullable<ReturnType<typeof createSupabaseServerClient>>): Promise<Opening[] | null> {
+async function loadFromLegacy(
+  supabase: NonNullable<ReturnType<typeof createSupabaseServerClient>>,
+): Promise<Opening[] | null> {
   const { data, error } = await supabase
     .from("program_openings")
     .select(
@@ -81,7 +96,7 @@ export async function getOpenings(): Promise<Opening[]> {
   }
 
   const fromPrograms = await loadFromPrograms(supabase);
-  if (fromPrograms?.length) {
+  if (fromPrograms !== null) {
     return fromPrograms;
   }
 

@@ -10,7 +10,7 @@ export const CMS_NAVIGATION: CmsNavItem[] = [
   { id: "overview", label: "Overview", href: "/admin/dashboard", group: "Workspace", icon: "overview" },
   { id: "home", label: "Home / Website Pages", href: "/admin/home", group: "Website", icon: "home", scope: "content", permission: "home.view", aliases: ["/admin/content/home", "/admin/content/ticker"] },
   { id: "destinations", label: "Destinations", href: "/admin/destinations", group: "Website", icon: "destinations", scope: "academic", permission: "countries.view", aliases: ["/admin/countries", "/admin/data/countries", "/admin/data/regions"] },
-  { id: "universities", label: "Universities & Programs", href: "/admin/programs", group: "Website", icon: "universities", scope: "academic", permission: "universities.view", aliases: ["/admin/universities", "/admin/data/programs", "/admin/featured-universities"] },
+  { id: "universities", label: "Universities & Programmes", href: "/admin/universities", group: "Website", icon: "universities", scope: "academic", permission: "universities.view", aliases: ["/admin/programs", "/admin/data/programs", "/admin/featured-universities"] },
   { id: "courses", label: "Language Courses", href: "/admin/courses", group: "Website", icon: "courses", scope: "academic", permission: "courses.view" },
   { id: "stories", label: "Success Stories", href: "/admin/content/success-stories", group: "Website", icon: "stories", scope: "content", permission: "blog.view" },
   { id: "media", label: "Media Library", href: "/admin/media", group: "Website", icon: "media" },

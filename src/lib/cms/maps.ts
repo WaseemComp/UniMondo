@@ -1,3 +1,5 @@
+import { parseDestinationGuide } from "@/lib/destination-guide";
+import { object, text } from "@/lib/academic/model";
 import type { CountryDetail, Opening } from "@/lib/unimondo-data";
 
 /** Use the region label stored in CMS; never remap unknown labels onto Western Europe. */
@@ -16,7 +18,10 @@ export type ProgramRow = {
   country: string;
   degree: string;
   intake: string;
-  deadline: string;
+  deadline: string | null;
+  details?: Record<string,unknown>;
+  university_id?: string | null;
+  archived_at?: string | null;
   tuition_range: string;
   description: string | null;
   logo_url: string | null;
@@ -39,7 +44,7 @@ export function programRowToOpening(row: ProgramRow): Opening {
   const deadline =
     typeof row.deadline === "string"
       ? row.deadline.slice(0, 10)
-      : new Date(row.deadline).toISOString().slice(0, 10);
+      : row.deadline ? new Date(row.deadline).toISOString().slice(0, 10) : "";
   const rawDegree = row.degree?.trim();
   const degreeLabel =
     rawDegree?.toLowerCase() === "bachelor"
@@ -61,11 +66,14 @@ export function programRowToOpening(row: ProgramRow): Opening {
     logoUrl: row.logo_url,
     description: row.description ?? "",
     degreeLevel: degreeLabel,
-    languageOfInstruction: "English",
+    languageOfInstruction: Object.hasOwn(object(row.details),"teaching_language") ? text(object(row.details).teaching_language) || "Not confirmed" : "English",
+    ...(Object.keys(object(row.details)).length ? {details:object(row.details)} : {}),
   };
 }
 
 export type CountryRow = {
+  catalogue?: unknown;
+  destination_guide?: unknown;
   name: string;
   slug: string | null;
   flag_emoji: string | null;
@@ -105,6 +113,10 @@ export function countryRowToDetail(row: CountryRow): CountryDetail {
 
   return {
     country: row.name,
+    catalogue:object(row.catalogue),
+    imageUrl:text(object(row.catalogue).image_url)||undefined,
+    imageAlt:text(object(row.catalogue).image_alt)||undefined,
+    destinationGuide:parseDestinationGuide(row.destination_guide),
     regionGroup,
     highlighted: Boolean(row.highlighted),
     whyStudyThere: why,

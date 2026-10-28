@@ -7,6 +7,7 @@ export type FeaturedProgramLine = {
 
 export type FeaturedUniversity = {
   id: string;
+  profile?: Record<string,unknown>;
   name: string;
   country: string;
   flagEmoji: string;
@@ -25,6 +26,7 @@ export type FeaturedUniversity = {
 /** Raw row from `featured_universities` (Supabase). */
 export type FeaturedUniversityRow = {
   id: string;
+  profile?: Record<string,unknown>;
   name: string;
   country: string;
   flag_emoji: string;
@@ -63,6 +65,7 @@ export function mapFeaturedUniversityRow(row: FeaturedUniversityRow): FeaturedUn
   const hero = row.hero_image_url?.trim();
   return {
     id: row.id,
+    ...(row.profile && Object.keys(row.profile).length ? {profile:row.profile} : {}),
     name: row.name,
     country: row.country,
     flagEmoji: row.flag_emoji ?? "",

@@ -1,3 +1,4 @@
+import { object,text } from "@/lib/academic/model";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { DestinationsUnified } from "@/components/destinations/destinations-unified";
@@ -24,16 +25,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     };
   }
   const desc =
-    c.description?.trim() ||
+    text(object(c.catalogue).seo_description) || c.description?.trim() ||
     (c.whyStudyThere.length > 160 ? `${c.whyStudyThere.slice(0, 157).trim()}…` : c.whyStudyThere);
   return {
-    title: `Study in ${c.country} | UniMondo Destinations`,
+    title: text(object(c.catalogue).seo_title) || `Study in ${c.country} | UniMondo Destinations`,
     description: desc,
     alternates: {
       canonical: `/destinations/${countrySlug}`,
     },
     openGraph: {
-      title: `Study in ${c.country} | UniMondo Destinations`,
+      title: text(object(c.catalogue).seo_title) || `Study in ${c.country} | UniMondo Destinations`,
       description: desc,
       url: `/destinations/${countrySlug}`,
     },

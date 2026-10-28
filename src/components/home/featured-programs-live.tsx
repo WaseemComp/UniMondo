@@ -1,5 +1,6 @@
 "use client";
 
+import { publicProgramme } from "@/lib/academic/public";
 import { useEffect, useState } from "react";
 import { featuredItems, type HomepageItem, type HomepageReferences } from "@/lib/homepage/items";
 import type { Opening } from "@/lib/unimondo-data";
@@ -22,15 +23,17 @@ async function fetchPublishedPrograms(): Promise<Opening[] | null> {
   const { data, error } = await supabase
     .from("programs")
     .select(
-      "id, title, university, country, degree, intake, deadline, tuition_range, description, logo_url, logo_text, continent, region, is_published, sort_order",
+      "*",
     )
     .eq("is_published", true)
     .order("sort_order", { ascending: true });
 
-  if (error || !data?.length) {
+  if (error) {
     return null;
   }
-  return (data as ProgramRow[]).map(programRowToOpening);
+  const [countries,universities]=await Promise.all([supabase.from("countries").select("*"),supabase.from("featured_universities").select("*")]);
+  if(countries.error||universities.error)return [];
+  return ((data??[]) as ProgramRow[]).filter(row=>publicProgramme(row as unknown as Record<string,unknown>,countries.data??[],universities.data??[])).map(programRowToOpening);
 }
 
 export function FeaturedProgramsLive({ initialOpenings, kicker, title, subtitle, ctaLabel, ctaHref, selection, references, cardOptions }: Props) {
@@ -46,7 +49,7 @@ export function FeaturedProgramsLive({ initialOpenings, kicker, title, subtitle,
 
     const refresh = async () => {
       const next = await fetchPublishedPrograms();
-      if (next?.length) setOpenings(next);
+      if (next !== null) setOpenings(next);
     };
 
     const channel = supabase
@@ -54,6 +57,8 @@ export function FeaturedProgramsLive({ initialOpenings, kicker, title, subtitle,
       .on("postgres_changes", { event: "*", schema: "public", table: "programs" }, () => {
         void refresh();
       })
+      .on("postgres_changes", { event: "*", schema: "public", table: "countries" }, () => {void refresh();})
+      .on("postgres_changes", { event: "*", schema: "public", table: "featured_universities" }, () => {void refresh();})
       .subscribe();
 
     return () => {
