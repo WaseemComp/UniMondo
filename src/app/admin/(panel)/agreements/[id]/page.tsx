@@ -37,6 +37,7 @@ export default async function EditAgreementPage({ params }: Props) {
         initialData={agreement}
         applicationId={agreement.applicationId}
         canEditDiscount={canEditDiscount}
+        canEditProtectedClauses={isSuper}
         representativeDesignation={staffIdentity(user).designation || "Authorised representative"}
         representativeName={staffIdentity(user).fullName || "UniMondo Admissions Team"}
       />

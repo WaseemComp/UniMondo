@@ -116,7 +116,7 @@ const { agreement: finalized } = await expect(PATCH(request({ status: "finalized
 assert.equal(finalized.revisionNumber, 1);
 assert.equal(finalized.financials.pricingApprovedBy, superadmin.email);
 const snapshot1 = await getAgreementRevision(initial.id, 1);
-assert.equal(snapshot1.documentSnapshot.version, "3.0");
+assert.equal(snapshot1.documentSnapshot.version, "4.0");
 assert.equal(snapshot1.documentSnapshot.sections[4].paragraphs.length, 3);
 assert.equal(snapshot1.documentSnapshot.sections[5].paragraphs.length, 6);
 globalThis.__agreementTestServices.user = staff;
@@ -171,7 +171,7 @@ console.log("PASS: SQL role/RLS checks block direct status/deletion, legacy disc
 
 // Content-only edits of an imported legacy record preserve even nonstandard stored values exactly.
 globalThis.__agreementTestServices.user = staff;
-const legacyEdit = { ...fixture(), referenceNumber: "UM/HISTORIC/1", version: 1, paymentCurrency: "EUR",
+const legacyEdit = { ...fixture(), referenceNumber: "UM/HISTORIC/1", templateVersion: "4.0", version: 1, paymentCurrency: "EUR",
   agreedExchangeRate: null, exchangeRateDate: null, discountType: historicalFinance.discountType, discountValue: historicalFinance.discountValue };
 const { agreement: legacyDraft } = await expect(PUT(request(legacyEdit), context(historicId)), 200);
 assert.deepEqual(legacyDraft.financials, historicalFinance);

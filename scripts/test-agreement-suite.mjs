@@ -238,8 +238,9 @@ async function runTests() {
     const discount = html.match(/<input[^>]*id="agreement-field-21"[^>]*>/)?.[0];
     assert(discount && discount.includes('disabled=""') === !authorized);
     const actions = renderToStaticMarkup(createElement(AgreementActions, { agreement: { ...testRecord, hasDraftRevision: true }, isSuper: authorized }));
-    assert(actions.includes("<select") === authorized);
-    assert(actions.includes(">Delete<") === authorized);
+    assert(actions.includes("Actions"));
+    assert((actions.includes("Finalize agreement") || actions.includes("Finalize revision")) === authorized);
+    assert(actions.includes(">Delete agreement<") === authorized);
     assert(actions.includes("Finalize revision") === authorized);
     const fieldset = html.match(/<fieldset[^>]*>/)?.[0];
     assert(fieldset && !fieldset.includes("disabled"), "Finalized content may be edited into a new draft");

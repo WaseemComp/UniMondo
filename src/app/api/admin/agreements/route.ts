@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const agreement = await saveAgreement({ ...body, id: undefined }, user.email || user.id);
+    const agreement = await saveAgreement({ ...body, id: undefined }, user.email || user.id, undefined, await isSuperAdmin(user));
     return NextResponse.json({ agreement }, { status: 201 });
   } catch (error) {
     return NextResponse.json(
