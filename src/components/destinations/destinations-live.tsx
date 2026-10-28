@@ -1,5 +1,6 @@
 "use client";
 
+import { publicRecord } from "@/lib/academic/public";
 import { useEffect, useState } from "react";
 import type { CountryDetail } from "@/lib/unimondo-data";
 import { countryRowToDetail } from "@/lib/cms/maps";
@@ -28,6 +29,8 @@ function mapRemoteRow(
     labelFromId != null ? { label: labelFromId } : joinLabel ? { label: joinLabel } : null;
 
   return countryRowToDetail({
+    catalogue:row.catalogue,
+    destination_guide:row.destination_guide,
     name: row.name as string,
     slug: (row.slug as string | null) ?? null,
     flag_emoji: (row.flag_emoji as string | null) ?? null,
@@ -61,20 +64,16 @@ export function DestinationsLive({ initialCountries, initialCountry }: Props) {
         supabase
           .from("countries")
           .select(
-            `
-          name, slug, flag_emoji, description, why_study, why_study_there, living_cost, living_cost_approx,
-          visa_info, popular_unis, popular_universities, highlighted, sort_order, region_group_id,
-          region_groups ( label )
-        `,
+            "*",
           )
           .order("sort_order", { ascending: true }),
       ]);
 
-      if (rgErr || error || !data?.length) return;
+      if (rgErr || error) return;
       const regionLabelById = new Map<number, string>(
         ((rgRows ?? []) as Array<{ id: number; label: string }>).map((r) => [r.id, r.label]),
       );
-      setCountries(data.map((row: Record<string, unknown>) => mapRemoteRow(row, regionLabelById)));
+      setCountries((data??[]).filter(publicRecord).map((row: Record<string, unknown>) => mapRemoteRow(row, regionLabelById)));
     };
 
     const channel = supabase

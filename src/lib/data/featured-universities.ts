@@ -1,3 +1,4 @@
+import { publicUniversity } from "@/lib/academic/public";
 import {
   FEATURED_UNIVERSITIES_FALLBACK,
   mapFeaturedUniversityRow,
@@ -31,5 +32,14 @@ export async function getFeaturedUniversities(): Promise<FeaturedUniversity[]> {
     return [];
   }
 
-  return (data as FeaturedUniversityRow[]).map(mapFeaturedUniversityRow);
+  const parents = await supabase.from("countries").select("*");
+  if (parents.error) return [];
+  return (data as FeaturedUniversityRow[])
+    .filter((row) =>
+      publicUniversity(
+        row as unknown as Record<string, unknown>,
+        parents.data ?? [],
+      ),
+    )
+    .map(mapFeaturedUniversityRow);
 }

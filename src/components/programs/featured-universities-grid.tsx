@@ -1,5 +1,6 @@
 "use client";
 
+import { UniversityDetails } from "./academic-details";
 import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -98,6 +99,7 @@ export function FeaturedUniversitiesGrid({
 
           <div className="flex flex-1 flex-col p-5 pt-4">
             <p className="text-sm leading-relaxed text-zinc-600">{uni.prestigeLine}</p>
+            <UniversityDetails profile={uni.profile}/>
 
             <div className="mt-4 space-y-2 border-t border-zinc-100 pt-4">
               <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Flagship programs</p>

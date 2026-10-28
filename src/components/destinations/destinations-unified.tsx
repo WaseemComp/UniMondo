@@ -17,6 +17,8 @@ import {
   tuitionMidpointEur,
   visaBulletPoints,
 } from "@/lib/destinations-utils";
+import { ProgrammeDetails } from "@/components/programs/academic-details";
+import { object,text } from "@/lib/academic/model";
 import type { CountryDetail, Opening } from "@/lib/unimondo-data";
 
 type Props = {
@@ -358,6 +360,10 @@ function DestinationCountryCard({
 
   return (
     <article className="flex h-full flex-col rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm transition hover:border-amber-300/60 hover:shadow-md">
+      {country.imageUrl && (
+        // eslint-disable-next-line @next/next/no-img-element -- Existing catalogue images may use external hosts.
+        <img src={country.imageUrl} alt={country.imageAlt || country.country} className="mb-4 aspect-video w-full rounded-xl object-cover"/>
+      )}
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="font-[family-name:var(--font-heading)] text-xl font-semibold text-zinc-900">
@@ -502,6 +508,8 @@ function DestinationDetailSection({
                 <div>
                   <p className="font-semibold text-zinc-900">Why study in {country.country}</p>
                   <p className="mt-1">{country.whyStudyThere}</p>
+                  {text(object(country.catalogue).key_facts)&&<p className="mt-3 whitespace-pre-line">{text(object(country.catalogue).key_facts)}</p>}
+                  {text(object(country.catalogue).eligibility)&&<div className="mt-3"><p className="font-semibold text-zinc-900">Eligibility guidance</p><p className="mt-1 whitespace-pre-line">{text(object(country.catalogue).eligibility)}</p></div>}
                 </div>
                 <div>
                   <p className="font-semibold text-zinc-900">Education system snapshot</p>
@@ -690,21 +698,22 @@ function DestinationDetailSection({
                   </div>
                   <div className="flex justify-between gap-2">
                     <dt>Intake</dt>
-                    <dd className="font-medium text-zinc-800">{o.intake}</dd>
+                    <dd className="font-medium text-zinc-800">{o.intake || "Not confirmed"}</dd>
                   </div>
                   <div className="flex justify-between gap-2">
                     <dt>Deadline</dt>
-                    <dd className="font-medium text-zinc-800">{o.deadline}</dd>
+                    <dd className="font-medium text-zinc-800">{o.deadline || "Not confirmed"}</dd>
                   </div>
                   <div className="flex justify-between gap-2">
                     <dt>Tuition</dt>
-                    <dd className="font-medium text-zinc-800">{o.tuitionRange}</dd>
+                    <dd className="font-medium text-zinc-800">{o.tuitionRange || "Not confirmed"}</dd>
                   </div>
                   <div className="flex justify-between gap-2">
                     <dt>Language</dt>
                     <dd className="font-medium text-zinc-800">{o.languageOfInstruction ?? "English"}</dd>
                   </div>
                 </dl>
+                <ProgrammeDetails details={o.details} deadline={o.deadline}/>
                 <Link
                   href={`/apply?country=${encodeURIComponent(o.country)}&program=${encodeURIComponent(o.programName)}`}
                   className="mt-5 inline-flex justify-center rounded-full bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-700"

@@ -1,5 +1,6 @@
 "use client";
 
+import { ProgrammeDetails } from "@/components/programs/academic-details";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { FeaturedUniversitiesGrid } from "@/components/programs/featured-universities-grid";
@@ -111,9 +112,10 @@ export function OpeningsBoard({ openings, featuredUniversities }: Props) {
           </div>
 
           <h3 className="text-base font-semibold text-[#26343B]">{opening.programName}</h3>
-          <p className="mt-2 text-sm text-[#4D5F64]">Intake: {opening.intake}</p>
-          <p className="text-sm text-[#4D5F64]">Deadline: {opening.deadline}</p>
-          <p className="text-sm font-medium text-[#7D673A]">Tuition: {opening.tuitionRange}</p>
+          <p className="mt-2 text-sm text-[#4D5F64]">Intake: {opening.intake || "Not confirmed"}</p>
+          <p className="text-sm text-[#4D5F64]">Deadline: {opening.deadline || "Not confirmed"}</p>
+          <ProgrammeDetails details={opening.details} deadline={opening.deadline}/>
+          <p className="text-sm font-medium text-[#7D673A]">Tuition: {opening.tuitionRange || "Not confirmed"}</p>
 
           <div className="mt-5">
             <Link
