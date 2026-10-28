@@ -54,7 +54,7 @@ export function FeaturedUniversitiesGrid({
               className="object-cover transition duration-500 group-hover:scale-[1.03]"
               sizes="(max-width:640px) 100vw, (max-width:1024px) 50vw, 33vw"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#0a1628]/88 via-[#0a1628]/25 to-transparent" />
+            <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
             <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between gap-2">
               <div className="flex min-w-0 items-center gap-2">
                 {uni.logoUrl ? (

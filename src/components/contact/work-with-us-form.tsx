@@ -163,7 +163,7 @@ export function WorkWithUsForm({ layout = "section", onSuccess }: FormProps) {
           </div>
         ) : null}
 
-      <Button type="submit" disabled={pending} className="w-full bg-amber-600 text-white hover:bg-amber-500 sm:w-auto">
+      <Button type="submit" disabled={pending} className="w-full bg-[#244B50] text-white hover:bg-[#1D3E42] sm:w-auto">
         {pending ? "Sending…" : "Submit inquiry"}
       </Button>
     </form>

@@ -32,7 +32,7 @@ function AnimatedStat({ value, suffix, label, id }: { value: number; suffix: str
   if (!value || value <= 0) return null;
 
   return (
-    <div ref={ref} data-home-item={id ? `why_stats:${id}` : undefined} className="rounded-xl border border-[#E2DFD8] bg-white px-6 py-6 text-center shadow-sm">
+    <div ref={ref} data-home-item={id ? `why_stats:${id}` : undefined} className="rounded-xl border border-[#D9E2E8] bg-white px-6 py-6 text-center shadow-sm">
       <p className="font-[family-name:var(--font-editorial)] text-4xl font-bold text-[#244B50] md:text-5xl">
         {n}
         <span className="text-[#8A7345]">{suffix}</span>
@@ -57,11 +57,11 @@ export function WhyUniMondo({
 
 
   return (
-    <section className="relative overflow-hidden bg-[#E6EEE8]/40 py-20 sm:py-28 border-y border-[#E2DFD8]/70">
+    <section className="relative overflow-hidden bg-[#E4F1F7]/40 py-20 sm:py-28 border-y border-[#D9E2E8]/70">
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#7D673A]">{kicker}</p>
-          <h2 className="mt-3 font-[family-name:var(--font-editorial)] text-3xl font-bold tracking-tight text-[#26343B] sm:text-4xl">
+          <h2 className="mt-3 font-[family-name:var(--font-editorial)] text-3xl font-bold tracking-tight text-[#2F3E46] sm:text-4xl">
             {title}
           </h2>
           <p className="mt-4 text-base leading-relaxed text-[#4D5F64] sm:text-lg">
@@ -79,12 +79,12 @@ export function WhyUniMondo({
               viewport={{ once: true, margin: "-40px" }}
               transition={{ delay: i * 0.05, duration: 0.4 }}
               whileHover={{ y: -3, transition: { duration: 0.2 } }}
-              className="group rounded-xl border border-[#E2DFD8] bg-white p-6 shadow-sm transition hover:shadow-md"
+              className="group rounded-xl border border-[#D9E2E8] bg-white p-6 shadow-sm transition hover:shadow-md"
             >
               <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-[#244B50]/10 text-[#244B50] transition group-hover:bg-[#244B50]/15">
                 <HomepageItemIcon name={f.icon} className="h-5 w-5" />
               </div>
-              <h3 className="mt-4 text-base font-semibold text-[#26343B]">{f.title}</h3>
+              <h3 className="mt-4 text-base font-semibold text-[#2F3E46]">{f.title}</h3>
               <p className="mt-2 text-sm leading-relaxed text-[#4D5F64]">{f.description}</p>
             </motion.article>
           ))}

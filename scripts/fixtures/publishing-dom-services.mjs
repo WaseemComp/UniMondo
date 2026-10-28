@@ -39,3 +39,5 @@ export function getSupabaseBrowserClient() {
 export async function readContentRevision(input) {
   return globalThis.__publishingActions.readContentRevision(input);
 }
+
+export async function saveFooterDraft(input) { return globalThis.__publishingActions.saveFooterDraft(input); }

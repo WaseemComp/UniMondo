@@ -54,24 +54,24 @@ export function WhyEurope({
             sizes="100vw"
             quality={75}
           />
-          <div className="absolute inset-0 bg-[#1A2E3A]/92" />
+          <div className="absolute inset-0 bg-[#244B50]/10" />
         </motion.div>
 
         <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20 sm:py-28">
           <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#C9AB76]">{c.kicker}</p>
+            <div className="um-photo-panel">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#244B50]">{c.kicker}</p>
               <h2
                 id="why-europe-heading"
-                className="mt-3 font-[family-name:var(--font-editorial)] text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-5xl"
+                className="mt-3 font-[family-name:var(--font-editorial)] text-3xl font-bold tracking-tight text-[#2F3E46] sm:text-4xl lg:text-5xl"
               >
                 {c.title}
               </h2>
-              <p className="mt-5 text-lg leading-relaxed text-[#E6EEE8]/90">
+              <p className="mt-5 text-lg leading-relaxed text-[#2F3E46]">
                 {c.subtitle}
               </p>
               <dl className="mt-8 grid gap-4 sm:grid-cols-2">
-                {publicItems(facts ?? [newHomepageItem("default-fact-0", {label: c.quickFact1Label, description: c.quickFact1Value}), newHomepageItem("default-fact-1", {label: c.quickFact2Label, description: c.quickFact2Value})]).map(fact => <div key={fact.id} data-home-item={`europe_facts:${fact.id}`} className="rounded-xl border border-white/15 bg-white/10 px-4 py-3 backdrop-blur-sm"><dt className="text-xs uppercase tracking-wide text-[#C9AB76]">{fact.label}</dt><dd className="mt-1 text-sm font-medium text-white">{fact.description}</dd></div>)}
+                {publicItems(facts ?? [newHomepageItem("default-fact-0", {label: c.quickFact1Label, description: c.quickFact1Value}), newHomepageItem("default-fact-1", {label: c.quickFact2Label, description: c.quickFact2Value})]).map(fact => <div key={fact.id} data-home-item={`europe_facts:${fact.id}`} className="um-photo-card rounded-xl border border-[#D9E2E8] bg-[#F4F3EF]/95 px-4 py-3 backdrop-blur-sm"><dt className="text-xs uppercase tracking-wide text-[#244B50]">{fact.label}</dt><dd className="mt-1 text-sm font-medium text-[#2F3E46]">{fact.description}</dd></div>)}
               </dl>
             </div>
 
@@ -84,12 +84,12 @@ export function WhyEurope({
                   whileInView={{ opacity: 1, x: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.08 }}
-                  className="flex gap-4 rounded-xl border border-white/15 bg-white/10 p-4 backdrop-blur-md"
+                  className="flex gap-4 um-photo-card rounded-xl border border-[#D9E2E8] bg-[#F4F3EF]/95 p-4 backdrop-blur-md"
                 >
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-[#C9AB76]/20 text-[#C9AB76]">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-[#E4F1F7] text-[#244B50]">
                     <HomepageItemIcon name={b.icon} className="h-5 w-5" />
                   </div>
-                  <p className="text-sm leading-relaxed text-[#E6EEE8] sm:text-base">{b.description}</p>
+                  <p className="text-sm leading-relaxed text-[#2F3E46] sm:text-base">{b.description}</p>
                 </motion.li>
               ))}
             </ul>

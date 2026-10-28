@@ -94,7 +94,7 @@ export function JoinUsForm({ layout = "section", onSuccess }: FormProps) {
           <Input id="ju-cur" value={currentLocation} onChange={(e) => setCurrentLocation(e.target.value)} className="mt-1.5" />
         </div>
 
-      <Button type="submit" disabled={pending} className="w-full bg-[#0a1628] text-white hover:bg-[#0a1628]/90 sm:w-auto">
+      <Button type="submit" disabled={pending} className="w-full bg-[#244B50] text-white hover:bg-[#1D3E42] sm:w-auto">
         {pending ? "Submitting…" : "Submit"}
       </Button>
     </form>

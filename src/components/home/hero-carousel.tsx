@@ -45,7 +45,7 @@ export function HeroCarousel({
   };
 
   return (
-    <section className="relative min-h-[100svh] min-h-[100dvh] w-full overflow-hidden bg-[#1A2E3A]">
+    <section className="relative min-h-[100svh] min-h-[100dvh] w-full overflow-hidden bg-[#F4F3EF]">
       <AnimatePresence mode="wait">
         <motion.div
           key={slide.src}
@@ -68,8 +68,8 @@ export function HeroCarousel({
       </AnimatePresence>
 
       {/* Gradient overlays */}
-      <div className="absolute inset-0 bg-gradient-to-t from-[#1A2E3A] via-[#1A2E3A]/70 to-[#1A2E3A]/40" />
-      <div className="absolute inset-0 bg-gradient-to-r from-[#1A2E3A]/85 via-transparent to-[#1A2E3A]/45" />
+      <div className="absolute inset-0 bg-[#244B50]/15" />
+      <div className="absolute inset-0 bg-gradient-to-t from-[#F4F3EF]/40 via-transparent to-transparent" />
 
       {/* Content */}
       <div className="relative z-10 flex min-h-[100svh] min-h-[100dvh] flex-col justify-end pb-24 pt-24 sm:pb-32 sm:justify-center sm:pb-0">
@@ -78,20 +78,20 @@ export function HeroCarousel({
             initial={{ opacity: 0, y: 32 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.15 }}
-            className="max-w-3xl"
+            className="um-photo-panel max-w-3xl"
           >
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#C9AB76]">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#244B50]">
               {slide.eyebrow ?? copy.eyebrow ?? HERO_DEFAULTS.eyebrow}
             </p>
-            <h1 className="mt-4 font-[family-name:var(--font-editorial)] text-4xl font-normal leading-[1.08] tracking-tight text-white sm:text-5xl md:text-6xl lg:text-7xl">
+            <h1 className="mt-4 font-[family-name:var(--font-editorial)] text-4xl font-normal leading-[1.08] tracking-tight text-[#2F3E46] sm:text-5xl md:text-6xl lg:text-7xl">
               {effectiveCopy.title}
             </h1>
-            <p className="mt-5 max-w-xl text-lg leading-relaxed text-[#E6EEE8]/95 sm:text-xl">{effectiveCopy.subtitle}</p>
+            <p className="mt-5 max-w-xl text-lg leading-relaxed text-[#2F3E46] sm:text-xl">{effectiveCopy.subtitle}</p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
               <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                 <Link
                   href={slide.primaryHref ?? copy.primaryHref ?? HERO_DEFAULTS.primaryHref}
-                  className="inline-flex w-full items-center justify-center rounded-lg bg-[#C9AB76] px-8 py-3.5 text-sm font-semibold text-[#1A2E3A] shadow-lg shadow-black/20 transition hover:bg-[#B8996A] sm:w-auto"
+                  className="inline-flex w-full items-center justify-center rounded-lg bg-[#244B50] px-8 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#1D3E42] sm:w-auto"
                 >
                   {effectiveCopy.ctaExplore}
                 </Link>
@@ -99,13 +99,13 @@ export function HeroCarousel({
               <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                 <Link
                   href={slide.secondaryHref ?? copy.secondaryHref ?? HERO_DEFAULTS.secondaryHref}
-                  className="inline-flex w-full items-center justify-center rounded-lg border border-white/25 bg-white/10 px-8 py-3.5 text-sm font-semibold text-white backdrop-blur-md transition hover:bg-white/20 sm:w-auto"
+                  className="inline-flex w-full items-center justify-center rounded-lg border border-[#244B50]/30 bg-white px-8 py-3.5 text-sm font-semibold text-[#244B50] transition hover:bg-[#E4F1F7] sm:w-auto"
                 >
                   {effectiveCopy.ctaApply}
                 </Link>
               </motion.div>
             </div>
-            <p className="mt-6 text-sm text-[#E6EEE8]/80">{slide.line}</p>
+            <p className="mt-6 text-sm text-[#4D5F64]">{slide.line}</p>
           </motion.div>
         </div>
       </div>
@@ -115,7 +115,7 @@ export function HeroCarousel({
         <button
           type="button"
           onClick={prev}
-          className="rounded-lg border border-white/20 bg-black/30 p-2 text-white backdrop-blur-md transition hover:bg-black/50"
+          className="rounded-lg border border-[#D9E2E8] bg-[#F4F3EF]/95 p-2 text-[#244B50] transition hover:bg-white"
           aria-label="Previous slide"
         >
           <ChevronLeft className="h-5 w-5" />
@@ -126,7 +126,7 @@ export function HeroCarousel({
               key={_.src}
               type="button"
               onClick={() => setIndex(i)}
-              className={`h-2 rounded-full transition-all ${i === index ? "w-8 bg-[#C9AB76]" : "w-2 bg-white/40 hover:bg-white/60"}`}
+              className={`h-2 rounded-full transition-all ${i === index ? "w-8 bg-[#244B50]" : "w-2 bg-white border border-[#244B50] hover:bg-[#E4F1F7]"}`}
               aria-label={`Go to slide ${i + 1}`}
             />
           ))}
@@ -134,7 +134,7 @@ export function HeroCarousel({
         <button
           type="button"
           onClick={next}
-          className="rounded-lg border border-white/20 bg-black/30 p-2 text-white backdrop-blur-md transition hover:bg-black/50"
+          className="rounded-lg border border-[#D9E2E8] bg-[#F4F3EF]/95 p-2 text-[#244B50] transition hover:bg-white"
           aria-label="Next slide"
         >
           <ChevronRight className="h-5 w-5" />

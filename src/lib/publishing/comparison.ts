@@ -8,6 +8,8 @@ export type ContentDifference = {
   image: boolean;
 };
 const labels: Record<string, string> = {
+  brandName: "Company name", logoUrl: "Branding image", logoAlt: "Image description",
+  copyright: "Copyright line", href: "Link destination", kind: "Contact type", text: "Notice text",
   is_published: "Public visibility",
   is_active: "Section visibility",
   archived_at: "Archived",

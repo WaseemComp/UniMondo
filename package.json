@@ -23,7 +23,10 @@
     "test:academic:dom": "node scripts/run-academic-dom-tests.mjs",
     "test:academic:sql": "node scripts/test-academic-migration.mjs",
     "test:publishing": "node scripts/run-publishing-tests.mjs",
-    "test:publishing:dom": "node scripts/run-publishing-dom-tests.mjs"
+    "test:publishing:dom": "node scripts/run-publishing-dom-tests.mjs",
+    "test:footer": "node scripts/run-footer-tests.mjs",
+    "test:footer:dom": "node scripts/run-publishing-dom-tests.mjs --footer",
+    "test:public:refinement": "node scripts/test-public-refinement.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.3.0",

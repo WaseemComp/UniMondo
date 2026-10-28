@@ -87,9 +87,10 @@ export async function getContactOffices(): Promise<ContactOfficeRow[]> {
   return data.map((r) => parseOfficeRow(r as Record<string, unknown>));
 }
 
-export async function getContactPageData(): Promise<ContactPageData> {
+export async function getContactPageData(strict = false): Promise<ContactPageData> {
   const supabase = createSupabaseServerClient();
   if (!supabase) {
+    if (strict) throw new Error("Existing contact details are unavailable. No footer draft was saved.");
     return { offices: [], addresses: [], phones: [], emails: [] };
   }
 
@@ -102,6 +103,8 @@ export async function getContactPageData(): Promise<ContactPageData> {
     supabase.from("contact_phones").select("id, label, number, kind, sort_order").order("sort_order", { ascending: true }),
     supabase.from("contact_emails").select("id, label, email, sort_order").order("sort_order", { ascending: true }),
   ]);
+
+  if (strict && [officesRes, addr, phone, email].some(result => result.error && !["42P01", "PGRST205"].includes(result.error.code))) throw new Error("Existing contact details could not be verified. Reload before saving a footer draft.");
 
   const offices =
     officesRes.error || !officesRes.data
@@ -128,7 +131,7 @@ function pickEmail(emails: OfficeEmail[], matcher: (e: string) => boolean): stri
 }
 
 /** Footer: head + branch lines, main phone, hello + admissions addresses. */
-export async function getContactFooterSummary(): Promise<{
+export async function getContactFooterSummary(strict = false): Promise<{
   headAddressShort: string | null;
   branchAddressShort: string | null;
   primaryPhone: string | null;
@@ -138,7 +141,7 @@ export async function getContactFooterSummary(): Promise<{
   const defaultHello = "hello@unimondo.com";
   const defaultAdm = "admissions@unimondo.com";
 
-  const data = await getContactPageData();
+  const data = await getContactPageData(strict);
   const { offices, addresses, phones: legacyPhones, emails: legacyEmails } = data;
 
   if (offices.length > 0) {

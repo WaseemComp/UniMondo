@@ -70,7 +70,7 @@ export function ContactOfficesSection({ offices }: Props) {
                 <ul className="space-y-2">
                   {o.phones.map((p, idx) => (
                     <li key={`${p.number}-${idx}`} className="flex gap-3">
-                      <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#0a1628]/90 text-amber-400">
+                      <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#E4F1F7] text-[#244B50]">
                         <Phone className="h-5 w-5" aria-hidden />
                       </span>
                       <div>

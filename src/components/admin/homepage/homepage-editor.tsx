@@ -232,7 +232,8 @@ export function HomepageEditor({
         eyebrow="WEBSITE / HOME"
         title="Homepage editor"
         description="Shape your homepage one section at a time, with the content your visitors actually see."
-        actions={
+        actions={<>
+          <a href="/admin/content/footer" className="cms-button-secondary">Website Pages / Footer</a>
           <a
             href="/"
             target="_blank"
@@ -241,7 +242,7 @@ export function HomepageEditor({
           >
             View public homepage
             <ArrowUpRight size={15} aria-hidden />
-          </a>
+          </a></>
         }
       />
       <WorkflowPanel

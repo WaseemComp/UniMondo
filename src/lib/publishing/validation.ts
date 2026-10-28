@@ -1,3 +1,4 @@
+import { footerSchema } from "@/lib/footer/model";
 import { slugifyCountryName } from "@/lib/destinations-utils";
 import { academicDraft } from "@/lib/academic/draft";
 import {
@@ -44,6 +45,11 @@ export async function validateProposed(
     for (const row of rows)
       if (!belongs(resource, table, row))
         throw new Error("Cross-document changes are not allowed.");
+  if (resource.type === "home" && resource.key === "footer") {
+    const rows = rowsFor(payload, "cms_content_blocks"), configurations = rows.filter(row => row.block_key === "configuration");
+    if (configurations.length !== 1 || rows.some(row => row.block_key !== "configuration")) throw new Error("Choose one valid footer configuration.");
+    footerSchema.parse((configurations[0].content as {footer?:unknown})?.footer);
+  }
   const service = publishingService();
   if (resource.type !== "home") {
     const table =
@@ -292,7 +298,7 @@ export async function validateProposed(
   const walk = (value: unknown, key: string, visit: (url: string) => void) => {
     if (
       typeof value === "string" &&
-      /^(?:imageUrl|hero_image_url|logo_url|profile_image_url|image_url|imageSrc|src|background_image_url)$/i.test(
+      /^(?:logoUrl|imageUrl|hero_image_url|logo_url|profile_image_url|image_url|imageSrc|src|background_image_url)$/i.test(
         key.split(".").at(-1) ?? "",
       ) &&
       value

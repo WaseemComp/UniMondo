@@ -33,11 +33,11 @@ export function SuccessStoriesSection({ stories, copy = SECTION_DEFAULTS.success
   const roleLine = [s.program, s.university].filter(Boolean).join(" · ");
 
   return (
-    <section className="bg-white py-20 sm:py-28 border-b border-[#E2DFD8]">
+    <section className="bg-white py-20 sm:py-28 border-b border-[#D9E2E8]">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#7D673A]">{copy.kicker ?? SECTION_DEFAULTS.success_stories.kicker}</p>
-          <h2 className="mt-3 font-[family-name:var(--font-editorial)] text-3xl font-bold tracking-tight text-[#26343B] sm:text-4xl">
+          <h2 className="mt-3 font-[family-name:var(--font-editorial)] text-3xl font-bold tracking-tight text-[#2F3E46] sm:text-4xl">
             {copy.title ?? SECTION_DEFAULTS.success_stories.title}
           </h2>
         </div>
@@ -51,7 +51,7 @@ export function SuccessStoriesSection({ stories, copy = SECTION_DEFAULTS.success
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -24 }}
               transition={{ duration: 0.35 }}
-              className="relative overflow-hidden rounded-2xl border border-[#E2DFD8] bg-[#F8F7F3] p-8 shadow-sm sm:p-10"
+              className="relative overflow-hidden rounded-2xl border border-[#D9E2E8] bg-[#F4F3EF] p-8 shadow-sm sm:p-10"
             >
               <Quote className="absolute right-8 top-8 h-16 w-16 text-[#C9AB76]/25" aria-hidden />
               <div className="flex flex-col gap-8 md:flex-row md:items-center">
@@ -60,7 +60,7 @@ export function SuccessStoriesSection({ stories, copy = SECTION_DEFAULTS.success
                   {s.profile_image_url && <img src={s.profile_image_url} alt="" className="h-full w-full object-cover" />}
                 </div>
                 <div className="flex-1 text-center md:text-left">
-                  <p className="font-[family-name:var(--font-editorial)] text-xl italic leading-relaxed text-[#26343B] sm:text-2xl">
+                  <p className="font-[family-name:var(--font-editorial)] text-xl italic leading-relaxed text-[#2F3E46] sm:text-2xl">
                     &ldquo;{s.testimonial}&rdquo;
                   </p>
                   <p className="mt-5 font-semibold text-[#244B50]">{s.full_name}</p>
@@ -75,7 +75,7 @@ export function SuccessStoriesSection({ stories, copy = SECTION_DEFAULTS.success
               <button
                 type="button"
                 onClick={prev}
-                className="rounded-lg border border-[#E2DFD8] bg-white p-2 text-[#244B50] shadow-2xs transition hover:bg-[#F8F7F3]"
+                className="rounded-lg border border-[#D9E2E8] bg-white p-2 text-[#244B50] shadow-2xs transition hover:bg-[#F4F3EF]"
                 aria-label="Previous story"
               >
                 <ChevronLeft className="h-5 w-5" />
@@ -86,7 +86,7 @@ export function SuccessStoriesSection({ stories, copy = SECTION_DEFAULTS.success
                     key={st.id}
                     type="button"
                     onClick={() => setI(idx)}
-                    className={`h-2 rounded-full transition-all ${idx === i ? "w-8 bg-[#244B50]" : "w-2 bg-[#E2DFD8]"}`}
+                    className={`h-2 rounded-full transition-all ${idx === i ? "w-8 bg-[#244B50]" : "w-2 bg-[#D9E2E8]"}`}
                     aria-label={`Story ${idx + 1}`}
                   />
                 ))}
@@ -94,7 +94,7 @@ export function SuccessStoriesSection({ stories, copy = SECTION_DEFAULTS.success
               <button
                 type="button"
                 onClick={next}
-                className="rounded-lg border border-[#E2DFD8] bg-white p-2 text-[#244B50] shadow-2xs transition hover:bg-[#F8F7F3]"
+                className="rounded-lg border border-[#D9E2E8] bg-white p-2 text-[#244B50] shadow-2xs transition hover:bg-[#F4F3EF]"
                 aria-label="Next story"
               >
                 <ChevronRight className="h-5 w-5" />

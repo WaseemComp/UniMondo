@@ -15,11 +15,11 @@ export default function CoursesPage() {
   const t = coursesPageCopy;
 
   return (
-    <main className="min-w-0 bg-[#F8F7F3]">
-      <section className="border-b border-[#E2DFD8] bg-[#1A2E3A] px-4 py-14 sm:px-6 lg:px-8 lg:py-20">
+    <main className="min-w-0 bg-[#F4F3EF]">
+      <section className="border-b border-[#D9E2E8] bg-[#E4F1F7] px-4 py-14 sm:px-6 lg:px-8 lg:py-20">
         <div className="mx-auto max-w-4xl text-center">
-          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[#C9AB76]">{t.kicker}</p>
-          <h1 className="mt-4 font-[family-name:var(--font-editorial)] text-3xl font-normal tracking-tight text-white sm:text-4xl md:text-5xl">
+          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[#244B50]">{t.kicker}</p>
+          <h1 className="mt-4 font-[family-name:var(--font-editorial)] text-3xl font-normal tracking-tight text-[#2F3E46] sm:text-4xl md:text-5xl">
             {t.heroTitle}
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-slate-300">{t.heroSubtitle}</p>
@@ -42,7 +42,7 @@ export default function CoursesPage() {
         </div>
 
         <section className="mt-14 grid gap-10 lg:grid-cols-2">
-          <div className="rounded-2xl border border-[#E2DFD8] bg-white p-8 shadow-sm">
+          <div className="rounded-2xl border border-[#D9E2E8] bg-white p-8 shadow-sm">
             <h2 className="font-[family-name:var(--font-editorial)] text-2xl font-normal text-[#244B50]">{t.whyTitle}</h2>
             <p className="mt-3 text-sm leading-6 text-[#4D5F64]">{t.whyText}</p>
             <ul className="mt-5 list-inside list-disc space-y-2 text-sm text-[#4D5F64]">
@@ -52,7 +52,7 @@ export default function CoursesPage() {
             </ul>
           </div>
 
-          <div className="rounded-2xl border border-[#E2DFD8] bg-white p-8 shadow-sm">
+          <div className="rounded-2xl border border-[#D9E2E8] bg-white p-8 shadow-sm">
             <h2 className="font-[family-name:var(--font-editorial)] text-2xl font-normal text-[#244B50]">{t.howTitle}</h2>
             {t.howIntro ? <p className="mt-3 text-sm leading-6 text-[#4D5F64]">{t.howIntro}</p> : null}
             <ol className="mt-5 space-y-3 text-sm text-[#4D5F64]">
@@ -65,7 +65,7 @@ export default function CoursesPage() {
           </div>
         </section>
 
-        <section className="mt-14 rounded-2xl border border-[#C9AB76]/40 bg-[#E6EEE8] p-8 text-center shadow-sm">
+        <section className="mt-14 rounded-2xl border border-[#C9AB76]/40 bg-[#E4F1F7] p-8 text-center shadow-sm">
           <h2 className="font-[family-name:var(--font-editorial)] text-2xl font-normal text-[#244B50] sm:text-3xl">{t.finalTitle}</h2>
           <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-[#4D5F64]">{t.finalText}</p>
           <p className="mx-auto mt-3 max-w-2xl text-sm font-medium text-[#244B50]">{t.businessLine}</p>
@@ -92,7 +92,7 @@ function CourseCard({
 }) {
   const t = coursesPageCopy.cards[courseKey];
   return (
-    <article className="flex flex-col justify-between rounded-2xl border border-[#E2DFD8] bg-white p-6 shadow-sm transition hover:shadow-md">
+    <article className="flex flex-col justify-between rounded-2xl border border-[#D9E2E8] bg-white p-6 shadow-sm transition hover:shadow-md">
       <div>
         <h3 className="font-[family-name:var(--font-editorial)] text-2xl font-normal text-[#244B50]">{t.title}</h3>
         <p className="mt-3 text-sm leading-6 text-[#4D5F64]">{t.description}</p>
@@ -102,7 +102,7 @@ function CourseCard({
           ))}
         </ul>
       </div>
-      <div className="mt-6 pt-4 border-t border-[#E2DFD8]">
+      <div className="mt-6 pt-4 border-t border-[#D9E2E8]">
         <a
           href={href}
           className="inline-flex rounded-full bg-[#244B50] px-5 py-2 text-sm font-semibold text-white transition hover:bg-[#1D3E42]"

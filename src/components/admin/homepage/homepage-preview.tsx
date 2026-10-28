@@ -11,7 +11,7 @@ import { safeImage } from "@/lib/homepage/validation";
 const FRAME_DOCUMENT = '<!doctype html><html lang="en"><head><meta name="viewport" content="width=device-width, initial-scale=1"></head><body><div id="section-preview"></div></body></html>';
 
 /** Real components in an isolated document: viewport breakpoints and public fonts stay accurate. */
-function PreviewFrame({ mode, children, onSelectItem, selectedItem }: { mode: "desktop" | "mobile"; children: ReactNode; onSelectItem?: (id:string)=>void; selectedItem?:string }) {
+function PreviewFrame({ mode, children, onSelectItem, selectedItem, label = "homepage section" }: { label?: string; mode: "desktop" | "mobile"; children: ReactNode; onSelectItem?: (id:string)=>void; selectedItem?:string }) {
   const container = useRef<HTMLDivElement>(null);
   const [frameDocument, setFrameDocument] = useState<Document | null>(null);
   const [width, setWidth] = useState(400);
@@ -34,7 +34,7 @@ function PreviewFrame({ mode, children, onSelectItem, selectedItem }: { mode: "d
     decorate(); const observer = new MutationObserver(decorate); observer.observe(frameDocument.body,{childList:true,subtree:true}); return () => observer.disconnect();
   }, [frameDocument, onSelectItem, selectedItem, children]);
   return <div ref={container} className="hp-preview-frame-wrap" style={{ height: viewportHeight * scale }}>
-    <iframe title={`${mode === "desktop" ? "Desktop" : "Mobile"} homepage section preview`} className="hp-preview-frame" tabIndex={-1} sandbox="allow-same-origin" srcDoc={FRAME_DOCUMENT}
+    <iframe title={`${mode === "desktop" ? "Desktop" : "Mobile"} ${label} preview`} className="hp-preview-frame" tabIndex={0} sandbox="allow-same-origin" srcDoc={FRAME_DOCUMENT}
       style={{ width: viewportWidth, height: viewportHeight, transform: `scale(${scale})`, left: Math.max(0, (width - viewportWidth * scale) / 2) }}
       onLoad={event => {
         const doc = event.currentTarget.contentDocument;
@@ -61,16 +61,16 @@ export function HomepageSectionRendering({section,data,slide,selectedItem}:{sect
   return <HomepageSection section={section} data={renderData} slide={section==="hero"?slide:undefined} selectedItem={selectedItem} preview/>;
 }
 
-export function HomepagePreview({ children, dirty, hidden, onSelectItem, selectedItem }: { children: ReactNode; dirty: boolean; hidden: boolean; onSelectItem?:(id:string)=>void; selectedItem?:string }) {
+export function HomepagePreview({ children, dirty, hidden, onSelectItem, selectedItem, label = "homepage section", hiddenMessage }: { label?: string; hiddenMessage?: string; children: ReactNode; dirty: boolean; hidden: boolean; onSelectItem?:(id:string)=>void; selectedItem?:string }) {
   const [mode, setMode] = useState<"desktop" | "mobile">("desktop");
   const dialog = useRef<HTMLDialogElement>(null);
   const modes = <div className="hp-preview-modes" role="group" aria-label="Preview device"><button type="button" aria-pressed={mode === "desktop"} onClick={() => setMode("desktop")}><Monitor size={15} aria-hidden />Desktop</button><button type="button" aria-pressed={mode === "mobile"} onClick={() => setMode("mobile")}><Smartphone size={15} aria-hidden />Mobile</button></div>;
   return <aside className="hp-preview-panel" aria-label="Live section preview"><div className="hp-panel-heading"><div><p className="cms-eyebrow">LIVE PREVIEW</p><h2>Your website, as you edit</h2></div><button type="button" className="cms-icon-button" aria-label="Expand preview" onClick={() => dialog.current?.showModal()}><Expand size={17} /></button></div>
     <div className="hp-preview-toolbar">{modes}<span className={`hp-preview-state ${dirty ? "is-unsaved" : ""}`}>{dirty ? "Unsaved preview" : "Current content"}</span></div>
-    {hidden && <p className="hp-preview-note">This slide is hidden. Preview shows how it would look if made visible.</p>}
-    <PreviewFrame mode={mode} onSelectItem={onSelectItem} selectedItem={selectedItem}>{children}</PreviewFrame>
+    {hidden && <p className="hp-preview-note">{hiddenMessage ?? "This slide is hidden. Preview shows how it would look if made visible."}</p>}
+    <PreviewFrame label={label} mode={mode} onSelectItem={onSelectItem} selectedItem={selectedItem}>{children}</PreviewFrame>
     <button type="button" className="hp-edit-jump" onClick={() => document.querySelector(".hp-fields-panel")?.scrollIntoView({ behavior: "smooth", block: "start" })}>Back to editing</button>
     <p className="hp-preview-footnote">Actual website components · {mode === "desktop" ? "1120 × 800" : "390 × 844"} viewport. Links and forms are disabled. Select an editable item or use the item list.</p>
-    <dialog ref={dialog} className="hp-expanded-preview" aria-labelledby="hp-expanded-title"><div className="hp-panel-heading"><h2 id="hp-expanded-title">Homepage section preview</h2><button type="button" className="cms-icon-button" onClick={() => dialog.current?.close()} aria-label="Close expanded preview"><X size={20} /></button></div><div className="hp-preview-toolbar">{modes}<span className="hp-preview-state">{dirty ? "Unsaved preview" : "Current content"}</span></div><PreviewFrame mode={mode} onSelectItem={onSelectItem} selectedItem={selectedItem}>{children}</PreviewFrame></dialog>
+    <dialog ref={dialog} className="hp-expanded-preview" aria-labelledby="hp-expanded-title"><div className="hp-panel-heading"><h2 id="hp-expanded-title">{label === "homepage section" ? "Homepage section" : label} preview</h2><button type="button" className="cms-icon-button" onClick={() => dialog.current?.close()} aria-label="Close expanded preview"><X size={20} /></button></div><div className="hp-preview-toolbar">{modes}<span className="hp-preview-state">{dirty ? "Unsaved preview" : "Current content"}</span></div><PreviewFrame label={label} mode={mode} onSelectItem={onSelectItem} selectedItem={selectedItem}>{children}</PreviewFrame></dialog>
   </aside>;
 }

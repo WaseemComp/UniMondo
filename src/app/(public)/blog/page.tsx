@@ -18,7 +18,7 @@ export default async function BlogPage() {
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-16 sm:px-6 lg:px-8">
-      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#C9AB76]">Blog & Insights</p>
+      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#244B50]">Blog & Insights</p>
       <h1 className="mt-3 font-[family-name:var(--font-editorial)] text-4xl font-normal text-[#244B50]">Guides & updates</h1>
       <p className="mt-4 text-[#4D5F64]">Admissions tips, visa notes, and student life in Europe.</p>
 
@@ -55,7 +55,7 @@ export default async function BlogPage() {
 
       <Link
         href="/"
-        className="mt-10 inline-flex rounded-full bg-[#0a1628] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#132a4a]"
+        className="mt-10 inline-flex rounded-full bg-[#244B50] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1D3E42]"
       >
         Back to home
       </Link>

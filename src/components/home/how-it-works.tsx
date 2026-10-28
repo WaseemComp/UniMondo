@@ -25,11 +25,11 @@ export function HowItWorks({
     subtitle: copy?.subtitle ?? DEFAULT_COPY.subtitle,
   };
   return (
-    <section className="border-y border-[#E2DFD8] bg-[#F8F7F3] py-20 sm:py-28">
+    <section className="border-y border-[#D9E2E8] bg-[#F4F3EF] py-20 sm:py-28">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#7D673A]">{c.kicker}</p>
-          <h2 className="mt-3 font-[family-name:var(--font-editorial)] text-3xl font-bold tracking-tight text-[#26343B] sm:text-4xl">
+          <h2 className="mt-3 font-[family-name:var(--font-editorial)] text-3xl font-bold tracking-tight text-[#2F3E46] sm:text-4xl">
             {c.title}
           </h2>
           <p className="mt-4 text-[#4D5F64] leading-relaxed">{c.subtitle}</p>
@@ -48,12 +48,12 @@ export function HowItWorks({
                 transition={{ delay: i * 0.06 }}
                 className="relative flex gap-5 sm:gap-7"
               >
-                <div className="relative z-[1] flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#E2DFD8] bg-white text-[#244B50] shadow-xs sm:h-14 sm:w-14">
+                <div className="relative z-[1] flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#D9E2E8] bg-white text-[#244B50] shadow-xs sm:h-14 sm:w-14">
                   <HomepageItemIcon name={step.icon} className="h-5 w-5 sm:h-6 sm:w-6" />
                 </div>
-                <div className="flex-1 rounded-xl border border-[#E2DFD8] bg-white p-5 shadow-sm sm:p-6 transition hover:shadow-md">
+                <div className="flex-1 rounded-xl border border-[#D9E2E8] bg-white p-5 shadow-sm sm:p-6 transition hover:shadow-md">
                   <span className="text-xs font-bold uppercase tracking-wider text-[#7D673A]">Stage {i + 1}</span>
-                  <h3 className="mt-1 font-[family-name:var(--font-editorial)] text-xl font-bold text-[#26343B] sm:text-2xl">
+                  <h3 className="mt-1 font-[family-name:var(--font-editorial)] text-xl font-bold text-[#2F3E46] sm:text-2xl">
                     {step.title}
                   </h3>
                   <p className="mt-2 text-sm leading-relaxed text-[#4D5F64]">{step.description}</p>

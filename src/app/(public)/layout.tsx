@@ -12,7 +12,7 @@ export default async function PublicLayout({
   const [tickerSettings, tickerItems] = await Promise.all([getSiteSettings(), getTickerItems()]);
 
   return (
-    <div className="um-public-theme relative flex min-h-full flex-col bg-[#F8F7F3] text-[#26343B] selection:bg-[#E6EEE8] selection:text-[#244B50]">
+    <div className="um-public-theme relative flex min-h-full flex-col bg-[#F4F3EF] text-[#2F3E46] selection:bg-[#E4F1F7] selection:text-[#244B50]">
       <SiteHeader />
       <SiteTickerBand initialSettings={tickerSettings} initialItems={tickerItems} />
       <div className="flex-1">{children}</div>
