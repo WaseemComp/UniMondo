@@ -78,7 +78,7 @@ export function HeroCarousel({
             initial={{ opacity: 0, y: 32 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.15 }}
-            className="um-photo-panel max-w-3xl"
+            className="um-hero-copy max-w-3xl"
           >
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#244B50]">
               {slide.eyebrow ?? copy.eyebrow ?? HERO_DEFAULTS.eyebrow}

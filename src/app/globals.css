@@ -245,6 +245,14 @@
   border-radius:20px; padding:clamp(20px,3vw,40px);
   box-shadow:0 8px 30px rgb(47 62 70 / .08);
 }
+.um-public-theme .um-hero-copy {
+  border:1px solid transparent; padding:clamp(20px,3vw,40px);
+  background:transparent; box-shadow:none;
+}
+.um-public-theme .um-hero-copy :is(h1,p) {
+  color:#2F3E46;
+  text-shadow:0 1px 2px rgb(244 243 239 / .8),0 0 12px rgb(244 243 239 / .5);
+}
 .um-public-theme .um-photo-card {
   border-color:#D9E2E8; background:rgb(244 243 239 / .96); color:#2F3E46;
 }

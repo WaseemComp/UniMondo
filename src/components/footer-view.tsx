@@ -192,9 +192,9 @@ export function FooterView({
           ))}
       </div>
       <div className="border-t border-[#D9E2E8]">
-        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-6 text-xs sm:flex-row sm:justify-between sm:px-6 lg:px-8">
+        <div className="um-footer-bottom mx-auto max-w-7xl space-y-4 px-4 py-6 text-left text-xs sm:px-6 lg:px-8">
           <p>{config.copyright.replaceAll("{year}", String(year))}</p>
-          <div className="max-w-2xl space-y-3 leading-relaxed">
+          <div className="max-w-3xl space-y-4 leading-relaxed">
             {config.notices
               .filter((item) => item.visible)
               .map((notice) => (

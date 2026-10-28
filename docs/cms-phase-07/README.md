@@ -9,7 +9,7 @@ The owner has authorized Phase 07 feature-branch commit, push, PR and Vercel Pre
 
 The public site and real-component previews use Pearl White `#F4F3EF`, Powder Sky `#E4F1F7`, deep neutral `#2F3E46`, academic teal `#244B50` and soft borders `#D9E2E8`. Existing fonts, structure, branding, content and destinations are retained. The CMS theme stays isolated.
 
-Hero, Why Study in Europe, About and Contact retain their original photographs. Broad dark overlays were replaced with 10–15% tints and light text panels. Destination/university image cards retain localized lower caption gradients rather than full-image masks. Text-only destination/course/package headers, Contact cards/dialogs and the footer use light surfaces. Gold remains a small brand/decorative accent. Public focus outlines and reduced-motion styles are provided; the mobile menu announces the current page and supports Escape with focus returned to its toggle.
+Hero, Why Study in Europe, About and Contact retain their original photographs. Broad dark overlays were replaced with 10–15% tints. Hero copy keeps its original position and typography on a transparent container with localized light text shadows; Why Study in Europe, About and Contact retain light text panels. Destination/university image cards retain localized lower caption gradients rather than full-image masks. Text-only destination/course/package headers, Contact cards/dialogs and the footer use light surfaces. Gold remains a small brand/decorative accent. Public focus outlines and reduced-motion styles are provided; the mobile menu announces the current page and supports Escape with focus returned to its toggle.
 
 No application, Agreement, submission, account, pricing or notification handlers are changed. Contact form changes are button colors only. Existing public URLs and SEO metadata are preserved.
 
@@ -25,6 +25,8 @@ Editable:
 - Social links, accessible names and icon selection.
 - Copyright line with automatic `{year}`, notices/disclaimers and their inline/additional links.
 - Section headings, section order/visibility and whole-footer visibility.
+
+The bottom copyright, editable tagline and notices share a left-aligned stack with consistent spacing on desktop and mobile. Notice order, visibility and editing remain controlled by the same CMS configuration.
 
 Before the first explicit save, the editor loads the exact existing footer wording, navigation and effective inherited Contact summary. No defaults are written to the database. Blank optional information is omitted as before. Existing footer text, emails, phones, addresses and link destinations are covered by preservation tests against the deployed source. Contact records remain the existing source until an explicit footer override is published; footer edits never change Contact records.
 
