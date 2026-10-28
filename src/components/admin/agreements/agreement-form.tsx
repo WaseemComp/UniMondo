@@ -1,13 +1,17 @@
 "use client";
 
 import { calendarDate } from "@/lib/agreements/dates";
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 import { calculateAgreementFinancials, agreementPricingUnchanged, validateAgreementPricing, formatForeignAmount } from "@/lib/agreements/financials";
 import type { AgreementFormInput, AgreementRecord, DiscountType, PaymentCurrency } from "@/types/agreement";
 import { CURRENCY_OPTIONS, CURRENCY_DECIMALS } from "@/types/agreement";
+import { buildAgreementDocument } from "@/lib/agreements/document-content";
+import { validateClauseEdits, restrictedClausesChanged, type ClauseEdits } from "@/lib/agreements/clauses";
+import { AgreementDocumentView } from "./agreement-document-view";
+import { AgreementClauseEditor } from "./agreement-clause-editor";
 import { Save, ArrowLeft, AlertCircle } from "lucide-react";
 
 type Props = {
@@ -15,11 +19,17 @@ type Props = {
   applicationId?: string | null;
   prefill?: Partial<AgreementFormInput> | null;
   canEditDiscount: boolean;
+  canEditProtectedClauses?: boolean;
   representativeName: string;
   representativeDesignation: string;
 };
 
-export function AgreementForm({ initialData, applicationId, prefill, canEditDiscount, representativeName, representativeDesignation }: Props) {
+export function AgreementForm(props: Props) {
+  const [saved, setSaved] = useState(props.initialData);
+  const [generation, setGeneration] = useState(0);
+  return <AgreementFormContents {...props} initialData={saved} key={generation} onSaved={record=>{setSaved(record);setGeneration(n=>n+1);}} onDiscard={()=>setGeneration(n=>n+1)}/>;
+}
+function AgreementFormContents({ initialData, applicationId, prefill, canEditDiscount, canEditProtectedClauses = false, representativeName, representativeDesignation, onSaved, onDiscard }: Props & {onSaved:(record:AgreementRecord)=>void;onDiscard:()=>void}) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -29,6 +39,10 @@ export function AgreementForm({ initialData, applicationId, prefill, canEditDisc
   const [agreementDate, setAgreementDate] = useState(
     calendarDate(initialData?.agreementDate || prefill?.agreementDate || new Date().toLocaleDateString("en-GB"))
   );
+  const [tab,setTab]=useState("details");
+  const [templateVersion,setTemplateVersion]=useState(initialData?.templateVersion??"4.0");
+  const [clauseEdits,setClauseEdits]=useState<ClauseEdits>(initialData?.clauseEdits??{});
+  const [clausesConfirmed,setClausesConfirmed]=useState(false);
   const [version, setVersion] = useState(initialData?.version);
 
   // Consultant
@@ -51,8 +65,8 @@ export function AgreementForm({ initialData, applicationId, prefill, canEditDisc
   const [studentParentGuardian, setStudentParentGuardian] = useState(initialData?.studentParentGuardian || prefill?.studentParentGuardian || "");
   const [studentCnicPassport, setStudentCnicPassport] = useState(initialData?.studentCnicPassport || prefill?.studentCnicPassport || "");
   const [studentAddress, setStudentAddress] = useState(initialData?.studentAddress || prefill?.studentAddress || "");
-  const [studentEmail, setStudentEmail] = useState(initialData?.studentEmail || prefill?.studentEmail || "");
-  const [studentPhone, setStudentPhone] = useState(initialData?.studentPhone || prefill?.studentPhone || "");
+  const [studentEmail] = useState(initialData?.studentEmail || prefill?.studentEmail || "");
+  const [studentPhone] = useState(initialData?.studentPhone || prefill?.studentPhone || "");
 
   // Engagement
   const [degreeLevel, setDegreeLevel] = useState(initialData?.degreeLevel || prefill?.degreeLevel || "Master's Degree");
@@ -110,6 +124,7 @@ export function AgreementForm({ initialData, applicationId, prefill, canEditDisc
 
   const getFormData = (): AgreementFormInput => ({
     referenceNumber,
+    templateVersion: templateVersion as "3.0" | "4.0", clauseEdits, clausesConfirmed,
     agreementDate,
     applicationId: initialData?.applicationId || applicationId || null,
     version,
@@ -142,8 +157,26 @@ export function AgreementForm({ initialData, applicationId, prefill, canEditDisc
     studentSignatureDate,
   });
 
+  const serialize=()=>JSON.stringify({...getFormData(),version:undefined,clausesConfirmed:undefined});
+  const baseline=useRef(serialize());
+  const dirty=serialize()!==baseline.current;
+  useEffect(()=>{
+    if(!dirty)return;
+    let restoring=false;
+    const pop=(event:PopStateEvent)=>{if(restoring){restoring=false;event.stopImmediatePropagation();return;}if(!window.confirm("Discard unsaved agreement changes?")){event.stopImmediatePropagation();restoring=true;history.go(1);}};
+    const unload=(event:BeforeUnloadEvent)=>{event.preventDefault();event.returnValue="";};
+    const navigate=(event:MouseEvent)=>{const link=(event.target as Element)?.closest?.("a[href]");if(link&&!window.confirm("Discard unsaved agreement changes?")){event.preventDefault();event.stopPropagation();}};
+    window.addEventListener("popstate",pop,true);window.addEventListener("beforeunload",unload);document.addEventListener("click",navigate,true);
+    return()=>{window.removeEventListener("popstate",pop,true);window.removeEventListener("beforeunload",unload);document.removeEventListener("click",navigate,true);};
+  },[dirty]);
+  const protectedChange=restrictedClausesChanged(clauseEdits,initialData?.clauseEdits);
+  const preview=buildAgreementDocument({...initialData,...getFormData(),id:initialData?.id??"unsaved",status:"draft",templateVersion,financials,createdAt:initialData?.createdAt??"",updatedAt:initialData?.updatedAt??""} as AgreementRecord);
+  const restore=()=>{if(window.confirm("Use the approved Appendix A wording for this draft? Custom clause edits will be discarded. Finalized history remains unchanged.")){setTemplateVersion("4.0");setClauseEdits({});setClausesConfirmed(false);}};
   const handleSave = async () => {
     const data = getFormData();
+    try { data.clauseEdits=validateClauseEdits(data.clauseEdits); }
+    catch(error){toast.error(error instanceof Error?error.message:"Invalid clauses.");return null;}
+    if(protectedChange&&!clausesConfirmed){toast.error("Confirm the protected clause changes before saving.");return null;}
     const validationErrors = validateAgreementPricing(data);
     setErrors(Object.fromEntries(validationErrors.map(error => [error.field, error.message])));
     if (validationErrors.length) { toast.error(validationErrors[0].message); return null; }
@@ -163,6 +196,8 @@ export function AgreementForm({ initialData, applicationId, prefill, canEditDisc
       }
 
       setVersion(json.agreement?.version);
+      baseline.current=serialize();
+      onSaved(json.agreement);
       toast.success("Agreement saved successfully.");
 
       if (!initialData?.id && json.agreement?.id) {
@@ -203,6 +238,7 @@ export function AgreementForm({ initialData, applicationId, prefill, canEditDisc
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <button type="button" disabled={isPending||!dirty} className="rounded-lg border px-3 py-2 text-sm disabled:opacity-50" onClick={()=>{if(window.confirm("Discard unsaved changes and restore the last saved draft?"))onDiscard();}}>Discard Changes</button>
           <button
             type="button"
             disabled={isPending}
@@ -214,7 +250,7 @@ export function AgreementForm({ initialData, applicationId, prefill, canEditDisc
             className="inline-flex items-center gap-2 rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 transition disabled:opacity-50"
           >
             <Save className="h-4 w-4" />
-            Save Agreement
+            Save Agreement Draft
           </button>
         </div>
       </div>
@@ -233,8 +269,16 @@ export function AgreementForm({ initialData, applicationId, prefill, canEditDisc
         </div>
       ) : null}
 
-      {(initialData?.revisionNumber || 0) > 0 && <p role="status">Saving changes creates a draft revision. The finalized agreement remains available in revision history.</p>}
-      <fieldset disabled={isPending} className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-3">
+      {(initialData?.revisionNumber || 0) > 0 && <p role="status">Saving changes creates a draft revision. Downloads and Print continue to use the finalized version until Superadmin finalizes the new revision. Earlier finalized versions remain in revision history.</p>}
+      <div role="tablist" aria-label="Agreement workspace" className="flex flex-wrap gap-2 border-b pb-3">{[["details","Agreement Details"],["clauses","Edit Clauses"],["preview","Live Preview"]].map(([id,label])=><button key={id} role="tab" aria-selected={tab===id} aria-controls={`agreement-${id}`} onClick={()=>setTab(id)} className={`rounded-lg border px-4 py-2 text-sm ${tab===id?"bg-teal-50 font-semibold":"bg-white"}`}>{label}</button>)}</div>
+      <p role="status" className="text-sm text-zinc-600">{dirty?"Unsaved changes — save explicitly to retain this draft.":"No unsaved changes."} {templateVersion==="4.0"?"Appendix A wording.":"Existing wording retained. Use Appendix A explicitly to update this draft."}</p>
+      <div id="agreement-clauses" hidden={tab!=="clauses"} className="space-y-4">
+        <button type="button" disabled={isPending} onClick={restore} className="rounded-lg border px-3 py-2 text-sm">{templateVersion==="4.0"?"Restore Standard Wording":"Use Appendix A"}</button>
+        {templateVersion==="4.0"?<fieldset disabled={isPending}><AgreementClauseEditor edits={clauseEdits} mayEditProtected={canEditProtectedClauses} onChange={value=>{setClauseEdits(value);setClausesConfirmed(false);}}/></fieldset>:<p>Historical wording is preserved. Select Use Appendix A to enable the eight-section clause editor for this draft.</p>}
+      </div>
+      {protectedChange&&<label className="flex items-start gap-2 rounded-lg border border-zinc-300 p-3 text-sm"><input type="checkbox" disabled={!canEditProtectedClauses||isPending} checked={clausesConfirmed} onChange={e=>setClausesConfirmed(e.target.checked)}/>I confirm the fee, payment or refund wording changes for this draft. Calculated amounts and finalized history remain protected.</label>}
+      <div id="agreement-preview" hidden={tab!=="preview"} className="overflow-x-auto rounded-xl border bg-zinc-100 p-2 sm:p-4"><p className="mb-3 text-sm text-zinc-600">Unsaved draft preview. Downloaded Word and PDF use A4 pagination and Page X of Y footers after saving.</p><AgreementDocumentView content={preview}/></div>
+      <fieldset id="agreement-details" disabled={isPending} hidden={tab!=="details"} className={`${tab!=="details"?"!hidden ":""}grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-3`}>
         {/* Left Column: Form Fields */}
         <div className="space-y-6 lg:col-span-2">
           {/* Card 1: Agreement Meta */}
@@ -346,28 +390,6 @@ export function AgreementForm({ initialData, applicationId, prefill, canEditDisc
                   placeholder="e.g. 42101-1234567-1 or AB1234567"
                 />
                 {errors.studentCnicPassport ? <p className="text-xs text-red-600 mt-1">{errors.studentCnicPassport}</p> : null}
-              </div>
-              <div>
-                <label htmlFor="agreement-field-10" className="block text-xs font-semibold text-zinc-700 mb-1">Contact Phone Number</label>
-                <input id="agreement-field-10"
-                  type="text"
-                  value={studentPhone}
-                  onChange={(e) => setStudentPhone(e.target.value)}
-                  className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-teal-600 focus:outline-none"
-                  placeholder="+92 300 1234567"
-                />
-                {errors.studentPhone ? <p className="text-xs text-red-600 mt-1">{errors.studentPhone}</p> : null}
-              </div>
-              <div className="sm:col-span-2">
-                <label htmlFor="agreement-field-11" className="block text-xs font-semibold text-zinc-700 mb-1">Email Address (optional)</label>
-                <input id="agreement-field-11"
-                  type="email"
-                  value={studentEmail}
-                  onChange={(e) => setStudentEmail(e.target.value)}
-                  className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-teal-600 focus:outline-none"
-                  placeholder="student@example.com"
-                />
-                {errors.studentEmail ? <p className="text-xs text-red-600 mt-1">{errors.studentEmail}</p> : null}
               </div>
               <div className="sm:col-span-2">
                 <label htmlFor="agreement-field-12" className="block text-xs font-semibold text-zinc-700 mb-1">Residential Address (optional)</label>
@@ -665,7 +687,7 @@ export function AgreementForm({ initialData, applicationId, prefill, canEditDisc
                 <strong>Margins:</strong> 0.7″ on all 4 sides (1008 dxa)
               </p>
               <p>
-                <strong>Page Size:</strong> US Letter Portrait (8.5 × 11″)
+                <strong>Page Size:</strong> A4 Portrait (210 × 297 mm)
               </p>
               <p>
                 <strong>Signature Lines:</strong> Preserved blank for handwritten signing

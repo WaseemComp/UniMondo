@@ -1,4 +1,5 @@
 import { calculateAgreementFinancials, calculateLegacyAgreementFinancials, agreementPricingUnchanged } from "./financials";
+import { validateClauseEdits, restrictedClausesChanged } from "./clauses";
 import { buildAgreementDocument } from "./document-content";
 import { createSupabaseServiceClient } from "@/lib/supabase/admin";
 import type { AgreementFormInput, AgreementRecord, AgreementStatus, PaymentCurrency } from "../../types/agreement";
@@ -25,6 +26,8 @@ export function mapRowToRecord(row: Record<string, unknown>): AgreementRecord {
 
   return {
     documentSnapshot: payload.documentSnapshot as AgreementRecord["documentSnapshot"],
+    clauseEdits: payload.clauseEdits as AgreementRecord["clauseEdits"],
+    clauseApproval: payload.clauseApproval as AgreementRecord["clauseApproval"],
     id: String(row.id),
     referenceNumber: String(row.reference_number || payload.referenceNumber || ""),
     templateVersion: String(row.template_version || payload.templateVersion || "1.0"),
@@ -162,6 +165,7 @@ export async function saveAgreement(
   input: AgreementFormInput & { id?: string },
   userEmail?: string,
   expectedVersion?: number,
+  mayApproveClauses = false,
 ): Promise<AgreementRecord> {
   const id = input.id || crypto.randomUUID();
   const existing = input.id ? await getAgreementById(id, true) : null;
@@ -169,6 +173,19 @@ export async function saveAgreement(
   if (existing && expectedVersion !== existing.version) throw conflict();
   if (existing && input.referenceNumber !== existing.referenceNumber) throw new AgreementPersistenceError("Agreement reference cannot be changed.", 409);
   if (!existing && !/^UM\/[^\s]+$/.test(input.referenceNumber || "")) throw new AgreementPersistenceError("A valid UM/ agreement reference is required.", 400);
+  const templateVersion = input.templateVersion ?? existing?.templateVersion ?? "4.0";
+  if ((!existing && templateVersion !== "4.0") || (existing?.templateVersion === "4.0" && templateVersion !== "4.0"))
+    throw new AgreementPersistenceError("Use the current agreement wording for new drafts; template downgrades are not permitted.", 400);
+  if (!["3.0", "4.0"].includes(templateVersion))
+    throw new AgreementPersistenceError("Select Use Appendix A before saving a revision of this legacy agreement. Historical exports remain unchanged.", 400);
+  let clauseEdits;
+  try { clauseEdits = validateClauseEdits(input.clauseEdits ?? existing?.clauseEdits); }
+  catch (error) { throw new AgreementPersistenceError(error instanceof Error ? error.message : "Invalid clauses.", 400); }
+  if (templateVersion !== "4.0" && Object.keys(clauseEdits).length)
+    throw new AgreementPersistenceError("Clause editing requires Appendix A wording.", 400);
+  const protectedChange = restrictedClausesChanged(clauseEdits, existing?.clauseEdits);
+  if (protectedChange && !mayApproveClauses) throw new AgreementPersistenceError("Only Superadmin may alter fee, payment or refund clauses.", 403);
+  if (protectedChange && input.clausesConfirmed !== true) throw new AgreementPersistenceError("Explicitly confirm the fee, payment or refund clause changes before saving.", 400);
   // Advance even when two requests arrive in the same millisecond.
   const previousTime = existing ? Date.parse(existing.updatedAt) : 0;
   const now = new Date(Math.max(Date.now(), Number.isFinite(previousTime) ? previousTime + 1 : 0)).toISOString();
@@ -181,7 +198,9 @@ export async function saveAgreement(
   const record: AgreementRecord = {
     id,
     referenceNumber: existing?.referenceNumber || input.referenceNumber.trim(),
-    templateVersion: "3.0",
+    templateVersion,
+    clauseEdits,
+    clauseApproval: protectedChange ? { by: userEmail || "staff", at: now } : existing?.clauseApproval,
     applicationId: input.applicationId?.trim() || null,
     status: "draft",
 

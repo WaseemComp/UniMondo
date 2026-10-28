@@ -66,6 +66,7 @@ export default async function NewAgreementPage({ searchParams }: Props) {
         applicationId={applicationId}
         prefill={prefill}
         canEditDiscount={canEditDiscount}
+        canEditProtectedClauses={isSuper}
         representativeDesignation={staffIdentity(user).designation || "Authorised representative"}
         representativeName={staffIdentity(user).fullName || "UniMondo Admissions Team"}
       />

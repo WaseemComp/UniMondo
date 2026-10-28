@@ -4,7 +4,8 @@ import { redirect } from "next/navigation";
 import { createSupabaseServerAuthClient } from "@/lib/supabase/server-auth";
 import { isAdminUser, isSuperAdmin } from "@/lib/auth/admin";
 import { getAgreementsList } from "@/lib/agreements/persistence";
-import { FileDown, FilePlus, FileText, Printer } from "lucide-react";
+import { FilePlus, FileText } from "lucide-react";
+import { formatAgreementDate } from "@/lib/agreements/dates";
 import { formatForeignAmount } from "@/lib/agreements/financials";
 
 export const dynamic = "force-dynamic";
@@ -64,7 +65,7 @@ export default async function AgreementsListPage() {
           </div>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
+        <div className="rounded-2xl border border-zinc-200 bg-white shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead className="border-b border-zinc-200 bg-zinc-50/75 text-xs font-semibold uppercase tracking-wider text-zinc-500">
@@ -119,43 +120,13 @@ export default async function AgreementsListPage() {
                         ) : null}
                       </td>
                       <td className="whitespace-nowrap px-5 py-4">
-                        <AgreementActions agreement={agr} isSuper={isSuper} />
+                        <span className="rounded-full bg-zinc-100 px-2 py-1 text-xs font-medium">{agr.status === "finalized" ? "Finalized" : "Draft"}</span>{agr.hasDraftRevision && agr.status === "finalized" && <span className="mt-1 block text-xs text-zinc-500">Draft revision pending</span>}
                       </td>
                       <td className="whitespace-nowrap px-5 py-4 text-xs text-zinc-500">
-                        {agr.agreementDate || new Date(agr.createdAt).toLocaleDateString()}
+                        {formatAgreementDate(agr.agreementDate || agr.createdAt.slice(0,10))}
                       </td>
                       <td className="whitespace-nowrap px-5 py-4 text-right text-xs">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <Link
-                            href={`/admin/agreements/${agr.id}`}
-                            className="rounded-lg border border-zinc-200 px-2.5 py-1.5 font-medium text-zinc-700 hover:bg-zinc-100 transition"
-                          >
-                            Edit
-                          </Link>
-                          <a
-                            href={`/api/admin/agreements/${agr.id}/export?format=docx`}
-                            title="Download Word (.docx)"
-                            className="rounded-lg border border-amber-300 bg-amber-50 p-1.5 text-amber-900 hover:bg-amber-100 transition"
-                          >
-                            <FileDown className="h-4 w-4" /><span className="sr-only">Download Word</span>
-                          </a>
-                          <a
-                            href={`/api/admin/agreements/${agr.id}/export?format=pdf`}
-                            title="Download PDF"
-                            className="rounded-lg bg-[#244B50] p-1.5 text-white hover:bg-[#1a383c] transition"
-                          >
-                            <FileText className="h-4 w-4" /><span className="sr-only">Download PDF</span>
-                          </a>
-                          <Link href={`/admin/agreements/${agr.id}/revisions`} className="rounded-lg border border-zinc-200 px-2.5 py-1.5">History</Link>
-                          <Link
-                            href={`/admin/agreements/${agr.id}/print`}
-                            target="_blank"
-                            title="Print Agreement"
-                            className="rounded-lg border border-zinc-200 p-1.5 text-zinc-600 hover:bg-zinc-100 transition"
-                          >
-                            <Printer className="h-4 w-4" />
-                          </Link>
-                        </div>
+                        <AgreementActions agreement={agr} isSuper={isSuper} />
                       </td>
                     </tr>
                   );

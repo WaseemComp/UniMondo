@@ -70,7 +70,7 @@ export async function PUT(request: NextRequest, { params }: Props) {
       }
     }
 
-    const updated = await saveAgreement({ ...body, id }, user.email || user.id, body.version);
+    const updated = await saveAgreement({ ...body, id }, user.email || user.id, body.version, await isSuperAdmin(user));
     return NextResponse.json({ agreement: updated });
   } catch (error) {
     return NextResponse.json(

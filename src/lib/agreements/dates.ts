@@ -14,3 +14,12 @@ export function validCalendarDate(value?: string | null): boolean {
   const parsed = new Date(`${date}T12:00:00Z`);
   return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === date;
 }
+
+/** Display only: database calendar strings and historical snapshots remain unchanged. */
+export function formatAgreementDate(value?: string | null): string {
+  if(!value?.trim())return "";
+  const iso=calendarDate(value);
+  if(!validCalendarDate(iso))return value.trim();
+  const [year,month,day]=iso.split("-");
+  return `${day}-${["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][Number(month)-1]}-${year}`;
+}

@@ -21,13 +21,19 @@ export function AgreementActions({ agreement, isSuper }: { agreement: AgreementR
     } catch (error) { toast.error(error instanceof Error ? error.message : "Agreement action failed."); }
     finally { setPending(false); }
   }
-  if (!isSuper) return <span>{agreement.status === "finalized" ? "Finalized" : "Draft"}{agreement.hasDraftRevision && agreement.status === "finalized" ? " · Draft revision pending" : ""}</span>;
-  return <div className="flex flex-wrap items-center gap-2">
-    <select aria-label={`Status for ${agreement.referenceNumber}`} disabled={pending} value={agreement.status}
-      onChange={e => update("PATCH", e.target.value)} className="rounded border border-zinc-300 bg-white p-1.5">
-      <option value="draft">Draft</option><option value="finalized">Finalized</option>
-    </select>
-    {agreement.hasDraftRevision && agreement.status === "finalized" && <button disabled={pending} onClick={() => update("PATCH", "finalized")} className="rounded border border-zinc-300 px-2 py-1.5">Finalize revision</button>}
-    <button disabled={pending} onClick={() => update("DELETE")} className="rounded border border-red-200 px-2 py-1.5 text-red-700">Delete</button>
-  </div>;
+  return <details className="relative inline-block text-left">
+    <summary className="cursor-pointer rounded-lg border border-zinc-300 px-3 py-2 font-medium">Actions</summary>
+    <div className="relative z-20 mt-1 grid min-w-48 gap-1 rounded-xl border bg-white p-2 shadow-lg [&>a]:rounded [&>a]:px-3 [&>a]:py-2 [&>a:hover]:bg-zinc-50 [&>button]:rounded [&>button]:px-3 [&>button]:py-2 [&>button]:text-left">
+      <a href={`/admin/agreements/${agreement.id}`}>Edit draft</a>
+      <a href={`/api/admin/agreements/${agreement.id}/export?format=docx`}>Download Word</a>
+      <a href={`/api/admin/agreements/${agreement.id}/export?format=pdf`}>Download PDF</a>
+      <a href={`/admin/agreements/${agreement.id}/print`} target="_blank" rel="noreferrer">Print agreement</a>
+      <a href={`/admin/agreements/${agreement.id}/revisions`}>Revision history</a>
+      {isSuper&&<>
+        {(agreement.status==="draft"||agreement.hasDraftRevision)&&<button disabled={pending} onClick={()=>{if(window.confirm("Finalize this saved draft as a new immutable revision?"))update("PATCH","finalized");}}>{agreement.revisionNumber || agreement.status === "finalized" ? "Finalize revision" : "Finalize agreement"}</button>}
+        {agreement.status==="finalized"&&<button disabled={pending} onClick={()=>update("PATCH","draft")}>Reopen as draft</button>}
+        <button disabled={pending} onClick={()=>update("DELETE")} className="text-red-700">Delete agreement</button>
+      </>}
+    </div>
+  </details>;
 }

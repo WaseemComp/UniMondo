@@ -68,6 +68,8 @@ export type AgreementFinancials = {
 };
 
 export type AgreementRecord = {
+  clauseEdits?: import("../lib/agreements/clauses").ClauseEdits;
+  clauseApproval?: { by:string; at:string };
   documentSnapshot?: import("../lib/agreements/document-content").AgreementDocument;
   id: string;
   version?: number;
@@ -116,6 +118,9 @@ export type AgreementRecord = {
 };
 
 export type AgreementFormInput = {
+  templateVersion?: string;
+  clauseEdits?: import("../lib/agreements/clauses").ClauseEdits;
+  clausesConfirmed?: boolean;
   version?: number;
   referenceNumber: string;
   agreementDate: string;
