@@ -6,6 +6,14 @@ export type PermissionNode = {
 
 export const PERMISSION_TREE: PermissionNode[] = [
   {
+    key: "publishing",
+    label: "Content publishing",
+    children: [
+      { key: "publishing.review", label: "Review and approve content drafts" },
+      { key: "publishing.publish", label: "Publish approved content" },
+    ],
+  },
+  {
     key: "home",
     label: "Home",
     children: [
@@ -148,4 +156,3 @@ export const PERMISSION_TREE: PermissionNode[] = [
     ],
   },
 ];
-

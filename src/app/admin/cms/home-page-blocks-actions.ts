@@ -1,6 +1,7 @@
 "use server";
+import { isPlanning } from "@/lib/publishing/planning";
 
-import { revalidatePath } from "next/cache";
+import { revalidateContentPath as revalidatePath } from "@/lib/publishing/planning";
 import { record, english } from "@/lib/homepage/content";
 import { getMediaAccess } from "@/lib/media/access";
 import { validateManagedMediaSelection } from "@/lib/media/operations";
@@ -9,7 +10,7 @@ import { z } from "zod";
 import { assertAdminScope } from "@/lib/auth/admin-page-guard";
 import { requireAdminUser } from "@/app/admin/require-admin";
 import { hasAdminPermission } from "@/lib/auth/permissions";
-import { createSupabaseServiceClient } from "@/lib/supabase/admin";
+import { createContentServiceClient as createSupabaseServiceClient } from "@/lib/publishing/planning";
 
 const localeTextSchema = z
   .union([z.string(), z.record(z.string(), z.string())])
@@ -28,36 +29,86 @@ const heroSlideSchema = z.object({
   subtitle: localeTextSchema,
   buttonText: localeTextSchema,
   secondaryButtonText: localeTextSchema,
-  eyebrow: localeTextSchema, primaryHref: localeTextSchema, secondaryHref: localeTextSchema,
+  eyebrow: localeTextSchema,
+  primaryHref: localeTextSchema,
+  secondaryHref: localeTextSchema,
 });
 
 export type HeroSlideInput = z.infer<typeof heroSlideSchema>;
 
-export async function saveHomeHeroSlide(input: unknown): Promise<{ ok: true } | { ok: false; error: string }> {
+export async function saveHomeHeroSlide(
+  input: unknown,
+): Promise<{ ok: true } | { ok: false; error: string }> {
   try {
+    if (!isPlanning())
+      return {
+        ok: false,
+        error:
+          "Use the homepage draft editor and publishing controls. Live records have not changed.",
+      };
     await assertAdminScope("content");
     const me = await requireAdminUser();
     if (!(await hasAdminPermission(me, "home.hero_slider.edit"))) {
       return { ok: false, error: "Forbidden" };
     }
     const parsed = heroSlideSchema.safeParse(input);
-    if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid data" };
+    if (!parsed.success)
+      return {
+        ok: false,
+        error: parsed.error.issues[0]?.message ?? "Invalid data",
+      };
 
     const svc = createSupabaseServiceClient();
-    if (!svc) return { ok: false, error: "SUPABASE_SERVICE_ROLE_KEY is not configured." };
+    if (!svc)
+      return {
+        ok: false,
+        error: "SUPABASE_SERVICE_ROLE_KEY is not configured.",
+      };
 
     const s = parsed.data;
-    if (!s.id && !(await hasAdminPermission(me, "home.hero_slider.create"))) return { ok: false, error: "Forbidden" };
-    const { data: existing, error: readError } = s.id ? await svc.from("cms_content_blocks").select("content,media").eq("id", s.id).eq("page_slug", "home").eq("section_key", "hero_slider").eq("block_key", "slide").maybeSingle() : { data: null, error: null };
-    if (s.id && (readError || !existing)) return { ok: false, error: "Slide is no longer available." };
+    if (!s.id && !(await hasAdminPermission(me, "home.hero_slider.create")))
+      return { ok: false, error: "Forbidden" };
+    const { data: existing, error: readError } = s.id
+      ? await svc
+          .from("cms_content_blocks")
+          .select("content,media")
+          .eq("id", s.id)
+          .eq("page_slug", "home")
+          .eq("section_key", "hero_slider")
+          .eq("block_key", "slide")
+          .maybeSingle()
+      : { data: null, error: null };
+    if (s.id && (readError || !existing))
+      return { ok: false, error: "Slide is no longer available." };
     const media = record(existing?.media);
-    if (!s.id || s.imageUrl !== (media.imageUrl ?? media.src)) await validateManagedMediaSelection(s.imageUrl, await getMediaAccess(me));
-    if ((!s.id || s.imageUrl !== (media.imageUrl ?? media.src)) && !safeImage(s.imageUrl, process.env.NEXT_PUBLIC_SUPABASE_URL)) return { ok: false, error: "Choose a supported public website image." };
-    if (!s.imageAlt.trim()) return { ok: false, error: "Describe this image for visitors using a screen reader." };
-    for (const value of [s.line, s.title, s.subtitle, s.buttonText, s.secondaryButtonText, s.eyebrow, s.primaryHref, s.secondaryHref]) {
-      if ((english(value)?.length ?? 0) > 5000) return { ok: false, error: "Slide text is too long." };
+    if (!s.id || s.imageUrl !== (media.imageUrl ?? media.src))
+      await validateManagedMediaSelection(s.imageUrl, await getMediaAccess(me));
+    if (
+      (!s.id || s.imageUrl !== (media.imageUrl ?? media.src)) &&
+      !safeImage(s.imageUrl, process.env.NEXT_PUBLIC_SUPABASE_URL)
+    )
+      return { ok: false, error: "Choose a supported public website image." };
+    if (!s.imageAlt.trim())
+      return {
+        ok: false,
+        error: "Describe this image for visitors using a screen reader.",
+      };
+    for (const value of [
+      s.line,
+      s.title,
+      s.subtitle,
+      s.buttonText,
+      s.secondaryButtonText,
+      s.eyebrow,
+      s.primaryHref,
+      s.secondaryHref,
+    ]) {
+      if ((english(value)?.length ?? 0) > 5000)
+        return { ok: false, error: "Slide text is too long." };
     }
-    for (const link of [s.primaryHref,s.secondaryHref]) if (english(link)?.trim() && !safeDestination(english(link)!)) return {ok:false,error:"Use a valid button destination."};
+    for (const link of [s.primaryHref, s.secondaryHref])
+      if (english(link)?.trim() && !safeDestination(english(link)!))
+        return { ok: false, error: "Use a valid button destination." };
     const row = {
       page_slug: "home",
       section_key: "hero_slider",
@@ -72,19 +123,29 @@ export async function saveHomeHeroSlide(input: unknown): Promise<{ ok: true } | 
         subtitle: s.subtitle ?? "",
         buttonText: s.buttonText ?? "",
         secondaryButtonText: s.secondaryButtonText ?? "",
-        ...(s.eyebrow !== undefined ? {eyebrow:s.eyebrow} : {}),
-        ...(s.primaryHref !== undefined ? {primaryHref:s.primaryHref} : {}),
-        ...(s.secondaryHref !== undefined ? {secondaryHref:s.secondaryHref} : {}),
+        ...(s.eyebrow !== undefined ? { eyebrow: s.eyebrow } : {}),
+        ...(s.primaryHref !== undefined ? { primaryHref: s.primaryHref } : {}),
+        ...(s.secondaryHref !== undefined
+          ? { secondaryHref: s.secondaryHref }
+          : {}),
       },
       media: { ...media, imageUrl: s.imageUrl, imageAlt: s.imageAlt },
     };
 
     let q = s.id
-      ? svc.from("cms_content_blocks").update(row).eq("id", s.id).eq("page_slug", "home").eq("section_key", "hero_slider").eq("block_key", "slide")
+      ? svc
+          .from("cms_content_blocks")
+          .update(row)
+          .eq("id", s.id)
+          .eq("page_slug", "home")
+          .eq("section_key", "hero_slider")
+          .eq("block_key", "slide")
       : svc.from("cms_content_blocks").insert(row);
-    if (s.id && s.expected_updated_at) q = q.eq("updated_at", s.expected_updated_at);
+    if (s.id && s.expected_updated_at)
+      q = q.eq("updated_at", s.expected_updated_at);
     const { data, error } = await q.select("id");
-    if (!error && !data?.length) return { ok: false, error: "This slide changed. Reload before saving." };
+    if (!error && !data?.length)
+      return { ok: false, error: "This slide changed. Reload before saving." };
     if (error) return { ok: false, error: error.message };
 
     revalidatePath("/");
@@ -95,16 +156,33 @@ export async function saveHomeHeroSlide(input: unknown): Promise<{ ok: true } | 
   }
 }
 
-export async function deleteHomeHeroSlide(id: string): Promise<{ ok: true } | { ok: false; error: string }> {
+export async function deleteHomeHeroSlide(
+  id: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
   try {
+    if (!isPlanning())
+      return {
+        ok: false,
+        error:
+          "Use the homepage draft editor and publishing controls. Live records have not changed.",
+      };
     await assertAdminScope("content");
     const me = await requireAdminUser();
     if (!(await hasAdminPermission(me, "home.hero_slider.delete"))) {
       return { ok: false, error: "Forbidden" };
     }
     const svc = createSupabaseServiceClient();
-    if (!svc) return { ok: false, error: "SUPABASE_SERVICE_ROLE_KEY is not configured." };
-    const { error } = await svc.from("cms_content_blocks").delete().eq("id", id).eq("page_slug", "home").eq("section_key", "hero_slider");
+    if (!svc)
+      return {
+        ok: false,
+        error: "SUPABASE_SERVICE_ROLE_KEY is not configured.",
+      };
+    const { error } = await svc
+      .from("cms_content_blocks")
+      .delete()
+      .eq("id", id)
+      .eq("page_slug", "home")
+      .eq("section_key", "hero_slider");
     if (error) return { ok: false, error: error.message };
     revalidatePath("/");
     revalidatePath("/admin/home");
@@ -113,4 +191,3 @@ export async function deleteHomeHeroSlide(id: string): Promise<{ ok: true } | { 
     return { ok: false, error: e instanceof Error ? e.message : "Failed" };
   }
 }
-

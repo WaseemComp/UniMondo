@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { saveSiteSettings } from "@/app/admin/cms/site-settings-actions";
 import { Button } from "@/components/ui/button";
@@ -13,18 +13,42 @@ import { cn } from "@/lib/utils";
 
 type Props = {
   initial: SiteSettings;
+  expectedVersion?: number;
+  onDirty?: (dirty: boolean) => void;
+  onSaved?: () => void;
+  beforeSave?: () => boolean;
 };
 
-export function TickerSiteStripForm({ initial }: Props) {
+export function TickerSiteStripForm({
+  initial,
+  expectedVersion,
+  onDirty,
+  onSaved,
+  beforeSave,
+}: Props) {
   const router = useRouter();
   const [tickerText, setTickerText] = useState(initial.tickerText);
   const [tickerActive, setTickerActive] = useState(initial.tickerActive);
   const [pending, startTransition] = useTransition();
 
+  useEffect(() => {
+    onDirty?.(
+      tickerText !== initial.tickerText ||
+        tickerActive !== initial.tickerActive,
+    );
+  }, [
+    tickerText,
+    tickerActive,
+    initial.tickerText,
+    initial.tickerActive,
+    onDirty,
+  ]);
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (beforeSave && !beforeSave()) return;
     startTransition(async () => {
       const res = await saveSiteSettings({
+        expectedVersion,
         ticker_text: tickerText,
         ticker_active: tickerActive,
       });
@@ -32,7 +56,8 @@ export function TickerSiteStripForm({ initial }: Props) {
         toast.error(res.error);
         return;
       }
-      toast.success("Strip settings saved");
+      toast.success("Private announcement draft saved");
+      onSaved?.();
       router.refresh();
     });
   };
@@ -40,13 +65,16 @@ export function TickerSiteStripForm({ initial }: Props) {
   return (
     <Card>
       <CardHeader className="p-0">
-        <CardTitle className="px-5 py-3 text-base">Public strip (under main navigation)</CardTitle>
+        <CardTitle className="px-5 py-3 text-base">
+          Public strip (under main navigation)
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={onSubmit} className="space-y-3">
           <p className="text-sm text-zinc-600">
-            Turn the gold announcement strip on or off, and set a <strong>fallback line</strong> that shows only if no
-            ticker lines are published in the list below.
+            Turn the gold announcement strip on or off, and set a{" "}
+            <strong>fallback line</strong> that shows only if no ticker lines
+            are published in the list below.
           </p>
           <div>
             <Label htmlFor="strip-fallback">Fallback text</Label>
@@ -70,7 +98,13 @@ export function TickerSiteStripForm({ initial }: Props) {
                 Show strip on the public site
               </Label>
             </div>
-            <Button type="submit" disabled={pending} className={cn("min-w-[120px] bg-amber-600 text-white hover:bg-amber-500")}>
+            <Button
+              type="submit"
+              disabled={pending}
+              className={cn(
+                "min-w-[120px] bg-amber-600 text-white hover:bg-amber-500",
+              )}
+            >
               {pending ? "Saving…" : "Save strip settings"}
             </Button>
           </div>
