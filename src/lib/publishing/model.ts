@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { footerSchema, restoreFooter } from "@/lib/footer/model";
 import { HOME_SECTIONS } from "@/lib/homepage/content";
 export const resourceSchema = z
   .object({
@@ -12,6 +13,7 @@ export const resourceSchema = z
       [
         ...HOME_SECTIONS.map((section) => section.id),
         "ticker",
+        "footer",
         "hero_slides",
         "why_stats",
         "testimonials",
@@ -163,6 +165,11 @@ export function projectedRows(
   }));
 }
 export function restorePayload(previous: Payload, current: Payload): Payload {
+  previous = structuredClone(previous);
+  const earlierFooter = rowsFor(previous, "cms_content_blocks").find(row => row.section_key === "footer" && row.block_key === "configuration");
+  const currentFooter = rowsFor(current, "cms_content_blocks").find(row => row.section_key === "footer" && row.block_key === "configuration");
+  const a = footerSchema.safeParse((earlierFooter?.content as {footer?:unknown})?.footer), b = footerSchema.safeParse((currentFooter?.content as {footer?:unknown})?.footer);
+  if (earlierFooter && a.success && b.success) earlierFooter.content = {...(earlierFooter.content as Record<string,unknown>), footer:restoreFooter(a.data,b.data)};
   const result: Payload = { tables: {} };
   for (const table of Object.keys(current.tables)) {
     const now = rowsFor(current, table),

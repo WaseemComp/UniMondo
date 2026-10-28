@@ -43,12 +43,12 @@ export function PopularDestinations({
     ctaHref: copy?.ctaHref ?? DEFAULT_COPY.ctaHref,
   };
   return (
-    <section className="bg-[#F8F7F3] py-20 sm:py-28">
+    <section className="bg-[#F4F3EF] py-20 sm:py-28">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#7D673A]">{c.kicker}</p>
-            <h2 className="mt-2 font-[family-name:var(--font-editorial)] text-3xl font-bold tracking-tight text-[#26343B] sm:text-4xl">
+            <h2 className="mt-2 font-[family-name:var(--font-editorial)] text-3xl font-bold tracking-tight text-[#2F3E46] sm:text-4xl">
               {c.title}
             </h2>
             <p className="mt-3 max-w-xl text-[#4D5F64]">{c.subtitle}</p>
@@ -71,7 +71,7 @@ export function PopularDestinations({
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.05 }}
-              className="relative min-w-[280px] flex-1 overflow-hidden rounded-xl border border-[#E2DFD8] bg-white shadow-sm transition hover:shadow-md sm:min-w-0"
+              className="relative min-w-[280px] flex-1 overflow-hidden rounded-xl border border-[#D9E2E8] bg-white shadow-sm transition hover:shadow-md sm:min-w-0"
             >
               <div className="relative aspect-[16/11] w-full">
                 {d.img && <Image
@@ -81,7 +81,7 @@ export function PopularDestinations({
                   className="object-cover transition duration-300 hover:scale-105"
                   sizes="(max-width:768px) 85vw, 33vw"
                 />}
-                <div className="absolute inset-0 bg-gradient-to-t from-[#1A2E3A]/90 via-[#1A2E3A]/25 to-transparent" />
+                <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
                 <span className="absolute left-4 top-4 text-3xl drop-shadow-md" role="img" aria-hidden>
                   {d.flag || FLAG[d.country]}
                 </span>

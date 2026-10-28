@@ -228,3 +228,48 @@
     row-gap: 2.5rem;
   }
 }
+
+/* Phase 07: scoped to the public site and real-component CMS previews. */
+.um-public-theme {
+  --um-background:#F4F3EF; --um-surface:#FFFFFF;
+  --um-surface-sage:#E4F1F7; --um-surface-mist:#E4F1F7;
+  --um-primary:#244B50; --um-text:#2F3E46;
+  --um-border:#D9E2E8; --um-border-light:#D9E2E8;
+  color:#2F3E46; background:#F4F3EF; color-scheme:light;
+}
+.um-public-theme :where(a,button,input,select,textarea,summary):focus-visible {
+  outline:3px solid #244B50; outline-offset:4px;
+}
+.um-public-theme .um-photo-panel {
+  border:1px solid #D9E2E8; background:rgb(244 243 239 / .96);
+  border-radius:20px; padding:clamp(20px,3vw,40px);
+  box-shadow:0 8px 30px rgb(47 62 70 / .08);
+}
+.um-public-theme .um-hero-copy {
+  border:1px solid transparent; padding:clamp(20px,3vw,40px);
+  background:transparent; box-shadow:none;
+}
+.um-public-theme .um-hero-copy :is(h1,p) {
+  color:#2F3E46;
+  text-shadow:0 1px 2px rgb(244 243 239 / .8),0 0 12px rgb(244 243 239 / .5);
+}
+.um-public-theme .um-photo-card {
+  border-color:#D9E2E8; background:rgb(244 243 239 / .96); color:#2F3E46;
+}
+.um-public-theme .um-photo-card dt {color:#244B50}
+.um-public-theme .um-photo-card dd {color:#2F3E46}
+.um-public-theme .um-footer {overflow-wrap:anywhere}
+@media(prefers-reduced-motion:reduce) {
+  .um-public-theme {scroll-behavior:auto}
+  .um-public-theme *, .um-public-theme *::before, .um-public-theme *::after {
+    animation-duration:.01ms!important; animation-iteration-count:1!important;
+    transition-duration:.01ms!important; scroll-behavior:auto!important;
+  }
+}
+/* Light public dialogs; shared operational/admin dialogs retain their own theme. */
+.um-public-theme [data-slot="modal-panel"]{border-color:#D9E2E8;background:#F4F3EF;box-shadow:0 15px 50px #2f3e4626}
+.um-public-theme [data-slot="modal-header"]{background:#E4F1F7;border-color:#D9E2E8}
+.um-public-theme [data-slot="modal-title"],.um-public-theme [data-slot="modal-close"]{color:#244B50}
+.um-public-theme [data-slot="modal-description"]{color:#4D5F64}
+
+.um-public-theme [data-slot="modal-header"] svg{color:#244B50}

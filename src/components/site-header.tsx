@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { Menu, X } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { siteNav } from "@/lib/site-copy";
 import { cn } from "@/lib/utils";
 
@@ -31,9 +31,10 @@ function isNavActive(pathname: string, href: string) {
 export function SiteHeader() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const menuButton = useRef<HTMLButtonElement>(null);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-[#E2DFD8]/80 bg-[#F8F7F3]/92 backdrop-blur-xl transition-colors duration-200">
+    <header onKeyDown={event => { if (open && event.key === "Escape") { setOpen(false); menuButton.current?.focus(); } }} className="sticky top-0 z-50 border-b border-[#D9E2E8]/80 bg-[#F4F3EF]/92 backdrop-blur-xl transition-colors duration-200">
       <div className="mx-auto flex w-full max-w-screen-2xl items-center justify-between gap-3 px-3 py-3 sm:px-4 lg:px-6">
         <Link
           href="/"
@@ -48,11 +49,12 @@ export function SiteHeader() {
             <Link
               key={`${item.href}-${item.key}`}
               href={item.href}
+              aria-current={isNavActive(pathname, item.href) ? "page" : undefined}
               className={cn(
                 "whitespace-nowrap rounded-lg px-2.5 py-1.5 text-[13px] font-medium tracking-normal transition xl:px-3",
                 isNavActive(pathname, item.href)
                   ? "bg-[#244B50]/10 text-[#244B50] font-semibold"
-                  : "text-[#4D5F64] hover:bg-[#E6EEE8]/70 hover:text-[#244B50]",
+                  : "text-[#4D5F64] hover:bg-[#E4F1F7]/70 hover:text-[#244B50]",
               )}
             >
               {siteNav[item.key]}
@@ -63,7 +65,7 @@ export function SiteHeader() {
         <div className="hidden shrink-0 items-center gap-2.5 sm:flex">
           <Link
             href="/#eligibility"
-            className="rounded-lg border border-[#244B50]/25 bg-white/60 px-3.5 py-2 text-xs font-semibold text-[#244B50] transition hover:bg-[#E6EEE8]/50 hover:border-[#244B50]/40 lg:px-4 lg:text-sm"
+            className="rounded-lg border border-[#244B50]/25 bg-white/60 px-3.5 py-2 text-xs font-semibold text-[#244B50] transition hover:bg-[#E4F1F7]/50 hover:border-[#244B50]/40 lg:px-4 lg:text-sm"
           >
             {siteNav.freeEligibilityCheck}
           </Link>
@@ -77,8 +79,10 @@ export function SiteHeader() {
 
         <button
           type="button"
-          className="rounded-lg p-2 text-[#244B50] hover:bg-[#E6EEE8]/60 transition lg:hidden"
+          className="rounded-lg p-2 text-[#244B50] hover:bg-[#E4F1F7]/60 transition lg:hidden"
           onClick={() => setOpen((o) => !o)}
+          ref={menuButton}
+          aria-controls="public-mobile-menu"
           aria-expanded={open}
           aria-label={open ? "Close menu" : "Open menu"}
         >
@@ -88,30 +92,31 @@ export function SiteHeader() {
 
       <AnimatePresence>
         {open ? (
-          <motion.div
+          <motion.div id="public-mobile-menu"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.22 }}
-            className="overflow-hidden border-t border-[#E2DFD8] bg-[#F8F7F3] shadow-xl lg:hidden"
+            className="overflow-hidden border-t border-[#D9E2E8] bg-[#F4F3EF] shadow-xl lg:hidden"
           >
             <nav className="flex flex-col gap-1 px-4 py-4" aria-label="Mobile">
               {NAV.map((item) => (
                 <Link
                   key={`m-${item.href}-${item.key}`}
                   href={item.href}
+                  aria-current={isNavActive(pathname, item.href) ? "page" : undefined}
                   onClick={() => setOpen(false)}
                   className={cn(
                     "rounded-lg px-3 py-2.5 text-base font-medium transition",
                     isNavActive(pathname, item.href)
                       ? "bg-[#244B50]/10 text-[#244B50] font-semibold"
-                      : "text-[#26343B] hover:bg-[#E6EEE8]/70",
+                      : "text-[#2F3E46] hover:bg-[#E4F1F7]/70",
                   )}
                 >
                   {siteNav[item.key]}
                 </Link>
               ))}
-              <div className="mt-3 flex flex-col gap-2 pt-2 border-t border-[#E2DFD8]">
+              <div className="mt-3 flex flex-col gap-2 pt-2 border-t border-[#D9E2E8]">
                 <Link
                   href="/#eligibility"
                   onClick={() => setOpen(false)}

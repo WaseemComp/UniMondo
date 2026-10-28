@@ -98,18 +98,18 @@ export function ContactPageShell({ contact }: Props) {
   };
 
   return (
-    <main className="bg-[#F8F7F3]">
-      <section className="relative overflow-hidden border-b border-[#E2DFD8]">
+    <main className="bg-[#F4F3EF]">
+      <section className="relative overflow-hidden border-b border-[#D9E2E8]">
         <div className="pointer-events-none absolute inset-0">
           <Image
             src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=2000&q=70"
             alt=""
             fill
-            className="object-cover opacity-[0.25]"
+            className="object-cover"
             sizes="100vw"
             priority
           />
-          <div className="absolute inset-0 bg-gradient-to-br from-[#1A2E3A]/98 via-[#1A2E3A]/92 to-[#244B50]/95" />
+          <div className="absolute inset-0 bg-[#244B50]/15" />
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(201,171,118,0.12),transparent_55%)]" />
         </div>
 
@@ -118,16 +118,16 @@ export function ContactPageShell({ contact }: Props) {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.45 }}
-            className="mx-auto max-w-3xl text-center"
+            className="um-photo-panel mx-auto max-w-3xl text-center"
           >
-            <div className="inline-flex items-center gap-2 rounded-full border border-[#C9AB76]/30 bg-[#C9AB76]/10 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.28em] text-[#C9AB76]">
-              <Sparkles className="h-3.5 w-3.5 text-[#C9AB76]" aria-hidden />
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#C9AB76]/30 bg-[#C9AB76]/10 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.28em] text-[#244B50]">
+              <Sparkles className="h-3.5 w-3.5 text-[#244B50]" aria-hidden />
               Contact
             </div>
-            <h1 className="mt-6 font-[family-name:var(--font-editorial)] text-4xl font-normal tracking-tight text-white sm:text-5xl md:text-[3.5rem] md:leading-[1.1]">
-              Every conversation starts with <span className="italic text-[#C9AB76]">clarity</span>
+            <h1 className="mt-6 font-[family-name:var(--font-editorial)] text-4xl font-normal tracking-tight text-[#2F3E46] sm:text-5xl md:text-[3.5rem] md:leading-[1.1]">
+              Every conversation starts with <span className="italic text-[#244B50]">clarity</span>
             </h1>
-            <p className="mx-auto mt-5 max-w-2xl text-[15px] leading-relaxed text-slate-300 sm:text-base">
+            <p className="mx-auto mt-5 max-w-2xl text-[15px] leading-relaxed text-[#4D5F64] sm:text-base">
               The standard of academic excellence and clarity you see across UniMondo — partnerships, careers, or a direct line to our
               offices.
             </p>
@@ -149,15 +149,15 @@ export function ContactPageShell({ contact }: Props) {
               transition={{ delay: i * 0.07, duration: 0.4 }}
               onClick={() => openPath(id)}
               className={cn(
-                "group relative flex cursor-pointer flex-col overflow-hidden rounded-[1.75rem] border border-white/15 bg-[#1A2E3A] p-7 text-left shadow-2xl shadow-black/30 outline-none transition",
+                "group relative flex cursor-pointer flex-col overflow-hidden rounded-[1.75rem] border border-[#D9E2E8] bg-white p-7 text-left shadow-sm outline-none transition",
                 "before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-[#C9AB76] before:via-[#dfcaa2] before:to-[#7D673A]",
                 "hover:-translate-y-1 hover:border-[#C9AB76]/50 hover:shadow-2xl hover:shadow-[#244B50]/30",
-                "focus-visible:ring-2 focus-visible:ring-[#C9AB76] focus-visible:ring-offset-2 focus-visible:ring-offset-[#1A2E3A]",
+                "focus-visible:ring-2 focus-visible:ring-[#C9AB76] focus-visible:ring-offset-2 focus-visible:ring-offset-[#F4F3EF]",
                 "active:translate-y-0",
               )}
             >
               <span
-                className="absolute right-5 top-5 font-[family-name:var(--font-editorial)] text-5xl font-bold leading-none text-white/[0.08]"
+                className="absolute right-5 top-5 font-[family-name:var(--font-editorial)] text-5xl font-bold leading-none text-[#2F3E46]/[0.08]"
                 aria-hidden
               >
                 {step}
@@ -165,16 +165,16 @@ export function ContactPageShell({ contact }: Props) {
 
               <div className="relative">
                 <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#C9AB76]/20 to-[#244B50] p-0.5 shadow-lg ring-1 ring-[#C9AB76]/40 transition group-hover:ring-[#C9AB76]/70">
-                  <div className="flex h-full w-full items-center justify-center rounded-[0.9rem] bg-[#1A2E3A]">
-                    <Icon className="h-8 w-8 text-[#C9AB76] transition group-hover:scale-105" strokeWidth={1.75} aria-hidden />
+                  <div className="flex h-full w-full items-center justify-center rounded-[0.9rem] bg-[#E4F1F7]">
+                    <Icon className="h-8 w-8 text-[#244B50] transition group-hover:scale-105" strokeWidth={1.75} aria-hidden />
                   </div>
                 </div>
 
-                <p className="mt-5 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#C9AB76]">{tag}</p>
-                <h2 className="mt-2 font-[family-name:var(--font-editorial)] text-2xl font-normal tracking-tight text-white">{title}</h2>
-                <p className="mt-3 text-sm leading-relaxed text-slate-300">{body}</p>
+                <p className="mt-5 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#244B50]">{tag}</p>
+                <h2 className="mt-2 font-[family-name:var(--font-editorial)] text-2xl font-normal tracking-tight text-[#2F3E46]">{title}</h2>
+                <p className="mt-3 text-sm leading-relaxed text-[#4D5F64]">{body}</p>
 
-                <span className="mt-6 inline-flex items-center gap-2 border-b border-transparent text-sm font-semibold text-[#C9AB76] transition group-hover:border-[#C9AB76] group-hover:text-[#dfcaa2]">
+                <span className="mt-6 inline-flex items-center gap-2 border-b border-transparent text-sm font-semibold text-[#244B50] transition group-hover:border-[#C9AB76] group-hover:text-[#244B50]">
                   {cta}
                   <ChevronRight className="h-4 w-4 transition group-hover:translate-x-0.5" aria-hidden />
                 </span>
@@ -187,12 +187,12 @@ export function ContactPageShell({ contact }: Props) {
           initial={{ opacity: 0, y: 12 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="relative mt-14 overflow-hidden rounded-[1.75rem] border border-[#E2DFD8] bg-white px-6 py-8 shadow-sm sm:px-10"
+          className="relative mt-14 overflow-hidden rounded-[1.75rem] border border-[#D9E2E8] bg-white px-6 py-8 shadow-sm sm:px-10"
         >
           <div className="pointer-events-none absolute -right-16 top-0 h-32 w-32 rounded-full bg-[#C9AB76]/10 blur-2xl" />
           <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex gap-4">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#E6EEE8] ring-1 ring-[#244B50]/20">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#E4F1F7] ring-1 ring-[#244B50]/20">
                 <Mail className="h-7 w-7 text-[#244B50]" aria-hidden />
               </div>
               <div>
@@ -209,7 +209,7 @@ export function ContactPageShell({ contact }: Props) {
                 <a
                   key={e.email}
                   href={`mailto:${e.email}`}
-                  className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-[#E2DFD8] bg-[#F8F7F3] px-5 py-2.5 text-sm font-semibold text-[#244B50] transition hover:-translate-y-0.5 hover:bg-[#E6EEE8] hover:shadow-sm"
+                  className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-[#D9E2E8] bg-[#F4F3EF] px-5 py-2.5 text-sm font-semibold text-[#244B50] transition hover:-translate-y-0.5 hover:bg-[#E4F1F7] hover:shadow-sm"
                 >
                   <MessageCircle className="h-4 w-4 shrink-0 text-[#244B50]" aria-hidden />
                   <span className="max-w-[14rem] truncate">{e.label || e.email}</span>

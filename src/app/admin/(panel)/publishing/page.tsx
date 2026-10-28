@@ -25,7 +25,9 @@ export default async function Page() {
         {rows.map((row) => {
           const href =
             row.content_type === "home"
-              ? row.record_key === "testimonials"
+              ? row.record_key === "footer"
+                ? "/admin/content/footer"
+                : row.record_key === "testimonials"
                 ? "/admin/content/success-stories"
                 : row.record_key === "ticker"
                   ? "/admin/content/ticker"

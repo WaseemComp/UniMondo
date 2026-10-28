@@ -72,12 +72,12 @@ export function AboutTeamShowcase({ team }: Props) {
                   className="absolute -inset-1 rounded-full bg-gradient-to-br from-amber-400/50 via-amber-500/30 to-amber-600/40 blur-[2px]"
                   aria-hidden
                 />
-                <div className="relative mx-auto flex h-36 w-36 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-[#0a1628] shadow-xl shadow-amber-900/15 ring-2 ring-amber-400/35 transition group-hover:ring-amber-400/55 md:h-40 md:w-40">
+                <div className="relative mx-auto flex h-36 w-36 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-[#E4F1F7] shadow-xl shadow-amber-900/15 ring-2 ring-[#244B50]/25 transition group-hover:ring-[#244B50]/40 md:h-40 md:w-40">
                   {m.image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={m.image_url} alt="" className="h-full w-full object-cover" />
                   ) : (
-                    <span className="px-3 text-center font-[family-name:var(--font-heading)] text-lg font-semibold leading-tight text-amber-200">
+                    <span className="px-3 text-center font-[family-name:var(--font-heading)] text-lg font-semibold leading-tight text-[#244B50]">
                       {initials(m.name)}
                     </span>
                   )}
@@ -110,7 +110,7 @@ export function AboutTeamShowcase({ team }: Props) {
               // eslint-disable-next-line @next/next/no-img-element
               <img src={active.image_url} alt="" className="h-11 w-11 rounded-2xl object-cover ring-1 ring-amber-400/30" />
             ) : (
-              <User className="h-6 w-6 text-amber-400" aria-hidden />
+              <User className="h-6 w-6 text-[#244B50]" aria-hidden />
             )
           }
           labelledBy={modalTitleId}

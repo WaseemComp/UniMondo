@@ -13,6 +13,7 @@ import {
   type ContentRow,
 } from "./model";
 import { workflowAccess } from "./access";
+import { footerBaseline } from "@/lib/footer/server";
 import { effectiveBaseline } from "./baseline";
 import { loadHomepageReferences } from "@/lib/admin/homepage-catalogue";
 import { workflowState, publishingService } from "./store";
@@ -283,14 +284,16 @@ export async function planDraft<T extends { ok: boolean; error?: string }>(
       const saved = await service.rpc("cms_content_save_draft", {
         t: resource.type,
         k: resource.key,
-        p_title: String(row?.name ?? row?.title ?? resource.key),
+        p_title: String(row?.name ?? row?.title ?? (resource.key === "footer" ? "Website footer" : resource.key)),
         p_expected: view.document?.version ?? 0,
         p_base: view.published,
         p_proposed: payload,
         p_actor: access.user.id,
         p_label: access.label,
         p_initial_effective: !view.document
-          ? effectiveBaseline(
+          ? resource.type === "home" && resource.key === "footer"
+            ? await footerBaseline(view.published, payload)
+            : effectiveBaseline(
               resource,
               view.published,
               payload,

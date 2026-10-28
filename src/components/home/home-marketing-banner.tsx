@@ -23,14 +23,14 @@ export function HomeMarketingBanner({
     ctaHref: copy?.ctaHref ?? DEFAULT_COPY.ctaHref,
   };
   return (
-    <section className="relative border-b border-[#E2DFD8] bg-[#E6EEE8] px-4 py-3.5 sm:px-6 lg:px-8">
+    <section className="relative border-b border-[#D9E2E8] bg-[#E4F1F7] px-4 py-3.5 sm:px-6 lg:px-8">
       <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 sm:flex-row sm:gap-6">
-        <p className="text-center text-sm leading-relaxed text-[#26343B] sm:text-left sm:text-[15px]">
+        <p className="text-center text-sm leading-relaxed text-[#2F3E46] sm:text-left sm:text-[15px]">
           {c.text} <strong className="font-bold text-[#244B50]">{c.highlight}</strong>{supportingText ? ` — ${supportingText}` : ""}
         </p>
         <Link
           href={c.ctaHref}
-          className="shrink-0 rounded-lg border border-[#244B50]/30 bg-white px-4 py-1.5 text-xs font-semibold text-[#244B50] shadow-xs transition hover:bg-[#F8F7F3]"
+          className="shrink-0 rounded-lg border border-[#244B50]/30 bg-white px-4 py-1.5 text-xs font-semibold text-[#244B50] shadow-xs transition hover:bg-[#F4F3EF]"
         >
           {c.ctaLabel}
         </Link>

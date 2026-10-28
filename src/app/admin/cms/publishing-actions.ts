@@ -149,7 +149,7 @@ export async function transitionContent(
       ])
         revalidatePath(path);
       revalidatePath("/destinations/[countrySlug]", "page");
-      if (v.resource.type === "home" && v.resource.key === "ticker")
+      if (v.resource.type === "home" && ["ticker", "footer"].includes(v.resource.key))
         revalidatePath("/", "layout");
     }
     revalidatePath("/admin/publishing");

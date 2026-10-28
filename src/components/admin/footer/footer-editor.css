@@ -1,0 +1,164 @@
+.um-cms .ft-workspace {
+  display: grid;
+  grid-template-columns: 160px minmax(300px, 1fr) minmax(340px, 1fr);
+  gap: 18px;
+  min-width: 0;
+  align-items: start;
+}
+.um-cms .ft-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.um-cms .ft-tabs button {
+  text-align: left;
+  border-radius: 10px;
+  padding: 12px;
+  font-size: 13px;
+  background: #fff;
+  border: 1px solid #dce7e0;
+}
+.um-cms .ft-tabs button[aria-current] {
+  background: #dcefe9;
+  color: #235e54;
+  border-color: #2c786d;
+}
+.um-cms .ft-fields {
+  background: white;
+  border: 1px solid #dce7e0;
+  border-radius: 16px;
+  padding: 20px;
+  min-width: 0;
+}
+.um-cms .ft-fields h2,
+.um-cms .ft-fields h3 {
+  font-weight: 600;
+  margin: 10px 0 16px;
+}
+.um-cms .ft-field {
+  display: grid;
+  gap: 7px;
+  margin: 16px 0;
+  font-size: 13px;
+  font-weight: 500;
+}
+.um-cms .ft-field input:not([type="checkbox"]),
+.um-cms .ft-field textarea,
+.um-cms .ft-field select {
+  min-width: 0;
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #cdded4;
+  border-radius: 9px;
+  background: white;
+  font: inherit;
+  color: #263e39;
+}
+.um-cms .ft-field textarea {
+  resize: vertical;
+}
+.um-cms .ft-field small,
+.um-cms .ft-help,
+.um-cms .ft-source {
+  font-size: 12px;
+  color: #52645e;
+  line-height: 1.6;
+}
+.um-cms .ft-source {
+  margin-bottom: 18px;
+}
+.um-cms .ft-item {
+  margin: 12px 0;
+  border: 1px solid #dce7e0;
+  border-radius: 10px;
+  min-width: 0;
+}
+.um-cms .ft-item summary {
+  padding: 13px;
+  cursor: pointer;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.um-cms .ft-item-body {
+  padding: 0 13px 14px;
+}
+.um-cms .ft-row-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 12px;
+}
+.um-cms .ft-row-actions label {
+  flex: 1;
+}
+.um-cms .ft-row-actions button {
+  padding: 7px;
+  border: 1px solid #cdded4;
+  border-radius: 7px;
+}
+.um-cms .ft-row-actions button:disabled {
+  opacity: 0.4;
+}
+.um-cms .ft-save-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  border-top: 1px solid #dce7e0;
+  padding-top: 18px;
+  margin-top: 20px;
+}
+.um-cms .ft-logo {
+  max-height: 90px;
+  max-width: 100%;
+  object-fit: contain;
+  margin: 15px 0;
+}
+.um-cms .ft-error {
+  color: #8b302a;
+  background: #fff3f1;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+.um-cms .ft-success {
+  color: #235e54;
+  background: #e8f6ec;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+.um-cms .ft-notice-link {
+  border-top: 1px solid #dce7e0;
+  margin-top: 15px;
+  padding-top: 4px;
+  font-size: 12px;
+}
+.um-cms .ft-editor :focus-visible {
+  outline: 3px solid #3978a0;
+  outline-offset: 3px;
+}
+.um-cms .ft-editor input[type="checkbox"] {
+  accent-color: #2c786d;
+}
+@media (max-width: 1250px) {
+  .um-cms .ft-workspace {
+    grid-template-columns: minmax(280px, 1fr) minmax(300px, 1fr);
+  }
+  .um-cms .ft-tabs {
+    grid-column: 1/-1;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+}
+@media (max-width: 800px) {
+  .um-cms .ft-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .um-cms .ft-fields {
+    padding: 15px;
+  }
+  .um-cms .ft-save-actions > * {
+    width: 100%;
+  }
+}

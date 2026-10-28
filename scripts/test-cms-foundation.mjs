@@ -132,6 +132,7 @@ assert.deepEqual(ids(items), [
   "overview",
   "publishing",
   "home",
+  "footer",
   "media",
   "applications",
   "agreements",

@@ -5,7 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 import { mediaFixture } from "./media-fixture.mjs";
 import assert from "node:assert/strict";
 const require = createRequire(import.meta.url);
-export async function publishingFixture() {
+export async function publishingFixture({ footer = false } = {}) {
   const { PGlite } = require(
       process.env.PGLITE_MODULE || "@electric-sql/pglite",
     ),
@@ -52,6 +52,11 @@ export async function publishingFixture() {
   );
   await db.exec(source);
   await db.exec(source);
+  if (footer) {
+    const extension = readFileSync(new URL("../../supabase/migrations/20261031090000_footer_publishing.sql", import.meta.url), "utf8");
+    await db.exec(extension);
+    await db.exec(extension);
+  }
   const privateNames = [
     "cms_publishing_settings",
     "cms_content_workflows",

@@ -9,7 +9,9 @@ import { publishingFixture } from "./fixtures/publishing-fixture.mjs";
 const require = createRequire(import.meta.url),
   root = fileURLToPath(new URL("../", import.meta.url));
 const { JSDOM } = require(process.env.JSDOM_MODULE || "jsdom");
-const fixture = await publishingFixture();
+const footerMode = process.argv.includes("--footer");
+const fixture = await publishingFixture({ footer: footerMode });
+if (footerMode) for (const name of ["contact_offices","contact_addresses","contact_phones","contact_emails"]) fixture.state.tables[name] = [];
 await fixture.state.activate();
 globalThis.__publishingFixture = fixture;
 const dom = new JSDOM(
@@ -114,6 +116,7 @@ globalThis.__publishingActions = {
   ...stories,
   ...(await server.import(root + "src/app/admin/cms/publishing-actions.ts")),
   ...(await server.import(root + "src/app/admin/cms/academic-actions.ts")),
+  ...(await server.import(root + "src/app/admin/cms/footer-actions.ts")),
 };
 const media = await server.import(root + "src/app/api/admin/media/route.ts");
 const mediaItem = await server.import(
@@ -140,6 +143,8 @@ const mock = root + "scripts/fixtures/publishing-dom-services.mjs",
   elements = root + "scripts/fixtures/homepage-items-dom-elements.mjs";
 const alias = {
   "./homepage-editor.css": mock,
+  "./footer-editor.css": mock,
+  "@/components/admin/homepage/homepage-editor.css": mock,
   "./media-library.css": mock,
   "@": root + "src",
   "next/link": elements + "?link",
@@ -156,6 +161,7 @@ for (const file of [
   "homepage-story-actions",
   "publishing-actions",
   "academic-actions",
+  "footer-actions",
 ])
   for (const key of [
     "@/app/admin/cms/" + file,
@@ -175,7 +181,7 @@ const client = createJiti(import.meta.url, {
   moduleCache: false,
   tryNative: false,
 });
-const test = root + "scripts/test-publishing-dom.mjs";
+const test = root + (footerMode ? "scripts/test-footer-dom.mjs" : "scripts/test-publishing-dom.mjs");
 await client.evalModule(readFileSync(test, "utf8"), {
   filename: test,
   async: true,

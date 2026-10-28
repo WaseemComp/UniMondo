@@ -46,17 +46,17 @@ export default async function BlogPostPage({ params }: Props) {
         ← All posts
       </Link>
       <article className="mt-6">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#C9AB76]">Blog & Insights</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#244B50]">Blog & Insights</p>
         <h1 className="mt-3 font-[family-name:var(--font-editorial)] text-3xl font-normal text-[#244B50] sm:text-4xl md:text-5xl">
           {post.title}
         </h1>
         {post.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element -- arbitrary CMS URLs
-          <img src={post.imageUrl} alt="" className="mt-8 w-full rounded-2xl border border-[#E2DFD8] object-cover" />
+          <img src={post.imageUrl} alt="" className="mt-8 w-full rounded-2xl border border-[#D9E2E8] object-cover" />
         ) : null}
         {post.excerpt ? <p className="mt-6 text-lg text-[#4D5F64] leading-relaxed">{post.excerpt}</p> : null}
         <div className="prose prose-slate mt-8 max-w-none">
-          <div className="whitespace-pre-wrap text-base leading-7 text-[#26343B]">{post.content}</div>
+          <div className="whitespace-pre-wrap text-base leading-7 text-[#2F3E46]">{post.content}</div>
         </div>
       </article>
     </main>
