@@ -9,11 +9,13 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from("language_courses")
-    .select("id,title,country,city,duration,price,description,is_active,created_at")
+    .select("*")
     .eq("is_active", true)
     .order("created_at", { ascending: false });
 
-  if (error) return NextResponse.json({ message: error.message }, { status: 500 });
-  return NextResponse.json({ courses: data ?? [] });
+  if (error)
+    return NextResponse.json({ message: error.message }, { status: 500 });
+  return NextResponse.json({
+    courses: (data ?? []).filter((row) => !row.archived_at),
+  });
 }
-

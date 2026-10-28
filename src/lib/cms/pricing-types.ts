@@ -7,6 +7,7 @@ export type StudyPackagePublic = {
   description: string;
   bestFor: string | null;
   features: string[];
+  currencyCode: string;
   priceFull: number;
   priceInstallment: number | null;
   sortOrder: number;
@@ -19,6 +20,7 @@ export type StudyAddOnPublic = {
   name: string;
   description: string;
   bestFor: string | null;
+  currencyCode: string;
   priceFull: number;
   priceInstallment: number | null;
   sortOrder: number;
@@ -32,6 +34,8 @@ export type PackageRowDb = {
   description: string;
   best_for: string | null;
   features: unknown;
+  currency_code?: string | null;
+  archived_at?: string | null;
   price_full: string | number;
   price_installment: string | number | null;
   sort_order: number;
@@ -44,6 +48,8 @@ export type AddOnRowDb = {
   name: string;
   description: string;
   best_for: string | null;
+  currency_code?: string | null;
+  archived_at?: string | null;
   price_full: string | number;
   price_installment: string | number | null;
   sort_order: number;
@@ -51,7 +57,9 @@ export type AddOnRowDb = {
 };
 
 export function mapPackageRow(row: PackageRowDb): StudyPackagePublic {
-  const features = Array.isArray(row.features) ? row.features.map((x) => String(x)) : [];
+  const features = Array.isArray(row.features)
+    ? row.features.map((x) => String(x))
+    : [];
   return {
     id: row.id,
     slug: row.slug,
@@ -60,8 +68,10 @@ export function mapPackageRow(row: PackageRowDb): StudyPackagePublic {
     description: row.description ?? "",
     bestFor: row.best_for,
     features,
+    currencyCode: row.currency_code || "USD",
     priceFull: Number(row.price_full),
-    priceInstallment: row.price_installment == null ? null : Number(row.price_installment),
+    priceInstallment:
+      row.price_installment == null ? null : Number(row.price_installment),
     sortOrder: row.sort_order ?? 0,
   };
 }
@@ -73,8 +83,10 @@ export function mapAddOnRow(row: AddOnRowDb): StudyAddOnPublic {
     name: row.name,
     description: row.description ?? "",
     bestFor: row.best_for,
+    currencyCode: row.currency_code || "USD",
     priceFull: Number(row.price_full),
-    priceInstallment: row.price_installment == null ? null : Number(row.price_installment),
+    priceInstallment:
+      row.price_installment == null ? null : Number(row.price_installment),
     sortOrder: row.sort_order ?? 0,
   };
 }

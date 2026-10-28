@@ -1,4 +1,5 @@
 "use client";
+import { DEFAULT_CURRENCIES, type Currency } from "@/lib/currencies/model";
 import Link from "next/link";
 import { WorkflowPanel } from "@/components/admin/publishing/workflow-panel";
 import { AcademicDraftPreview } from "@/components/admin/publishing/academic-preview";
@@ -40,11 +41,14 @@ export function CatalogueManager({
   kind,
   data,
   initialRecord,
+  currencies = DEFAULT_CURRENCIES,
 }: {
   kind: AcademicKind;
   data: CatalogueData;
   initialRecord?: string;
+  currencies?: Currency[];
 }) {
+  const [currencyConfirmed, setCurrencyConfirmed] = useState(false);
   const editorRef = useRef<HTMLElement>(null);
   const [workflowKey, setWorkflowKey] = useState(initialRecord ?? ""),
     [workflowRefresh, setWorkflowRefresh] = useState(0),
@@ -102,6 +106,7 @@ export function CatalogueManager({
     const values = academicDraft(kind, row);
     if (!row && kind === "countries")
       values.region_group_id = data.regions[0]?.id ?? 0;
+    setCurrencyConfirmed(false);
     setUnpublishedRecord(!row);
     setWorkflowKey(row?.id ?? crypto.randomUUID());
     setWorkflowEditable(false);
@@ -114,8 +119,10 @@ export function CatalogueManager({
         editorRef.current?.scrollIntoView({ block: "start" }),
       );
   };
-  const change = (path: string, value: unknown) =>
+  const change = (path: string, value: unknown) => {
+    if (path === "details.currency") setCurrencyConfirmed(false);
     setDraft((current) => setPath(current, path, value));
+  };
   const save = (operation: "save" | "archive" | "restore" = "save") => {
     if (
       operation !== "save" &&
@@ -135,6 +142,7 @@ export function CatalogueManager({
         expectedUpdatedAt: editing?.updated_at ?? null,
         operation,
         values: draft,
+        currencyChangeConfirmed: currencyConfirmed,
       });
       if (!result.ok) {
         setError(result.error);
@@ -142,6 +150,7 @@ export function CatalogueManager({
         return;
       }
       const next = academicDraft(kind, result.row);
+      setCurrencyConfirmed(false);
       setEditing(result.row);
       setDraft(next);
       setBaseline(JSON.stringify(next));
@@ -239,7 +248,18 @@ export function CatalogueManager({
             className={selectClass}
             onChange={(e) => change(field.path, e.target.value)}
           >
-            {field.options?.map((option) => (
+            {(field.path === "details.currency"
+              ? [
+                  "",
+                  ...new Set([
+                    ...currencies
+                      .filter((c) => c.active || c.code === text(value))
+                      .map((c) => c.code),
+                    ...(text(value) ? [text(value)] : []),
+                  ]),
+                ]
+              : field.options
+            )?.map((option) => (
               <option key={option} value={option}>
                 {option
                   ? option.charAt(0).toUpperCase() + option.slice(1)
@@ -357,6 +377,7 @@ export function CatalogueManager({
           busy={pending}
           refresh={workflowRefresh}
           onLoad={(view, showPublished) => {
+            setCurrencyConfirmed(false);
             if (!view.ready) {
               setWorkflowEditable(false);
               return;
@@ -607,6 +628,19 @@ export function CatalogueManager({
                       </option>
                     ))}
                   </select>
+                </label>
+              )}
+              {kind === "programmes" && (
+                <label className="block rounded-xl border p-4 text-sm">
+                  <input
+                    type="checkbox"
+                    disabled={!editable || pending}
+                    checked={currencyConfirmed}
+                    onChange={(e) => setCurrencyConfirmed(e.target.checked)}
+                  />{" "}
+                  I verified the tuition denomination and amount. Selecting
+                  currency does not convert historical tuition. Unchanged legacy
+                  currency information is retained.
                 </label>
               )}
               {kind === "universities" && (

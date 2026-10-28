@@ -28,7 +28,9 @@
     "test:footer:dom": "node scripts/run-publishing-dom-tests.mjs --footer",
     "test:public:refinement": "node scripts/test-public-refinement.mjs",
     "test:agreements:refinement": "node scripts/run-agreement-tests.mjs refinement",
-    "test:agreements:dom": "node scripts/run-agreement-tests.mjs refinement-dom"
+    "test:agreements:dom": "node scripts/run-agreement-tests.mjs refinement-dom",
+    "test:post-launch": "node scripts/run-post-launch-tests.mjs",
+    "test:post-launch:dom": "node scripts/run-publishing-dom-tests.mjs --post-launch"
   },
   "dependencies": {
     "@base-ui/react": "^1.3.0",

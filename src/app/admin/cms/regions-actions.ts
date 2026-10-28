@@ -1,77 +1,141 @@
 "use server";
-
-import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { requireAdminUser } from "@/app/admin/require-admin";
-import { createSupabaseServiceClient } from "@/lib/supabase/admin";
-
-const regionSchema = z.object({
-  id: z.number().int().positive().optional(),
-  label: z.string().min(1, "Label is required").max(200),
-  continent: z.string().max(120).optional().default("Europe"),
-  sort_order: z.coerce.number().int().min(0).default(0),
-});
-
-function formatZodError(err: z.ZodError): string {
-  const first = err.issues[0];
-  return first ? `${first.path.join(".")}: ${first.message}` : "Invalid data";
+import { catalogueAccess } from "./catalogue-actions";
+import {
+  planDraft,
+  createContentServiceClient,
+} from "@/lib/publishing/planning";
+import { workflowState } from "@/lib/publishing/store";
+import { rowsFor, isWorking } from "@/lib/publishing/model";
+export async function readRegions() {
+  await catalogueAccess("countries");
+  return workflowState({ type: "regions", key: "catalogue" });
 }
-
-export async function saveRegion(input: unknown): Promise<{ ok: true } | { ok: false; error: string }> {
+export async function saveRegionsDraft(input: unknown) {
   try {
-    await requireAdminUser();
-    const svc = createSupabaseServiceClient();
-    if (!svc) return { ok: false, error: "SUPABASE_SERVICE_ROLE_KEY is not configured." };
-
-    const parsed = regionSchema.safeParse(input);
-    if (!parsed.success) return { ok: false, error: formatZodError(parsed.error) };
-
-    const r = parsed.data;
-    const continent = (r.continent ?? "Europe").trim() || "Europe";
-    const payload = {
-      label: r.label.trim(),
-      continent,
-      sort_order: r.sort_order,
+    const v = z
+      .object({
+        version: z.number().int().min(0),
+        regions: z.array(
+          z.object({
+            id: z.number().int().positive().max(32767),
+            label: z.string().trim().min(1).max(200),
+            continent: z.string().max(120),
+            sort_order: z.number().int().min(0).max(32767),
+            is_published: z.boolean(),
+            archived_at: z.string().datetime().nullable(),
+          }),
+        ),
+        countries: z.array(
+          z.object({
+            id: z.string().uuid(),
+            region_group_id: z.number().int().positive().nullable(),
+            sort_order: z.number().int().min(0).max(32767),
+          }),
+        ),
+      })
+      .strict()
+      .parse(input);
+    await catalogueAccess("countries");
+    return await planDraft(
+      { type: "regions", key: "catalogue" },
+      async () => {
+        const svc = createContentServiceClient();
+        if (!svc) throw new Error("Region storage is unavailable.");
+        for (const row of v.regions) {
+          const result = await svc
+            .from("region_groups")
+            .upsert(row, { onConflict: "id" });
+          if (result.error) throw new Error(result.error.message);
+        }
+        for (const row of v.countries) {
+          const result = await svc
+            .from("countries")
+            .update({
+              region_group_id: row.region_group_id,
+              sort_order: row.sort_order,
+            })
+            .eq("id", row.id);
+          if (result.error) throw new Error(result.error.message);
+        }
+        return { ok: true as const };
+      },
+      v.version,
+    );
+  } catch (e) {
+    return {
+      ok: false as const,
+      error:
+        e instanceof Error ? e.message : "Region draft could not be saved.",
     };
-
-    if (r.id) {
-      const { error } = await svc.from("region_groups").update(payload).eq("id", r.id);
-      if (error) return { ok: false, error: error.message };
-    } else {
-      const { error } = await svc.from("region_groups").insert(payload);
-      if (error) return { ok: false, error: error.message };
-    }
-
-    revalidatePath("/admin/data/regions");
-    revalidatePath("/admin/destinations/countries");
-    revalidatePath("/destinations");
-    return { ok: true };
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : "Save failed";
-    return { ok: false, error: msg };
   }
 }
-
-export async function deleteRegion(id: number): Promise<{ ok: true } | { ok: false; error: string }> {
-  try {
-    await requireAdminUser();
-    const svc = createSupabaseServiceClient();
-    if (!svc) return { ok: false, error: "SUPABASE_SERVICE_ROLE_KEY is not configured." };
-
-    const { error } = await svc.from("region_groups").delete().eq("id", id);
-    if (error) {
-      const msg = error.message.includes("violates foreign key")
-        ? "Cannot delete: one or more countries still use this region. Reassign those countries first."
-        : error.message;
-      return { ok: false, error: msg };
-    }
-
-    revalidatePath("/admin/data/regions");
-    revalidatePath("/admin/destinations/countries");
-    revalidatePath("/destinations");
-    return { ok: true };
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : "Delete failed";
-    return { ok: false, error: msg };
-  }
+// Backward-compatible entry points now use private drafts; no legacy direct writes/deletion.
+export async function saveRegion(input: unknown) {
+  const view = await readRegions();
+  if (!view.ready)
+    return { ok: false as const, error: view.error || "Region setup pending." };
+  const payload = isWorking(view.document)
+      ? view.document!.proposed
+      : view.published,
+    regions = rowsFor(payload, "region_groups"),
+    v = z
+      .object({
+        id: z.number().optional(),
+        label: z.string(),
+        continent: z.string().default("Europe"),
+        sort_order: z.number().default(0),
+      })
+      .parse(input),
+    id = v.id ?? Math.max(0, ...regions.map((r) => Number(r.id))) + 1;
+  return saveRegionsDraft({
+    version: view.document?.version ?? 0,
+    regions: [
+      ...regions.filter((r) => r.id !== id),
+      {
+        ...regions.find((r) => r.id === id),
+        ...v,
+        id,
+        is_published: true,
+        archived_at: null,
+      },
+    ].map((r) => ({
+      id: r.id,
+      label: r.label,
+      continent: r.continent ?? "Europe",
+      sort_order: r.sort_order ?? 0,
+      is_published: r.is_published !== false,
+      archived_at: r.archived_at ?? null,
+    })),
+    countries: rowsFor(payload, "countries").map((r) => ({
+      id: r.id,
+      region_group_id: r.region_group_id ?? null,
+      sort_order: r.sort_order ?? 0,
+    })),
+  });
+}
+export async function deleteRegion(id: number) {
+  const view = await readRegions();
+  if (!view.ready)
+    return { ok: false as const, error: view.error || "Region setup pending." };
+  const payload = isWorking(view.document)
+    ? view.document!.proposed
+    : view.published;
+  return saveRegionsDraft({
+    version: view.document?.version ?? 0,
+    regions: rowsFor(payload, "region_groups").map((r) => ({
+      id: r.id,
+      label: r.label,
+      continent: r.continent ?? "Europe",
+      sort_order: r.sort_order ?? 0,
+      is_published: r.id === id ? false : r.is_published !== false,
+      archived_at:
+        r.id === id ? new Date().toISOString() : (r.archived_at ?? null),
+    })),
+    countries: rowsFor(payload, "countries").map((r) => ({
+      id: r.id,
+      region_group_id: r.region_group_id ?? null,
+      sort_order: r.sort_order ?? 0,
+    })),
+  });
 }

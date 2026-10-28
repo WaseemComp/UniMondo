@@ -1,28 +1,28 @@
+import { formatMoney, type Currency } from "@/lib/currencies/model";
 import Link from "next/link";
 import { Check } from "lucide-react";
-import type { StudyAddOnPublic, StudyPackagePublic } from "@/lib/cms/pricing-types";
-
-function usd(n: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(n);
-}
+import type {
+  StudyAddOnPublic,
+  StudyPackagePublic,
+} from "@/lib/cms/pricing-types";
 
 type Props = {
+  currencies?: Currency[];
   packages: StudyPackagePublic[];
   addOns: StudyAddOnPublic[];
 };
 
-export function StudyPackagesTables({ packages, addOns }: Props) {
+export function StudyPackagesTables({ packages, addOns, currencies }: Props) {
   return (
     <div className="space-y-16 lg:space-y-20">
       {/* Trust strip */}
       <div className="relative overflow-hidden rounded-xl border border-[#D9E2E8] bg-[#E6EEE8] px-5 py-5 sm:px-8 sm:py-6 shadow-xs">
         <p className="relative text-center text-sm leading-relaxed text-[#2F3E46] sm:text-base">
-          <strong className="font-bold text-[#244B50]">Application submission with UniMondo is completely FREE.</strong>{" "}
-          You only pay for the support package you choose. You can upgrade or change your package later.
+          <strong className="font-bold text-[#244B50]">
+            Application submission with UniMondo is completely FREE.
+          </strong>{" "}
+          You only pay for the support package you choose. You can upgrade or
+          change your package later.
         </p>
       </div>
 
@@ -34,7 +34,8 @@ export function StudyPackagesTables({ packages, addOns }: Props) {
               Support tiers
             </h2>
             <p className="mx-auto mt-3 max-w-2xl text-sm text-[#4D5F64] sm:text-base">
-              From focused consultation to full admission support — pick the depth of guidance that fits you.
+              From focused consultation to full admission support — pick the
+              depth of guidance that fits you.
             </p>
           </div>
 
@@ -61,24 +62,43 @@ export function StudyPackagesTables({ packages, addOns }: Props) {
                       {p.name}
                     </h3>
                     <div className="mt-4 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                      <span className="text-3xl font-bold tracking-tight text-[#244B50] sm:text-4xl">{usd(p.priceFull)}</span>
-                      <span className="text-sm font-medium text-[#4D5F64]">full pay</span>
+                      <span className="text-3xl font-bold tracking-tight text-[#244B50] sm:text-4xl">
+                        {formatMoney(p.priceFull, p.currencyCode, currencies)}
+                      </span>
+                      <span className="text-sm font-medium text-[#4D5F64]">
+                        full pay
+                      </span>
                     </div>
                     {p.priceInstallment != null ? (
                       <p className="mt-1 text-sm text-[#4D5F64]">
-                        or <span className="font-semibold text-[#2F3E46]">{usd(p.priceInstallment)}</span> on installments
+                        or{" "}
+                        <span className="font-semibold text-[#2F3E46]">
+                          {formatMoney(
+                            p.priceInstallment,
+                            p.currencyCode,
+                            currencies,
+                          )}
+                        </span>{" "}
+                        on installments
                       </p>
                     ) : (
-                      <p className="mt-1 text-sm text-[#4D5F64]">One-time consultation tier</p>
+                      <p className="mt-1 text-sm text-[#4D5F64]">
+                        One-time consultation tier
+                      </p>
                     )}
                   </div>
 
-                  <p className="text-sm leading-relaxed text-[#4D5F64]">{p.description}</p>
+                  <p className="text-sm leading-relaxed text-[#4D5F64]">
+                    {p.description}
+                  </p>
 
                   {p.features.length > 0 ? (
                     <ul className="mt-6 flex flex-col gap-3">
                       {p.features.map((f) => (
-                        <li key={f} className="flex gap-3 text-sm leading-snug text-[#2F3E46]">
+                        <li
+                          key={f}
+                          className="flex gap-3 text-sm leading-snug text-[#2F3E46]"
+                        >
                           <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-[#244B50]/10 text-[#244B50]">
                             <Check className="h-3.5 w-3.5" strokeWidth={3} />
                           </span>
@@ -90,8 +110,12 @@ export function StudyPackagesTables({ packages, addOns }: Props) {
 
                   {p.bestFor ? (
                     <div className="mt-auto border-t border-[#D9E2E8] pt-6">
-                      <p className="text-xs font-semibold uppercase tracking-wider text-[#7D673A]">Best for</p>
-                      <p className="mt-1.5 text-sm leading-relaxed text-[#4D5F64]">{p.bestFor}</p>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-[#7D673A]">
+                        Best for
+                      </p>
+                      <p className="mt-1.5 text-sm leading-relaxed text-[#4D5F64]">
+                        {p.bestFor}
+                      </p>
                     </div>
                   ) : null}
                 </article>
@@ -109,7 +133,8 @@ export function StudyPackagesTables({ packages, addOns }: Props) {
               Add-ons
             </h2>
             <p className="mx-auto mt-3 max-w-2xl text-sm text-[#4D5F64] sm:text-base">
-              Layer extra support on any tier — scholarships, visa, pre-departure, and more.
+              Layer extra support on any tier — scholarships, visa,
+              pre-departure, and more.
             </p>
           </div>
 
@@ -121,17 +146,34 @@ export function StudyPackagesTables({ packages, addOns }: Props) {
               >
                 <div className="absolute left-0 top-0 h-full w-1.5 bg-[#244B50]" />
                 <div className="pl-3">
-                  <h3 className="font-[family-name:var(--font-editorial)] text-xl font-bold text-[#2F3E46]">{a.name}</h3>
+                  <h3 className="font-[family-name:var(--font-editorial)] text-xl font-bold text-[#2F3E46]">
+                    {a.name}
+                  </h3>
                   <div className="mt-3 flex flex-wrap items-baseline gap-2">
-                    <span className="text-xl font-bold text-[#244B50]">{usd(a.priceFull)}</span>
+                    <span className="text-xl font-bold text-[#244B50]">
+                      {formatMoney(a.priceFull, a.currencyCode, currencies)}
+                    </span>
                     {a.priceInstallment != null ? (
-                      <span className="text-sm text-[#4D5F64]">/ {usd(a.priceInstallment)} installments</span>
+                      <span className="text-sm text-[#4D5F64]">
+                        /{" "}
+                        {formatMoney(
+                          a.priceInstallment,
+                          a.currencyCode,
+                          currencies,
+                        )}{" "}
+                        installments
+                      </span>
                     ) : null}
                   </div>
-                  <p className="mt-3 text-sm leading-relaxed text-[#4D5F64]">{a.description}</p>
+                  <p className="mt-3 text-sm leading-relaxed text-[#4D5F64]">
+                    {a.description}
+                  </p>
                   {a.bestFor ? (
                     <p className="mt-4 text-xs font-medium text-[#4D5F64]">
-                      <span className="text-[#7D673A] font-semibold">Best for:</span> {a.bestFor}
+                      <span className="text-[#7D673A] font-semibold">
+                        Best for:
+                      </span>{" "}
+                      {a.bestFor}
                     </p>
                   ) : null}
                 </div>

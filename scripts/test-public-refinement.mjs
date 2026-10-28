@@ -108,7 +108,7 @@ try {
   }
   for (const [file, forbidden, tint] of [
     ["home/why-europe.tsx", "bg-[#1A2E3A]/92", "bg-[#244B50]/10"],
-    ["home/hero-carousel.tsx", "via-[#1A2E3A]/70", "bg-[#244B50]/15"],
+    ["home/hero-carousel.tsx", "via-[#1A2E3A]/70", 'slide.overlayOpacity ?? 15'],
     ["about/about-page-view.tsx", "via-[#1A2E3A]/95", "bg-[#244B50]/10"],
     ["contact/contact-page-shell.tsx", "from-[#1A2E3A]/98", "bg-[#244B50]/15"],
   ]) {

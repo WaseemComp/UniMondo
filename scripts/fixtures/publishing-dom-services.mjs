@@ -33,7 +33,7 @@ export function usePathname() {
   return "/admin/home";
 }
 export function getSupabaseBrowserClient() {
-  return null;
+  return globalThis.__profileBrowser??null;
 }
 
 export async function readContentRevision(input) {
@@ -41,3 +41,7 @@ export async function readContentRevision(input) {
 }
 
 export async function saveFooterDraft(input) { return globalThis.__publishingActions.saveFooterDraft(input); }
+
+export async function savePriceDraft(input){return globalThis.__publishingActions.savePriceDraft(input);}
+export async function saveRegionsDraft(input){return globalThis.__publishingActions.saveRegionsDraft(input);}
+export async function saveCurrency(input){return globalThis.__publishingActions.saveCurrency(input);}

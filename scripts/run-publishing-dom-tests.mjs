@@ -9,10 +9,10 @@ import { publishingFixture } from "./fixtures/publishing-fixture.mjs";
 const require = createRequire(import.meta.url),
   root = fileURLToPath(new URL("../", import.meta.url));
 const { JSDOM } = require(process.env.JSDOM_MODULE || "jsdom");
-const footerMode = process.argv.includes("--footer");
-const fixture = await publishingFixture({ footer: footerMode });
+const footerMode = process.argv.includes("--footer"), postLaunchMode=process.argv.includes("--post-launch");
+const fixture = await publishingFixture({ footer: footerMode || postLaunchMode, postLaunch:postLaunchMode });
 if (footerMode) for (const name of ["contact_offices","contact_addresses","contact_phones","contact_emails"]) fixture.state.tables[name] = [];
-await fixture.state.activate();
+if(!postLaunchMode)await fixture.state.activate();
 globalThis.__publishingFixture = fixture;
 const dom = new JSDOM(
   '<!doctype html><html><head></head><body><div id="root"></div></body></html>',
@@ -111,6 +111,9 @@ const hero = await server.import(
     root + "src/app/admin/cms/homepage-story-actions.ts",
   );
 globalThis.__publishingActions = {
+  ...(postLaunchMode?await server.import(root+"src/app/admin/cms/catalogue-actions.ts"):{}),
+  ...(postLaunchMode?await server.import(root+"src/app/admin/cms/regions-actions.ts"):{}),
+  ...(postLaunchMode?await server.import(root+"src/app/admin/cms/currencies-actions.ts"):{}),
   ...hero,
   ...items,
   ...stories,
@@ -162,6 +165,9 @@ for (const file of [
   "publishing-actions",
   "academic-actions",
   "footer-actions",
+  "catalogue-actions",
+  "regions-actions",
+  "currencies-actions",
 ])
   for (const key of [
     "@/app/admin/cms/" + file,
@@ -181,7 +187,7 @@ const client = createJiti(import.meta.url, {
   moduleCache: false,
   tryNative: false,
 });
-const test = root + (footerMode ? "scripts/test-footer-dom.mjs" : "scripts/test-publishing-dom.mjs");
+const test = root + (postLaunchMode?"scripts/test-post-launch-dom.mjs":footerMode ? "scripts/test-footer-dom.mjs" : "scripts/test-publishing-dom.mjs");
 await client.evalModule(readFileSync(test, "utf8"), {
   filename: test,
   async: true,

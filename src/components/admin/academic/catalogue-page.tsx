@@ -1,3 +1,4 @@
+import { readCurrencies } from "@/lib/currencies/server";
 import { redirect } from "next/navigation";
 import { CatalogueManager } from "./catalogue-manager";
 import { readAcademicCatalogue } from "@/lib/academic/server";
@@ -15,6 +16,9 @@ export async function AcademicCataloguePage({
     <CatalogueManager
       kind={kind}
       data={data}
+      currencies={
+        kind === "programmes" ? (await readCurrencies()).currencies : undefined
+      }
       initialRecord={(await searchParams)?.record}
     />
   );

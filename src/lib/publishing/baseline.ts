@@ -1,3 +1,4 @@
+import { sourceCourseRows } from "@/lib/catalogue/model";
 // Private, immutable representation of existing defaults. Never writes public rows.
 import { randomUUID } from "node:crypto";
 import {
@@ -29,6 +30,20 @@ export function effectiveBaseline(
   template: Payload,
   references?: HomepageReferences,
 ): Payload {
+  if (
+    resource.type === "courses" &&
+    !rowsFor(base, "language_courses").length
+  ) {
+    const row = rowsFor(template, "language_courses")[0],
+      source = sourceCourseRows().find((r) => r.source_key === row?.source_key);
+    if (source) {
+      const { sourceDefault: _source, ...content } = source;
+      void _source;
+      return canonical({
+        tables: { language_courses: [{ ...content, id: row.id }] },
+      });
+    }
+  }
   if (
     resource.type !== "home" ||
     ["ticker", "testimonials"].includes(resource.key)

@@ -1,6 +1,7 @@
+import { HERO_PRESENTATION_KEYS, type HeroPresentation } from "./hero-presentation";
 /** Shared public/editor content. Existing records remain the source of saved values. */
 export type HeroCopy = { title: string; subtitle: string; ctaExplore: string; ctaApply: string; eyebrow?: string; primaryHref?: string; secondaryHref?: string };
-export type HeroSlide = { src: string; alt: string; line: string; isActive?: boolean; title?: string; subtitle?: string; ctaExplore?: string; ctaApply?: string; eyebrow?: string; primaryHref?: string; secondaryHref?: string };
+export type HeroSlide = HeroPresentation & { src: string; alt: string; line: string; isActive?: boolean; title?: string; subtitle?: string; ctaExplore?: string; ctaApply?: string; eyebrow?: string; primaryHref?: string; secondaryHref?: string };
 export const HERO_DEFAULTS = {
   eyebrow: "UNIMONDO · EUROPEAN ADMISSIONS CONSULTANCY",
   title: "Your Future Knows No Borders",
@@ -103,7 +104,7 @@ export function valuesOf(fields: Record<string, EffectiveValue>): Record<string,
 export function heroSlideFromBlock(block: HomeBlock): HeroSlide {
   const c = record(block.content), m = record(block.media);
   const alt = String(m.imageAlt ?? m.alt ?? "");
-  return { src: String(m.imageUrl ?? m.src ?? ""), alt, line: nonblank(c.line) || alt, title: nonblank(c.title), subtitle: nonblank(c.subtitle), ctaExplore: nonblank(c.buttonText), ctaApply: nonblank(c.secondaryButtonText), eyebrow: nonblank(c.eyebrow), primaryHref: nonblank(c.primaryHref), secondaryHref: nonblank(c.secondaryHref), isActive: block.is_active };
+  return { ...Object.fromEntries(HERO_PRESENTATION_KEYS.map(key => [key, english(c[key]) || undefined])), src: String(m.imageUrl ?? m.src ?? ""), alt, line: nonblank(c.line) || alt, title: nonblank(c.title), subtitle: nonblank(c.subtitle), ctaExplore: nonblank(c.buttonText), ctaApply: nonblank(c.secondaryButtonText), eyebrow: nonblank(c.eyebrow), primaryHref: nonblank(c.primaryHref), secondaryHref: nonblank(c.secondaryHref), isActive: block.is_active };
 }
 export const SLIDE_COPY_KEYS: Record<string, string> = { title: "title", subtitle: "subtitle", ctaExplore: "buttonText", ctaApply: "secondaryButtonText", eyebrow: "eyebrow", primaryHref: "primaryHref", secondaryHref: "secondaryHref" };
 export function resolveSlideCopy(site: Record<string, string>, block?: HomeBlock): Record<string, EffectiveValue> {

@@ -24,7 +24,9 @@ export async function getCmsNavigation(
               (await hasAdminPermission(user, "blog.view")))) ||
           (access.permissions.academic !== false &&
             ((await hasAdminPermission(user, "countries.view")) ||
-              (await hasAdminPermission(user, "universities.view"))))
+              (await hasAdminPermission(user, "universities.view")) ||
+              (await hasAdminPermission(user, "courses.view")) ||
+              (await hasAdminPermission(user, "packages.view"))))
         : item.id === "media"
           ? Object.values(media).some((grant) => grant.view)
           : access.isSuper ||

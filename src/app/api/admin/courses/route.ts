@@ -1,80 +1,91 @@
 import { NextResponse } from "next/server";
-import { createSupabaseServiceClient } from "@/lib/supabase/admin";
-
+import { randomUUID } from "node:crypto";
+import {
+  catalogueAccess,
+  readPriceCatalogue,
+  savePriceDraft,
+} from "@/app/admin/cms/catalogue-actions";
+function failure(error: unknown) {
+  const message =
+    error instanceof Error ? error.message : "Course request failed.";
+  return NextResponse.json(
+    { message },
+    {
+      status:
+        message === "Unauthorized"
+          ? 401
+          : /permission|access|allowed|Forbidden/i.test(message)
+            ? 403
+            : 400,
+    },
+  );
+}
 export async function GET() {
-  const svc = createSupabaseServiceClient();
-  if (!svc) {
-    return NextResponse.json({ courses: [] });
+  try {
+    const result = await readPriceCatalogue("courses");
+    return NextResponse.json({
+      courses: result.rows,
+      websiteDefaults: result.defaults,
+    });
+  } catch (e) {
+    return failure(e);
   }
-
-  const { data, error } = await svc
-    .from("language_courses")
-    .select("id,title,country,city,duration,price,description,is_active,created_at")
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    return NextResponse.json({ message: error.message }, { status: 500 });
-  }
-
-  return NextResponse.json({ courses: data ?? [] });
 }
-
+async function write(request: Request, method: string) {
+  try {
+    await catalogueAccess("courses");
+    const body = await request.json(),
+      id = method === "POST" ? randomUUID() : body.id;
+    if (method !== "POST" && typeof body.version !== "number")
+      throw new Error(
+        "Reload the current course editor before saving; a draft version is required.",
+      );
+    const { version, currencyChangeConfirmed, ...values } = body;
+    delete values.id;
+    const result = await savePriceDraft({
+      kind: "courses",
+      id,
+      version: version ?? 0,
+      currencyChangeConfirmed: currencyChangeConfirmed === true,
+      values: {
+        ...values,
+        currency_code: values.currency_code ?? null,
+        sort_order: values.sort_order ?? 0,
+        source_key: values.source_key ?? null,
+      },
+    });
+    return result.ok
+      ? NextResponse.json({ ok: true, id, draft: true })
+      : NextResponse.json({ message: result.error }, { status: 400 });
+  } catch (e) {
+    return failure(e);
+  }
+}
 export async function POST(request: Request) {
-  const svc = createSupabaseServiceClient();
-  if (!svc) return NextResponse.json({ message: "Supabase is not configured." }, { status: 500 });
-
-  const body = (await request.json()) as Record<string, unknown>;
-  const { error } = await svc.from("language_courses").insert({
-    title: body.title,
-    country: body.country || null,
-    city: body.city || null,
-    duration: body.duration || null,
-    price: body.price ?? null,
-    description: body.description ?? null,
-    is_active: body.is_active ?? true,
-  });
-
-  if (error) return NextResponse.json({ message: error.message }, { status: 400 });
-  return NextResponse.json({ ok: true });
+  return write(request, "POST");
 }
-
 export async function PATCH(request: Request) {
-  const svc = createSupabaseServiceClient();
-  if (!svc) return NextResponse.json({ message: "Supabase is not configured." }, { status: 500 });
-
-  const body = (await request.json()) as Record<string, unknown>;
-  const id = body.id;
-  if (!id || typeof id !== "string") {
-    return NextResponse.json({ message: "id is required." }, { status: 400 });
-  }
-
-  const { error } = await svc
-    .from("language_courses")
-    .update({
-      title: body.title,
-      country: body.country || null,
-      city: body.city || null,
-      duration: body.duration || null,
-      price: body.price ?? null,
-      description: body.description ?? null,
-      is_active: body.is_active ?? true,
-    })
-    .eq("id", id);
-
-  if (error) return NextResponse.json({ message: error.message }, { status: 400 });
-  return NextResponse.json({ ok: true });
+  return write(request, "PATCH");
 }
-
 export async function DELETE(request: Request) {
-  const svc = createSupabaseServiceClient();
-  if (!svc) return NextResponse.json({ message: "Supabase is not configured." }, { status: 500 });
-
-  const { searchParams } = new URL(request.url);
-  const id = searchParams.get("id");
-  if (!id) return NextResponse.json({ message: "id is required." }, { status: 400 });
-
-  const { error } = await svc.from("language_courses").delete().eq("id", id);
-  if (error) return NextResponse.json({ message: error.message }, { status: 400 });
-  return NextResponse.json({ ok: true });
+  try {
+    await catalogueAccess("courses");
+    const url = new URL(request.url),
+      id = url.searchParams.get("id"),
+      version = Number(url.searchParams.get("version"));
+    if (!id || !url.searchParams.has("version"))
+      throw new Error("Choose an existing course and draft version.");
+    const result = await savePriceDraft({
+      kind: "courses",
+      id,
+      version,
+      values: {},
+      archive: true,
+    });
+    return result.ok
+      ? NextResponse.json({ ok: true, draft: true })
+      : NextResponse.json({ message: result.error }, { status: 400 });
+  } catch (e) {
+    return failure(e);
+  }
 }
-

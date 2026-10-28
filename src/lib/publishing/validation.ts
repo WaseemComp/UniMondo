@@ -1,3 +1,4 @@
+import { HERO_PRESENTATION_KEYS } from "@/lib/homepage/hero-presentation";
 import { footerSchema } from "@/lib/footer/model";
 import { slugifyCountryName } from "@/lib/destinations-utils";
 import { academicDraft } from "@/lib/academic/draft";
@@ -35,6 +36,7 @@ export async function validateProposed(
   payload: Payload,
   user: { id: string; email?: string | null },
   base: Payload,
+  operation: "edit" | "review" | "publish" = "edit",
 ) {
   if (
     !payload?.tables ||
@@ -45,13 +47,26 @@ export async function validateProposed(
     for (const row of rows)
       if (!belongs(resource, table, row))
         throw new Error("Cross-document changes are not allowed.");
+  if (["regions", "courses", "packages", "addons"].includes(resource.type)) {
+    const { validateExtendedContent } =
+      await import("@/lib/catalogue/validation");
+    await validateExtendedContent(resource, payload, user, base, operation);
+    return;
+  }
   if (resource.type === "home" && resource.key === "footer") {
-    const rows = rowsFor(payload, "cms_content_blocks"), configurations = rows.filter(row => row.block_key === "configuration");
-    if (configurations.length !== 1 || rows.some(row => row.block_key !== "configuration")) throw new Error("Choose one valid footer configuration.");
-    footerSchema.parse((configurations[0].content as {footer?:unknown})?.footer);
+    const rows = rowsFor(payload, "cms_content_blocks"),
+      configurations = rows.filter((row) => row.block_key === "configuration");
+    if (
+      configurations.length !== 1 ||
+      rows.some((row) => row.block_key !== "configuration")
+    )
+      throw new Error("Choose one valid footer configuration.");
+    footerSchema.parse(
+      (configurations[0].content as { footer?: unknown })?.footer,
+    );
   }
   const service = publishingService();
-  if (resource.type !== "home") {
+  if (["countries", "universities", "programmes"].includes(resource.type)) {
     const table =
         resource.type === "universities"
           ? "featured_universities"
@@ -61,7 +76,10 @@ export async function validateProposed(
       row = rowsFor(payload, table)[0];
     if (!row || rowsFor(payload, table).length !== 1)
       throw new Error("Choose one catalogue record.");
-    const draft = academicDraft(resource.type, row as AcademicRow),
+    const draft = academicDraft(
+        resource.type as "countries" | "universities" | "programmes",
+        row as AcademicRow,
+      ),
       schema =
         resource.type === "countries"
           ? countryValues
@@ -74,6 +92,15 @@ export async function validateProposed(
         parsed.error.issues[0]?.message ?? "Check the content fields.",
       );
     const prior = rowsFor(base, table)[0];
+    if (resource.type === "programmes") {
+      const { validateProgrammeCurrency } =
+        await import("@/lib/currencies/programme");
+      await validateProgrammeCurrency(
+        record(row.details),
+        prior ? record(prior.details) : undefined,
+        true,
+      );
+    }
     if (resource.type === "countries" && prior) {
       if (
         row.slug !== (text(prior.slug) || slugifyCountryName(text(prior.name)))
@@ -251,6 +278,10 @@ export async function validateProposed(
         const media = record(block.media),
           oldMedia = record(old?.media);
         const patch: Record<string, string> = {};
+        for (const key of HERO_PRESENTATION_KEYS) {
+          if (english(content[key]) !== undefined)
+            patch[key] = english(content[key])!;
+        }
         for (const key of ["imageUrl", "imageAlt"])
           if (media[key] !== oldMedia[key])
             patch[key] = String(media[key] ?? "");

@@ -51,6 +51,7 @@ export default async function Page() {
             </Link>
           ))}
       </div>
+      {permissions.countries.view&&<Link className="cms-button-secondary" href="/admin/data/regions">Manage destination regions and country assignments</Link>}
       <Link className="text-sm text-[#2C786D] underline" href="/admin/home">
         Manage homepage featured selections
       </Link>

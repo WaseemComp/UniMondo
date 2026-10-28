@@ -17,7 +17,7 @@ export async function getCountryDetails(): Promise<CountryDetail[]> {
     await Promise.all([
       supabase
         .from("region_groups")
-        .select("id, label")
+        .select("*")
         .order("sort_order", { ascending: true }),
       supabase
         .from("countries")
@@ -36,6 +36,7 @@ export async function getCountryDetails(): Promise<CountryDetail[]> {
     (rgRows ?? []).map((r: { id: number; label: string }) => [r.id, r.label]),
   );
 
+  const regionById = new Map((rgRows ?? []).map((r) => [Number(r.id), r]));
   return (rows ?? [])
     .filter(publicRecord)
     .map((row: Record<string, unknown>) => {
@@ -65,6 +66,10 @@ export async function getCountryDetails(): Promise<CountryDetail[]> {
       return {
         country: row.name as string,
         regionGroup,
+        regionVisible:
+          regionById.get(rid)?.is_published !== false &&
+          !regionById.get(rid)?.archived_at,
+        regionSortOrder: Number(regionById.get(rid)?.sort_order ?? 0),
         highlighted: Boolean(row.highlighted),
         whyStudyThere: why,
         popularUniversities: popular.length ? popular : fallbackUnis,

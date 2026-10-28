@@ -246,12 +246,14 @@ assert.equal(
   activeCmsItem(CMS_NAVIGATION, "/admin/destinations/countries"),
   "destinations",
 );
-assert.equal(activeCmsItem(CMS_NAVIGATION, "/admin/settings", "#team"), "team");
+assert.equal(activeCmsItem(CMS_NAVIGATION, "/admin/settings", "#team"), "settings");
 assert.equal(activeCmsItem(restricted, "/admin/settings", "#team"), "settings");
 assert.equal(
   activeCmsItem(CMS_NAVIGATION, "/admin/content/success-stories"),
   "stories",
 );
+assert.equal(activeCmsItem(CMS_NAVIGATION,"/admin/team"),"team");
+assert.equal(activeCmsItem(CMS_NAVIGATION,"/admin/users"),"team");
 const detail = buildAdminBreadcrumbs(
   "/admin/applications/example",
   "status=Pending&type=university",

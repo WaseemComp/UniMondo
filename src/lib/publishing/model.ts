@@ -3,7 +3,16 @@ import { footerSchema, restoreFooter } from "@/lib/footer/model";
 import { HOME_SECTIONS } from "@/lib/homepage/content";
 export const resourceSchema = z
   .object({
-    type: z.enum(["home", "countries", "universities", "programmes"]),
+    type: z.enum([
+      "home",
+      "countries",
+      "universities",
+      "programmes",
+      "regions",
+      "courses",
+      "packages",
+      "addons",
+    ]),
     key: z.string().min(1).max(150),
   })
   .strict()
@@ -86,6 +95,10 @@ export const TABLE_FOR = {
   countries: "countries",
   universities: "featured_universities",
   programmes: "programs",
+  regions: "region_groups",
+  courses: "language_courses",
+  packages: "packages",
+  addons: "add_ons",
 } as const;
 export const STATUS_LABELS: Record<WorkflowStatus, string> = {
   draft: "Draft",
@@ -106,8 +119,15 @@ export const isWorking = (document: Workflow | null) =>
     ),
   );
 export function belongs(resource: Resource, table: string, row: ContentRow) {
+  if (resource.type === "regions")
+    return (
+      resource.key === "catalogue" &&
+      ["region_groups", "countries"].includes(table)
+    );
   if (resource.type !== "home")
-    return table === TABLE_FOR[resource.type] && row.id === resource.key;
+    return (
+      table === TABLE_FOR[resource.type] && String(row.id) === resource.key
+    );
   if (table === "site_content")
     return resource.key === "hero"
       ? String(row.key).startsWith("home.hero.")
@@ -166,10 +186,23 @@ export function projectedRows(
 }
 export function restorePayload(previous: Payload, current: Payload): Payload {
   previous = structuredClone(previous);
-  const earlierFooter = rowsFor(previous, "cms_content_blocks").find(row => row.section_key === "footer" && row.block_key === "configuration");
-  const currentFooter = rowsFor(current, "cms_content_blocks").find(row => row.section_key === "footer" && row.block_key === "configuration");
-  const a = footerSchema.safeParse((earlierFooter?.content as {footer?:unknown})?.footer), b = footerSchema.safeParse((currentFooter?.content as {footer?:unknown})?.footer);
-  if (earlierFooter && a.success && b.success) earlierFooter.content = {...(earlierFooter.content as Record<string,unknown>), footer:restoreFooter(a.data,b.data)};
+  const earlierFooter = rowsFor(previous, "cms_content_blocks").find(
+    (row) => row.section_key === "footer" && row.block_key === "configuration",
+  );
+  const currentFooter = rowsFor(current, "cms_content_blocks").find(
+    (row) => row.section_key === "footer" && row.block_key === "configuration",
+  );
+  const a = footerSchema.safeParse(
+      (earlierFooter?.content as { footer?: unknown })?.footer,
+    ),
+    b = footerSchema.safeParse(
+      (currentFooter?.content as { footer?: unknown })?.footer,
+    );
+  if (earlierFooter && a.success && b.success)
+    earlierFooter.content = {
+      ...(earlierFooter.content as Record<string, unknown>),
+      footer: restoreFooter(a.data, b.data),
+    };
   const result: Payload = { tables: {} };
   for (const table of Object.keys(current.tables)) {
     const now = rowsFor(current, table),
@@ -186,7 +219,14 @@ export function restorePayload(previous: Payload, current: Payload): Payload {
       key = table === "site_content" ? "key" : "id";
     result.tables[table] = historical.map((row) => {
       const latest = now.find((value) => value[key] === row[key]);
-      const merged = { ...latest, ...row };
+      const merged: ContentRow =
+        table === "countries" && current.tables.region_groups
+          ? {
+              ...latest,
+              region_group_id: row.region_group_id,
+              sort_order: row.sort_order,
+            }
+          : { ...latest, ...row };
       if (table === "cms_content_blocks") {
         const content = merged.content as Record<string, unknown> | undefined,
           latestContent = latest?.content as
@@ -215,9 +255,13 @@ export function restorePayload(previous: Payload, current: Payload): Payload {
     for (const row of now)
       if (!historical.some((old) => old[key] === row[key])) {
         if (table === "site_content") continue;
+        if (table === "countries" && current.tables.region_groups) {
+          result.tables[table].push(row);
+          continue;
+        }
         result.tables[table].push({
           ...row,
-          ...(table === "cms_content_blocks"
+          ...(["cms_content_blocks", "language_courses"].includes(table)
             ? { is_active: false }
             : { is_published: false }),
         });

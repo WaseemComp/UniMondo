@@ -5,7 +5,10 @@ import { createClient } from "@supabase/supabase-js";
 import { mediaFixture } from "./media-fixture.mjs";
 import assert from "node:assert/strict";
 const require = createRequire(import.meta.url);
-export async function publishingFixture({ footer = false } = {}) {
+export async function publishingFixture({
+  footer = false,
+  postLaunch = false,
+} = {}) {
   const { PGlite } = require(
       process.env.PGLITE_MODULE || "@electric-sql/pglite",
     ),
@@ -43,6 +46,13 @@ export async function publishingFixture({ footer = false } = {}) {
  create table news_ticker_items(id uuid primary key default gen_random_uuid(),message text,href text,sort_order int default 0,is_published boolean default true,updated_at timestamptz default now());
  grant usage on schema public to anon,authenticated,service_role;
  grant all on all tables in schema public to anon,authenticated,service_role;`);
+  if (postLaunch) {
+    await db.exec(`create sequence region_groups_id_seq;alter table region_groups alter column id set default nextval('region_groups_id_seq');alter sequence region_groups_id_seq owned by region_groups.id;
+      create table language_courses(id uuid primary key,title jsonb not null,description jsonb,country text,city text,duration text,price numeric,is_active boolean default true,created_at timestamptz default now());
+      create table packages(id uuid primary key,slug text unique,name text,teaser text,description text,best_for text,features text[] default '{}',price_full numeric(12,2),price_installment numeric(12,2),sort_order integer,is_published boolean,created_at timestamptz default now(),updated_at timestamptz default now());
+      create table add_ons(like packages including all);alter table add_ons drop column teaser,drop column features;create table agreements(id uuid primary key,payment_currency text);
+      grant all on language_courses,packages,add_ons to service_role;`);
+  }
   const source = readFileSync(
     new URL(
       "../../supabase/migrations/20261030090000_content_publishing.sql",
@@ -53,9 +63,37 @@ export async function publishingFixture({ footer = false } = {}) {
   await db.exec(source);
   await db.exec(source);
   if (footer) {
-    const extension = readFileSync(new URL("../../supabase/migrations/20261031090000_footer_publishing.sql", import.meta.url), "utf8");
+    const extension = readFileSync(
+      new URL(
+        "../../supabase/migrations/20261031090000_footer_publishing.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    );
     await db.exec(extension);
     await db.exec(extension);
+  }
+  if (postLaunch) {
+    const extension = readFileSync(
+      new URL(
+        "../../supabase/migrations/20261101090000_post_launch_enhancements.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    );
+    await db.exec(extension);
+    await db.exec(extension);
+    tables.push("language_courses", "packages", "add_ons");
+    for (const table of [
+      "language_courses",
+      "packages",
+      "add_ons",
+      "cms_currencies",
+    ])
+      state.tables[table] = [];
+    state.tables.cms_currencies = (
+      await db.query("select * from cms_currencies")
+    ).rows;
   }
   const privateNames = [
     "cms_publishing_settings",
@@ -128,6 +166,7 @@ export async function publishingFixture({ footer = false } = {}) {
     }
   };
   const functions = {
+    ...(postLaunch ? { cms_currency_save: ["p_value"] } : {}),
     cms_content_snapshot: ["t", "k"],
     cms_content_save_draft: [
       "t",
@@ -226,6 +265,10 @@ export async function publishingFixture({ footer = false } = {}) {
         values,
       );
       await syncOut();
+      if (postLaunch)
+        state.tables.cms_currencies = (
+          await db.query("select * from cms_currencies")
+        ).rows;
       await syncPrivate();
       return new Response(JSON.stringify(result.rows[0].value), {
         status: 200,

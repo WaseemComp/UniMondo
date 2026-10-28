@@ -1,27 +1,4 @@
-import { AdminChangePasswordForm } from "@/components/admin/admin-change-password-form";
-import { AdminUsersManager } from "@/components/admin/admin-users-manager";
-import type { AdminAccessContext } from "@/lib/auth/admin";
-import type { AdminProfileRow } from "@/app/admin/cms/admin-users-actions";
-
-type Props = {
-  access: AdminAccessContext;
-  currentUserId: string;
-  adminRows: AdminProfileRow[];
-};
-
-export function AdminSettingsContent({ access, currentUserId, adminRows }: Props) {
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-zinc-900">Team & account</h1>
-        <p className="mt-1 text-sm text-zinc-600">
-          {access.isSuper
-            ? "Create staff accounts with their identity and detailed access, and manage your own password. Only Superadmins can change other users’ access."
-            : "Update your own password. Contact your super admin if you need a different level of access."}
-        </p>
-      </div>
-      {access.isSuper ? <section id="team" className="scroll-mt-28" aria-label="Team and permissions"><AdminUsersManager initialRows={adminRows} currentUserId={currentUserId} /></section> : null}
-      <section id="account" className="scroll-mt-28" aria-label="My account"><AdminChangePasswordForm /></section>
-    </div>
-  );
+import Link from "next/link";
+export function AdminSettingsContent() {
+  return <Link href="/admin/settings">Open account settings</Link>;
 }
