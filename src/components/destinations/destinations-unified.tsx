@@ -415,7 +415,7 @@ function DestinationCountryCard({
   );
 }
 
-function DestinationDetailSection({
+export function DestinationDetailSection({
   country,
   openings,
   allOpeningsForCountry,

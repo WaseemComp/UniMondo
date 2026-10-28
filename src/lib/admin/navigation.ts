@@ -8,6 +8,7 @@ export type CmsNavItem = {
 /** Presentation destinations only. Existing server guards remain the authority. */
 export const CMS_NAVIGATION: CmsNavItem[] = [
   { id: "overview", label: "Overview", href: "/admin/dashboard", group: "Workspace", icon: "overview" },
+  { id: "publishing", label: "Drafts & Reviews", href: "/admin/publishing", group: "Workspace", icon: "stories" },
   { id: "home", label: "Home / Website Pages", href: "/admin/home", group: "Website", icon: "home", scope: "content", permission: "home.view", aliases: ["/admin/content/home", "/admin/content/ticker"] },
   { id: "destinations", label: "Destinations", href: "/admin/destinations", group: "Website", icon: "destinations", scope: "academic", permission: "countries.view", aliases: ["/admin/countries", "/admin/data/countries", "/admin/data/regions"] },
   { id: "universities", label: "Universities & Programmes", href: "/admin/universities", group: "Website", icon: "universities", scope: "academic", permission: "universities.view", aliases: ["/admin/programs", "/admin/data/programs", "/admin/featured-universities"] },

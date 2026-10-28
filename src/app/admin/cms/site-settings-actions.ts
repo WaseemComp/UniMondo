@@ -1,20 +1,27 @@
 "use server";
+import { planDraft } from "@/lib/publishing/planning";
 
-import { revalidatePath } from "next/cache";
+import { revalidateContentPath as revalidatePath } from "@/lib/publishing/planning";
 import { z } from "zod";
 import { requirePermission } from "@/lib/auth/require-permission";
-import { createSupabaseServiceClient } from "@/lib/supabase/admin";
+import { createContentServiceClient as createSupabaseServiceClient } from "@/lib/publishing/planning";
 
 const settingsSchema = z.object({
   ticker_text: z.string(),
   ticker_active: z.boolean(),
 });
 
-export async function saveSiteSettings(input: unknown): Promise<{ ok: true } | { ok: false; error: string }> {
+async function applysaveSiteSettings(
+  input: unknown,
+): Promise<{ ok: true } | { ok: false; error: string }> {
   try {
     await requirePermission("settings.edit");
     const svc = createSupabaseServiceClient();
-    if (!svc) return { ok: false, error: "SUPABASE_SERVICE_ROLE_KEY is not configured." };
+    if (!svc)
+      return {
+        ok: false,
+        error: "SUPABASE_SERVICE_ROLE_KEY is not configured.",
+      };
 
     const parsed = settingsSchema.safeParse(input);
     if (!parsed.success) {
@@ -41,5 +48,26 @@ export async function saveSiteSettings(input: unknown): Promise<{ ok: true } | {
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Save failed";
     return { ok: false, error: msg };
+  }
+}
+
+export async function saveSiteSettings(
+  input: unknown,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const version = (input as { expectedVersion?: number })?.expectedVersion;
+    if (!Number.isInteger(version))
+      throw new Error("Reload the announcement draft before saving.");
+    return await planDraft(
+      { type: "home", key: "ticker" },
+      () => applysaveSiteSettings(input),
+      version,
+    );
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof Error ? error.message : "Private draft saving failed.",
+    };
   }
 }

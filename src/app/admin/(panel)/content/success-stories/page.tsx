@@ -1,33 +1,50 @@
-import { SuccessStoriesManager, type SuccessStoryAdminRow } from "@/components/admin/cms/success-stories-manager";
-import { createSupabaseServiceClient } from "@/lib/supabase/admin";
-
-export default async function AdminSuccessStoriesPage() {
-  const svc = createSupabaseServiceClient();
-  if (!svc) {
-    return (
-      <p className="text-sm text-amber-800">
-        Configure <code className="rounded bg-amber-100 px-1">SUPABASE_SERVICE_ROLE_KEY</code> to manage success stories.
-      </p>
+import { redirect } from "next/navigation";
+import { StoriesWorkspace } from "@/components/admin/publishing/stories-workspace";
+import { workflowAccess } from "@/lib/publishing/access";
+import { readEditableStories } from "@/lib/admin/homepage-catalogue";
+import { hasAdminPermission } from "@/lib/auth/permissions";
+import type { HomepageEditorData } from "@/lib/admin/homepage-editor";
+export default async function Page() {
+  const { user, permissions } = await workflowAccess({
+    type: "home",
+    key: "testimonials",
+  });
+  if (!permissions.view) redirect("/admin/dashboard");
+  const editableStories = await readEditableStories(user),
+    [storyCreate, storyEdit, storyPublish, storyArchive] = await Promise.all(
+      ["blog.create", "blog.edit", "blog.publish", "blog.delete"].map((key) =>
+        hasAdminPermission(user, key),
+      ),
     );
-  }
-
-  const { data, error } = await svc
-    .from("success_stories")
-    .select("id, profile_image_url, full_name, testimonial, country, program, university, sort_order, is_published")
-    .order("sort_order", { ascending: true });
-
-  if (error) {
-    return (
-      <div className="space-y-2">
-        <h1 className="text-2xl font-bold text-zinc-900">Success stories</h1>
-        <p className="text-sm text-red-600">
-          {error.message.includes("does not exist")
-            ? "Run the latest Supabase migrations to create the success_stories table."
-            : error.message}
-        </p>
-      </div>
-    );
-  }
-
-  return <SuccessStoriesManager stories={(data ?? []) as SuccessStoryAdminRow[]} />;
+  const initial: HomepageEditorData = {
+    available: editableStories.available,
+    site: {},
+    blocks: [],
+    openings: [],
+    stories: editableStories.rows
+      .filter((row) => row.is_published)
+      .sort((a, b) => a.sort_order - b.sort_order)
+      .slice(0, 6),
+    editableStories,
+    references: {
+      countries: [],
+      programs: [],
+      universities: [],
+      available: false,
+    },
+    permissions: {
+      editHome: false,
+      viewSlides: false,
+      editSlides: false,
+      createSlides: false,
+      viewCta: false,
+      editCta: false,
+      storyView: true,
+      storyCreate,
+      storyEdit,
+      storyPublish,
+      storyArchive,
+    },
+  };
+  return <StoriesWorkspace initial={initial} />;
 }

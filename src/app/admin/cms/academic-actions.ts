@@ -1,8 +1,14 @@
 "use server";
+import {
+  planDraft,
+  plannedNewRecord,
+  plannedRecordId,
+} from "@/lib/publishing/planning";
+import { resourceSchema } from "@/lib/publishing/model";
 import { slugifyCountryName } from "@/lib/destinations-utils";
 import { randomUUID } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
-import { revalidatePath } from "next/cache";
+import { revalidateContentPath as revalidatePath } from "@/lib/publishing/planning";
 import { academicAccess } from "@/lib/academic/server";
 import {
   academicInput,
@@ -14,13 +20,13 @@ import {
   TABLES,
   type AcademicRow,
 } from "@/lib/academic/model";
-import { createSupabaseServiceClient } from "@/lib/supabase/admin";
+import { createContentServiceClient as createSupabaseServiceClient } from "@/lib/publishing/planning";
 import { safeDestination } from "@/lib/homepage/validation";
 import { getMediaAccess } from "@/lib/media/access";
 import { validateManagedMediaSelection } from "@/lib/media/operations";
 
 type Result = { ok: true; row: AcademicRow } | { ok: false; error: string };
-export async function saveAcademicRecord(input: unknown): Promise<Result> {
+async function applysaveAcademicRecord(input: unknown): Promise<Result> {
   try {
     const parsed = academicInput.safeParse(input);
     if (!parsed.success)
@@ -59,17 +65,14 @@ export async function saveAcademicRecord(input: unknown): Promise<Result> {
         throw new Error(
           "You do not have permission to archive or restore this record.",
         );
-      if (current.is_published && !grant.publish)
-        throw new Error(
-          "Publishing permission is required to hide an active record.",
-        );
+
       // No child records or files are changed. Public readers suppress descendants of hidden parents.
       patch = {
         archived_at: operation === "archive" ? new Date().toISOString() : null,
         is_published: false,
       };
     } else {
-      if (!grant[id ? "edit" : "create"])
+      if (!grant[plannedNewRecord() ? "create" : id ? "edit" : "create"])
         throw new Error("You do not have permission to save this record.");
       const schema =
         kind === "countries"
@@ -83,13 +86,7 @@ export async function saveAcademicRecord(input: unknown): Promise<Result> {
           values.error.issues[0]?.message || "Check the record fields.",
         );
       patch = { ...values.data };
-      if (
-        Boolean(current?.is_published) !== patch.is_published &&
-        !grant.publish
-      )
-        throw new Error(
-          "Publishing permission is required to change public visibility.",
-        );
+      // Visibility is a private proposal. Actual publication requires existing publish grants and workflow approval.
       if (current?.archived_at && patch.is_published)
         throw new Error("Restore this record before publishing it.");
       // Preserve stable names used by existing textual application/selection references.
@@ -137,6 +134,7 @@ export async function saveAcademicRecord(input: unknown): Promise<Result> {
       if (kind === "countries") {
         if (
           current &&
+          !plannedNewRecord() &&
           patch.slug !==
             (text(current.slug) || slugifyCountryName(text(current.name)))
         )
@@ -300,7 +298,7 @@ export async function saveAcademicRecord(input: unknown): Promise<Result> {
           );
         }
     }
-    const newId = id ?? randomUUID();
+    const newId = id ?? plannedRecordId() ?? randomUUID();
     const query = current
       ? svc
           .from(TABLES[kind])
@@ -357,6 +355,25 @@ export async function saveAcademicRecord(input: unknown): Promise<Result> {
         error instanceof Error
           ? error.message
           : "The record could not be saved.",
+    };
+  }
+}
+
+export async function saveAcademicRecord(input: unknown): Promise<Result> {
+  try {
+    const v = input as Record<string, unknown>;
+    const { workflowKey, ...clean } = v ?? {};
+    const resource = {
+      type: v?.kind as "countries" | "universities" | "programmes",
+      key: String(v?.id ?? workflowKey ?? randomUUID()),
+    };
+    const parsed = resourceSchema.parse(resource);
+    return await planDraft(parsed, () => applysaveAcademicRecord(clean));
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof Error ? error.message : "Draft could not be saved.",
     };
   }
 }

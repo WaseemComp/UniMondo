@@ -1,8 +1,10 @@
 "use client";
 import Link from "next/link";
+import { WorkflowPanel } from "@/components/admin/publishing/workflow-panel";
+import { AcademicDraftPreview } from "@/components/admin/publishing/academic-preview";
+import { academicWorkflowRow } from "@/lib/publishing/preview";
 import { slugifyCountryName } from "@/lib/destinations-utils";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { saveAcademicRecord } from "@/app/admin/cms/academic-actions";
 import { MediaPicker } from "@/components/admin/media/media-picker";
@@ -37,13 +39,18 @@ const selectClass =
 export function CatalogueManager({
   kind,
   data,
+  initialRecord,
 }: {
   kind: AcademicKind;
   data: CatalogueData;
+  initialRecord?: string;
 }) {
   const editorRef = useRef<HTMLElement>(null);
-  const router = useRouter(),
-    grant = data.permissions[kind];
+  const [workflowKey, setWorkflowKey] = useState(initialRecord ?? ""),
+    [workflowRefresh, setWorkflowRefresh] = useState(0),
+    [workflowEditable, setWorkflowEditable] = useState(false),
+    [unpublishedRecord, setUnpublishedRecord] = useState(false);
+  const grant = data.permissions[kind];
   const [search, setSearch] = useState(""),
     [country, setCountry] = useState(""),
     [filter, setFilter] = useState(""),
@@ -55,8 +62,9 @@ export function CatalogueManager({
     [pending, startTransition] = useTransition(),
     [error, setError] = useState("");
   const dirty = editing !== undefined && JSON.stringify(draft) !== baseline;
+  const [publishedRows, setPublishedRows] = useState(data[kind]);
   const rows = filterAcademic(
-    data[kind],
+    publishedRows,
     kind,
     search,
     country,
@@ -94,6 +102,9 @@ export function CatalogueManager({
     const values = academicDraft(kind, row);
     if (!row && kind === "countries")
       values.region_group_id = data.regions[0]?.id ?? 0;
+    setUnpublishedRecord(!row);
+    setWorkflowKey(row?.id ?? crypto.randomUUID());
+    setWorkflowEditable(false);
     setEditing(row ?? null);
     setDraft(values);
     setBaseline(JSON.stringify(values));
@@ -110,7 +121,7 @@ export function CatalogueManager({
       operation !== "save" &&
       !confirm(
         operation === "archive"
-          ? "Archive this record and hide it publicly? Related records and files will be retained."
+          ? "Save an archival proposal in the private draft? Existing public content will remain until an approved version is published."
           : "Restore this record as hidden? Publication requires a separate explicit save.",
       )
     )
@@ -119,6 +130,7 @@ export function CatalogueManager({
       setError("");
       const result = await saveAcademicRecord({
         kind,
+        workflowKey,
         id: editing?.id,
         expectedUpdatedAt: editing?.updated_at ?? null,
         operation,
@@ -135,21 +147,30 @@ export function CatalogueManager({
       setBaseline(JSON.stringify(next));
       toast.success(
         operation === "save"
-          ? "Record saved and confirmed"
+          ? "Private draft saved; public content is unchanged"
           : operation === "archive"
-            ? "Record archived; related records retained"
-            : "Record restored as hidden",
+            ? "Archival saved in the private draft; publication still requires approval"
+            : "Restoration saved in the private draft",
       );
-      router.refresh();
+      setWorkflowEditable(false);
+      setWorkflowRefresh((value) => value + 1);
     });
   };
-  const editable = Boolean(editing ? grant.edit : grant.create) && data.ready;
+  const editable =
+    Boolean(unpublishedRecord ? grant.create : grant.edit) &&
+    data.ready &&
+    workflowEditable;
   const renderField = (field: AcademicField) => {
-    const inheritedLanguage = field.path === "details.teaching_language" && Boolean(editing) && !Object.hasOwn(object(draft.details),"teaching_language");
+    const inheritedLanguage =
+      field.path === "details.teaching_language" &&
+      Boolean(editing) &&
+      !Object.hasOwn(object(draft.details), "teaching_language");
     const value = inheritedLanguage ? "English" : atPath(draft, field.path),
       id = `academic-${field.path}`,
       disabled =
-        !editable || pending || (field.path === "slug" && Boolean(editing));
+        !editable ||
+        pending ||
+        (field.path === "slug" && Boolean(editing) && !unpublishedRecord);
     return (
       <div
         key={field.path}
@@ -206,7 +227,7 @@ export function CatalogueManager({
                 </p>
               )}
               <p className="text-xs text-zinc-500">
-                A selection becomes public only after saving this record.
+                A selection becomes public only after approval and Publish.
               </p>
             </div>
           </div>
@@ -278,7 +299,12 @@ export function CatalogueManager({
             }
           />
         )}
-        {inheritedLanguage && <p className="mt-1 text-xs text-[#74855B]">Inherited public display: English · not officially verified. Editing this field replaces the inherited value.</p>}
+        {inheritedLanguage && (
+          <p className="mt-1 text-xs text-[#74855B]">
+            Inherited public display: English · not officially verified. Editing
+            this field replaces the inherited value.
+          </p>
+        )}
         {field.hint && (
           <p className="mt-1 text-xs leading-relaxed text-zinc-500">
             {field.hint}
@@ -300,8 +326,8 @@ export function CatalogueManager({
         </h1>
         <p className="mt-2 max-w-3xl text-sm text-zinc-600">
           Manage existing records, public information and relationships. Save
-          updates public content immediately; unsaved edits remain private to
-          this screen.
+          Draft keeps changes private. Only an approved version can be
+          published.
         </p>
       </header>
       <nav aria-label="Academic catalogue" className="flex flex-wrap gap-2">
@@ -324,6 +350,49 @@ export function CatalogueManager({
           Homepage featured selections
         </Link>
       </nav>
+      {workflowKey && (
+        <WorkflowPanel
+          resource={{ type: kind, key: workflowKey }}
+          dirty={dirty}
+          busy={pending}
+          refresh={workflowRefresh}
+          onLoad={(view, showPublished) => {
+            if (!view.ready) {
+              setWorkflowEditable(false);
+              return;
+            }
+            const publishedRow = academicWorkflowRow(view, true);
+            if (publishedRow)
+              setPublishedRows((previous) =>
+                previous.some((row) => row.id === publishedRow.id)
+                  ? previous.map((row) =>
+                      row.id === publishedRow.id ? publishedRow : row,
+                    )
+                  : [...previous, publishedRow],
+              );
+            const row = academicWorkflowRow(view, showPublished);
+            setUnpublishedRecord(
+              !Object.values(view.published.tables).some(
+                (rows) => rows.length > 0,
+              ),
+            );
+            const live = data[kind].find((item) => item.id === workflowKey);
+            const next = academicDraft(kind, row ?? live);
+            if (!row && !live && kind === "countries")
+              next.region_group_id = data.regions[0]?.id ?? 0;
+            setEditing(row ?? live ?? null);
+            setDraft(next);
+            setBaseline(JSON.stringify(next));
+            setWorkflowEditable(
+              view.ready &&
+                !showPublished &&
+                (!view.document ||
+                  !["in_review", "approved"].includes(view.document.status)),
+            );
+            setError("");
+          }}
+        />
+      )}
       {!data.ready && (
         <p
           role="alert"
@@ -511,7 +580,7 @@ export function CatalogueManager({
                   {dirty
                     ? "Unsaved changes · not public"
                     : editing
-                      ? "Saved record · " + status(editing)
+                      ? "Saved working version · see publishing status above"
                       : "New record · not saved"}
                 </p>
                 <p className="text-xs text-zinc-500">
@@ -694,14 +763,11 @@ export function CatalogueManager({
                     type="checkbox"
                     checked={Boolean(draft.is_published)}
                     disabled={
-                      !editable ||
-                      !grant.publish ||
-                      pending ||
-                      Boolean(editing?.archived_at)
+                      !editable || pending || Boolean(editing?.archived_at)
                     }
                     onChange={(e) => change("is_published", e.target.checked)}
                   />
-                  Visible on the public website
+                  Public visibility after publication
                 </label>
                 <p className="mt-2 text-xs text-zinc-600">
                   A hidden or archived parent suppresses its children publicly
@@ -709,7 +775,8 @@ export function CatalogueManager({
                 </p>
                 {!grant.publish && (
                   <p className="mt-1 text-xs text-zinc-500">
-                    Publishing permission is required to change visibility.
+                    Visibility is a private proposal. Publication requires the
+                    existing publishing permission and approval.
                   </p>
                 )}
               </div>
@@ -723,7 +790,7 @@ export function CatalogueManager({
               )}
               <div className="sticky bottom-3 flex flex-wrap items-center gap-3 rounded-xl border border-zinc-200 bg-white/95 p-3 shadow-sm">
                 <Button type="submit" disabled={!editable || pending || !dirty}>
-                  {pending ? "Saving…" : "Save changes"}
+                  {pending ? "Saving…" : "Save Draft"}
                 </Button>
                 <Button
                   type="button"
@@ -765,6 +832,14 @@ export function CatalogueManager({
                   </Link>
                 )}
               </div>
+              {editing && (
+                <AcademicDraftPreview
+                  kind={kind}
+                  row={{ ...editing, ...draft }}
+                  data={data}
+                  dirty={dirty}
+                />
+              )}
               {editing && kind !== "programmes" && (
                 <aside className="border-t border-zinc-200 pt-4">
                   <h3 className="text-sm font-semibold">

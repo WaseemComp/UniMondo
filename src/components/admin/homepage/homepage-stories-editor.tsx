@@ -3,39 +3,377 @@
 import { useState } from "react";
 import { Plus, Archive, Save } from "lucide-react";
 import type { EditableStory } from "@/lib/admin/homepage-catalogue";
-import { saveHomepageStory, hideHomepageStory } from "@/app/admin/cms/homepage-story-actions";
+import {
+  saveHomepageStory,
+  hideHomepageStory,
+} from "@/app/admin/cms/homepage-story-actions";
 import { publicHeroSlides } from "@/lib/homepage/content";
-import { CmsActionArea, CmsFieldContext, CmsNotice } from "@/components/admin/cms/cms-foundation";
+import {
+  CmsActionArea,
+  CmsFieldContext,
+  CmsNotice,
+} from "@/components/admin/cms/cms-foundation";
 import { MediaPicker } from "@/components/admin/media/media-picker";
 import { HomepagePreview, HomepageSectionRendering } from "./homepage-preview";
 import type { ItemEditorProps } from "./homepage-items-editor";
-const blank:EditableStory={id:"new",updated_at:"",profile_image_url:"",full_name:"",testimonial:"",country:"",program:"",university:"",sort_order:0,is_published:false};
-export function HomepageStoriesEditor({data,section,onDirty,onBusy,onRows,initialSelection}:Omit<ItemEditorProps,"onSaved">&{onRows:(rows:EditableStory[],selectedId:string)=>void}) {
-  const rows=data.editableStories?.rows??[], first=rows.find(row=>row.id===initialSelection)??rows[0], [selected,setSelected]=useState(first?.id??"new"),[draft,setDraft]=useState<EditableStory>(first??blank),[approved,setApproved]=useState(Boolean(first?.is_published)),[busy,setBusy]=useState(false),[error,setError]=useState(""),[picker,setPicker]=useState(false),[hiding,setHiding]=useState(false);
-  const initial=rows.find(row=>row.id===selected)??blank, isNew=selected==="new",dirty=JSON.stringify(draft)!==JSON.stringify(initial)||hiding;
-  const available=data.available&&data.editableStories?.available,editable=isNew?data.permissions.storyCreate:data.permissions.storyEdit,locked=busy||!available||!editable||hiding;
-  const update=(patch:Partial<EditableStory>)=>{const next={...draft,...patch};setDraft(next);setError("");onDirty(JSON.stringify(next)!==JSON.stringify(initial));};
-  const select=(id:string)=>{if(busy||dirty&&!window.confirm("Discard unsaved testimonial changes?"))return;const row=rows.find(row=>row.id===id)??{...blank,sort_order:Math.max(0,...rows.map(r=>r.sort_order+1))};setSelected(id);setDraft(row);setApproved(Boolean(row.is_published));setHiding(false);setError("");onDirty(false);};
-  const publicRows=rows.map(row=>row.id===selected?draft:row).filter(row=>row.is_published).sort((a,b)=>a.sort_order-b.sort_order).slice(0,6);
-  const previewStories=draft.id==="new"?[draft,...publicRows]:publicRows.some(row=>row.id===draft.id)?publicRows:[draft,...publicRows];
-  const previewData={...data,stories:previewStories};
-  const invalid=!draft.full_name.trim()||!draft.testimonial.trim()||!draft.profile_image_url||!Number.isInteger(draft.sort_order)||draft.sort_order<0||draft.sort_order>10000||draft.is_published&&!approved;
-  async function save(event:React.FormEvent){event.preventDefault();if(busy||!available||!dirty||!hiding&&(!editable||invalid))return;setBusy(true);onBusy(true);setError("");try{const result=hiding?await hideHomepageStory({id:draft.id,expectedUpdatedAt:initial.updated_at}):await saveHomepageStory({...(isNew?{}:{id:draft.id}),expectedUpdatedAt:isNew?null:initial.updated_at,profile_image_url:draft.profile_image_url,full_name:draft.full_name,testimonial:draft.testimonial,country:draft.country??"",program:draft.program??"",university:draft.university??"",sort_order:draft.sort_order,is_published:draft.is_published,public_approved:approved});if(!result.ok)setError(result.error);else{onDirty(false);onRows(result.rows,result.savedId);}}catch{setError("The connection was interrupted. Reload to confirm the saved testimonial before retrying.");}finally{setBusy(false);onBusy(false);}}
-  return <><section className="hp-fields-panel" aria-label="Testimonial editing controls"><div className="hp-panel-heading"><div><p className="cms-eyebrow">APPROVED PUBLIC STORIES</p><h2>Testimonials</h2></div><button type="button" className="cms-button-secondary" disabled={busy||!available||!data.permissions.storyCreate} onClick={()=>select("new")}><Plus size={15}/>Add testimonial</button></div>
-    {!available&&<CmsNotice>Testimonials could not be loaded, or your existing permissions do not allow viewing them. Saving is disabled.</CmsNotice>}
-    <div className="hp-item-list" aria-label="Existing testimonials">{rows.map(row=><button key={row.id} type="button" disabled={busy} aria-pressed={selected===row.id} onClick={()=>select(row.id)}><span>{row.full_name}</span><small>{row.is_published?"Featured":"Hidden"}</small></button>)}</div>
-    <form className="hp-section-form" onSubmit={save}><CmsFieldContext source={isNew?"default":"saved"} description={isNew?"New testimonial · not saved or featured until explicitly saved.":"Existing testimonial record. No student application or private account data is loaded."}/><p className="hp-help">Enter only information and photographs approved for public use. The public carousel shows the first six featured stories in display order.</p>
-      {([['full_name','Student’s public name'],['testimonial','Testimonial'],['country','Country (optional)'],['program','Program (optional)'],['university','University (optional)']] as const).map(([key,label])=><div className="hp-field" key={key}><label htmlFor={`hp-story-${key}`}>{label}</label>{key==="testimonial"?<textarea id={`hp-story-${key}`} rows={5} maxLength={5000} value={draft[key]??""} disabled={locked} onChange={event=>update({[key]:event.target.value})}/>:<input id={`hp-story-${key}`} maxLength={key==="full_name"?200:300} value={draft[key]??""} disabled={locked} onChange={event=>update({[key]:event.target.value})}/>}</div>)}
-      <div className="hp-field"><p className="hp-field-label">Public profile image</p>{draft.profile_image_url&&<div className="hp-image-thumbnail"><img src={draft.profile_image_url} alt={draft.full_name}/></div>}<button type="button" className="cms-button-secondary" disabled={locked} onClick={()=>setPicker(true)}>Change Image</button></div>
-      <div className="hp-field"><label htmlFor="hp-story-order">Display position</label><input id="hp-story-order" type="number" min={0} max={10000} value={Number.isFinite(draft.sort_order)?draft.sort_order:""} disabled={locked} onChange={event=>update({sort_order:event.target.value===""?NaN:Number(event.target.value)})}/></div>
-      <label className="hp-inherit-toggle"><input type="checkbox" checked={draft.is_published} disabled={locked||!data.permissions.storyPublish} onChange={event=>update({is_published:event.target.checked})}/>Featured on homepage</label>
-      <label className="hp-inherit-toggle"><input type="checkbox" checked={approved} disabled={locked} onChange={event=>setApproved(event.target.checked)}/>This information and image are approved for public use</label>
-      {!draft.is_published&&<p className="hp-help">This story is hidden. Its preview is shown for editing only; it will not appear on the public homepage.</p>}
-      {!isNew&&<button className="cms-button-secondary" type="button" disabled={busy||!available||!data.permissions.storyArchive||!initial.is_published||dirty} onClick={()=>{if(window.confirm("Hide this testimonial after Save? Its full record and image will be retained.")){setHiding(true);setDraft({...draft,is_published:false});onDirty(true);}}}><Archive size={15}/>Hide / archive testimonial</button>}
-      {error&&<p className="hp-form-error" role="alert">{error}</p>}
-      <CmsActionArea><button type="button" className="cms-button-secondary" disabled={busy||!dirty} onClick={()=>{if(window.confirm("Discard unsaved testimonial changes?")){setDraft(initial);setHiding(false);setError("");setApproved(Boolean(initial.is_published));onDirty(false);}}}>Discard changes</button><button type="submit" className="cms-button-primary" disabled={busy||!available||!dirty||(!hiding&&(!editable||invalid))}><Save size={15}/>{busy?"Saving…":"Save changes"}</button></CmsActionArea>
-    </form></section>
-    {picker&&<MediaPicker title="Testimonial image" category="stories" currentUrl={draft.profile_image_url} onSelect={asset=>update({profile_image_url:asset.url})} onClose={()=>setPicker(false)}/>}
-    <HomepagePreview dirty={dirty} hidden={false} selectedItem={`stories:${selected}`} onSelectItem={identity=>{if(identity.startsWith("stories:"))select(identity.slice(8));}}><HomepageSectionRendering section={section} data={previewData} slide={publicHeroSlides(data.blocks)[0]} selectedItem={`stories:${selected}`}/></HomepagePreview>
-  </>;
+const blank: EditableStory = {
+  id: "new",
+  updated_at: "",
+  profile_image_url: "",
+  full_name: "",
+  testimonial: "",
+  country: "",
+  program: "",
+  university: "",
+  sort_order: 0,
+  is_published: false,
+};
+export function HomepageStoriesEditor({
+  data,
+  section,
+  onDirty,
+  onBusy,
+  onRows,
+  initialSelection,
+}: Omit<ItemEditorProps, "onSaved"> & {
+  onRows: (rows: EditableStory[], selectedId: string) => void;
+}) {
+  const rows = data.editableStories?.rows ?? [],
+    first = rows.find((row) => row.id === initialSelection) ?? rows[0],
+    [selected, setSelected] = useState(first?.id ?? "new"),
+    [draft, setDraft] = useState<EditableStory>(first ?? blank),
+    [approved, setApproved] = useState(Boolean(first?.is_published)),
+    [busy, setBusy] = useState(false),
+    [error, setError] = useState(""),
+    [picker, setPicker] = useState(false),
+    [hiding, setHiding] = useState(false);
+  const initial = rows.find((row) => row.id === selected) ?? blank,
+    isNew = selected === "new",
+    dirty = JSON.stringify(draft) !== JSON.stringify(initial) || hiding;
+  const available = data.available && data.editableStories?.available,
+    editable = isNew
+      ? data.permissions.storyCreate
+      : data.permissions.storyEdit,
+    locked = busy || !available || !editable || hiding;
+  const update = (patch: Partial<EditableStory>) => {
+    const next = { ...draft, ...patch };
+    setDraft(next);
+    setError("");
+    onDirty(JSON.stringify(next) !== JSON.stringify(initial));
+  };
+  const select = (id: string) => {
+    if (
+      busy ||
+      (dirty && !window.confirm("Discard unsaved testimonial changes?"))
+    )
+      return;
+    const row = rows.find((row) => row.id === id) ?? {
+      ...blank,
+      sort_order: Math.max(0, ...rows.map((r) => r.sort_order + 1)),
+    };
+    setSelected(id);
+    setDraft(row);
+    setApproved(Boolean(row.is_published));
+    setHiding(false);
+    setError("");
+    onDirty(false);
+  };
+  const publicRows = rows
+    .map((row) => (row.id === selected ? draft : row))
+    .filter((row) => row.is_published)
+    .sort((a, b) => a.sort_order - b.sort_order)
+    .slice(0, 6);
+  const previewStories =
+    draft.id === "new"
+      ? [draft, ...publicRows]
+      : publicRows.some((row) => row.id === draft.id)
+        ? publicRows
+        : [draft, ...publicRows];
+  const previewData = { ...data, stories: previewStories };
+  const invalid =
+    !draft.full_name.trim() ||
+    !draft.testimonial.trim() ||
+    !draft.profile_image_url ||
+    !Number.isInteger(draft.sort_order) ||
+    draft.sort_order < 0 ||
+    draft.sort_order > 10000 ||
+    (draft.is_published && !approved);
+  async function save(event: React.FormEvent) {
+    event.preventDefault();
+    if (busy || !available || !dirty || (!hiding && (!editable || invalid)))
+      return;
+    setBusy(true);
+    onBusy(true);
+    setError("");
+    try {
+      const result = hiding
+        ? await hideHomepageStory({
+            id: draft.id,
+            expectedUpdatedAt: initial.updated_at,
+          })
+        : await saveHomepageStory({
+            ...(isNew ? {} : { id: draft.id }),
+            expectedUpdatedAt: isNew ? null : initial.updated_at,
+            profile_image_url: draft.profile_image_url,
+            full_name: draft.full_name,
+            testimonial: draft.testimonial,
+            country: draft.country ?? "",
+            program: draft.program ?? "",
+            university: draft.university ?? "",
+            sort_order: draft.sort_order,
+            is_published: draft.is_published,
+            public_approved: approved,
+          });
+      if (!result.ok) setError(result.error);
+      else {
+        onDirty(false);
+        onRows(result.rows, result.savedId);
+      }
+    } catch {
+      setError(
+        "The connection was interrupted. Reload to confirm the saved testimonial before retrying.",
+      );
+    } finally {
+      setBusy(false);
+      onBusy(false);
+    }
+  }
+  return (
+    <>
+      <section
+        className="hp-fields-panel"
+        aria-label="Testimonial editing controls"
+      >
+        <div className="hp-panel-heading">
+          <div>
+            <p className="cms-eyebrow">APPROVED PUBLIC STORIES</p>
+            <h2>Testimonials</h2>
+          </div>
+          <button
+            type="button"
+            className="cms-button-secondary"
+            disabled={busy || !available || !data.permissions.storyCreate}
+            onClick={() => select("new")}
+          >
+            <Plus size={15} />
+            Add testimonial
+          </button>
+        </div>
+        {!available && (
+          <CmsNotice>
+            Testimonials could not be loaded, or your existing permissions do
+            not allow viewing them. Saving is disabled.
+          </CmsNotice>
+        )}
+        <div className="hp-item-list" aria-label="Existing testimonials">
+          {rows.map((row) => (
+            <button
+              key={row.id}
+              type="button"
+              disabled={busy}
+              aria-pressed={selected === row.id}
+              onClick={() => select(row.id)}
+            >
+              <span>{row.full_name}</span>
+              <small>{row.is_published ? "Featured" : "Hidden"}</small>
+            </button>
+          ))}
+        </div>
+        <form className="hp-section-form" onSubmit={save}>
+          <CmsFieldContext
+            source={isNew ? "default" : "saved"}
+            description={
+              isNew
+                ? "New testimonial · not saved; it can appear publicly only after review and publication."
+                : "Existing testimonial record. No student application or private account data is loaded."
+            }
+          />
+          <p className="hp-help">
+            Enter only information and photographs approved for public use. The
+            public carousel shows the first six featured stories in display
+            order.
+          </p>
+          {(
+            [
+              ["full_name", "Student’s public name"],
+              ["testimonial", "Testimonial"],
+              ["country", "Country (optional)"],
+              ["program", "Program (optional)"],
+              ["university", "University (optional)"],
+            ] as const
+          ).map(([key, label]) => (
+            <div className="hp-field" key={key}>
+              <label htmlFor={`hp-story-${key}`}>{label}</label>
+              {key === "testimonial" ? (
+                <textarea
+                  id={`hp-story-${key}`}
+                  rows={5}
+                  maxLength={5000}
+                  value={draft[key] ?? ""}
+                  disabled={locked}
+                  onChange={(event) => update({ [key]: event.target.value })}
+                />
+              ) : (
+                <input
+                  id={`hp-story-${key}`}
+                  maxLength={key === "full_name" ? 200 : 300}
+                  value={draft[key] ?? ""}
+                  disabled={locked}
+                  onChange={(event) => update({ [key]: event.target.value })}
+                />
+              )}
+            </div>
+          ))}
+          <div className="hp-field">
+            <p className="hp-field-label">Public profile image</p>
+            {draft.profile_image_url && (
+              <div className="hp-image-thumbnail">
+                <img src={draft.profile_image_url} alt={draft.full_name} />
+              </div>
+            )}
+            <button
+              type="button"
+              className="cms-button-secondary"
+              disabled={locked}
+              onClick={() => setPicker(true)}
+            >
+              Change Image
+            </button>
+          </div>
+          <div className="hp-field">
+            <label htmlFor="hp-story-order">Display position</label>
+            <input
+              id="hp-story-order"
+              type="number"
+              min={0}
+              max={10000}
+              value={Number.isFinite(draft.sort_order) ? draft.sort_order : ""}
+              disabled={locked}
+              onChange={(event) =>
+                update({
+                  sort_order:
+                    event.target.value === ""
+                      ? NaN
+                      : Number(event.target.value),
+                })
+              }
+            />
+          </div>
+          <label className="hp-inherit-toggle">
+            <input
+              type="checkbox"
+              checked={draft.is_published}
+              disabled={locked}
+              onChange={(event) =>
+                update({ is_published: event.target.checked })
+              }
+            />
+            Featured on homepage
+          </label>
+          <label className="hp-inherit-toggle">
+            <input
+              type="checkbox"
+              checked={approved}
+              disabled={locked}
+              onChange={(event) => setApproved(event.target.checked)}
+            />
+            This information and image are approved for public use
+          </label>
+          {!draft.is_published && (
+            <p className="hp-help">
+              This story is hidden. Its preview is shown for editing only; it
+              will not appear on the public homepage.
+            </p>
+          )}
+          {!isNew && (
+            <button
+              className="cms-button-secondary"
+              type="button"
+              disabled={
+                busy ||
+                !available ||
+                !data.permissions.storyArchive ||
+                !initial.is_published ||
+                dirty
+              }
+              onClick={() => {
+                if (
+                  window.confirm(
+                    "Hide this testimonial after approval and Publish? Its full record and image will be retained.",
+                  )
+                ) {
+                  setHiding(true);
+                  setDraft({ ...draft, is_published: false });
+                  onDirty(true);
+                }
+              }}
+            >
+              <Archive size={15} />
+              Hide / archive testimonial
+            </button>
+          )}
+          {error && (
+            <p className="hp-form-error" role="alert">
+              {error}
+            </p>
+          )}
+          <CmsActionArea>
+            <button
+              type="button"
+              className="cms-button-secondary"
+              disabled={busy || !dirty}
+              onClick={() => {
+                if (window.confirm("Discard unsaved testimonial changes?")) {
+                  setDraft(initial);
+                  setHiding(false);
+                  setError("");
+                  setApproved(Boolean(initial.is_published));
+                  onDirty(false);
+                }
+              }}
+            >
+              Discard changes
+            </button>
+            <button
+              type="submit"
+              className="cms-button-primary"
+              disabled={
+                busy ||
+                !available ||
+                !dirty ||
+                (!hiding && (!editable || invalid))
+              }
+            >
+              <Save size={15} />
+              {busy ? "Saving…" : "Save Draft"}
+            </button>
+          </CmsActionArea>
+        </form>
+      </section>
+      {picker && (
+        <MediaPicker
+          title="Testimonial image"
+          category="stories"
+          currentUrl={draft.profile_image_url}
+          onSelect={(asset) => update({ profile_image_url: asset.url })}
+          onClose={() => setPicker(false)}
+        />
+      )}
+      <HomepagePreview
+        dirty={dirty}
+        hidden={false}
+        selectedItem={`stories:${selected}`}
+        onSelectItem={(identity) => {
+          if (identity.startsWith("stories:")) select(identity.slice(8));
+        }}
+      >
+        <HomepageSectionRendering
+          section={section}
+          data={previewData}
+          slide={publicHeroSlides(data.blocks)[0]}
+          selectedItem={`stories:${selected}`}
+        />
+      </HomepagePreview>
+    </>
+  );
 }
