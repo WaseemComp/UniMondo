@@ -6,6 +6,8 @@ import {
   HERO_PRESENTATION_DEFAULTS,
   HERO_PRESENTATION_KEYS,
 } from "@/lib/homepage/hero-presentation";
+import { HeroAppearanceControls } from "./hero-appearance-controls";
+import type { WorkflowView } from "@/lib/publishing/model";
 import { WorkflowPanel } from "@/components/admin/publishing/workflow-panel";
 import { homepageWorkflowPreview } from "@/lib/publishing/preview";
 import { useEffect, useState } from "react";
@@ -128,6 +130,8 @@ export function HomepageEditor({
   const [publishedData, setPublishedData] = useState(initial);
   const [workflowRefresh, setWorkflowRefresh] = useState(0);
   const [workflowLoaded, setWorkflowLoaded] = useState(false);
+  const [workflowView, setWorkflowView] = useState<WorkflowView>();
+  const [showPublished, setShowPublished] = useState(false);
   const [pendingMediaId, setPendingMediaId] = useState(initialMediaId);
   const [section, setSection] = useState<SectionId>(
     HOME_SECTIONS.some((item) => item.id === initialSection)
@@ -169,6 +173,7 @@ export function HomepageEditor({
     if (section === nextSection && target === nextTarget) return;
     if (dirty && !window.confirm(leaveMessage)) return;
     setWorkflowLoaded(false);
+    setWorkflowView(undefined);
     setWorkflowRefresh((value) => value + 1);
     setMode("text");
     setItemSelection(undefined);
@@ -181,6 +186,7 @@ export function HomepageEditor({
     if (busy || (mode === nextMode && !identity)) return;
     if (dirty && !window.confirm(leaveMessage)) return;
     setWorkflowLoaded(false);
+    setWorkflowView(undefined);
     setWorkflowRefresh((value) => value + 1);
     setDirty(false);
     setMode(nextMode);
@@ -204,6 +210,7 @@ export function HomepageEditor({
     setDirty(false);
     setRevision((value) => value + 1);
     setWorkflowLoaded(false);
+    setWorkflowView(undefined);
     setWorkflowRefresh((value) => value + 1);
     setSavedMessage(
       "Private draft saved. The public homepage has not changed.",
@@ -230,6 +237,19 @@ export function HomepageEditor({
       if (row) setTarget(row.id);
     }
   };
+  const publishedPreview = showPublished || !workflowView?.document ||
+    ["published", "archived", "discarded"].includes(workflowView.document.status);
+  const savedPreviewLabel = !workflowView
+    ? "Loading content workflow"
+    : !workflowView.ready
+      ? "Workflow unavailable · preview only"
+      : publishedPreview
+        ? "Published content"
+        : workflowView.document?.status === "approved"
+          ? "Approved draft · unpublished"
+          : workflowView.document?.status === "in_review"
+            ? "Saved draft · in review"
+            : "Saved private draft";
   return (
     <div className="hp-editor">
       <CmsPageHeader
@@ -271,6 +291,8 @@ export function HomepageEditor({
         busy={busy}
         refresh={workflowRefresh}
         onLoad={(view, showPublished) => {
+          setWorkflowView(view);
+          setShowPublished(showPublished);
           if (!view.ready) {
             setWorkflowLoaded(false);
             setData(publishedData);
@@ -328,9 +350,7 @@ export function HomepageEditor({
           <span />
           {dirty
             ? "Unsaved changes"
-            : workflowLoaded
-              ? "Saved content · see workflow status above"
-              : "Loading content workflow"}
+            : savedPreviewLabel}
         </span>
         <p>
           Save Draft is private. Approval and Publish are separate actions. This
@@ -477,6 +497,25 @@ export function HomepageEditor({
             onDirty={setDirty}
             onBusy={setBusy}
             onSaved={saved}
+            appearancePreviewAllowed={section === "hero" && initial.available && initial.permissions.editSlides && Boolean(workflowView) && !showPublished}
+            appearanceNotice={
+              !workflowView
+                ? "Loading workflow. Appearance controls will be available after this check."
+                : !initial.permissions.editSlides
+                  ? "Your current permissions do not allow appearance editing."
+                : showPublished
+                  ? "Showing published appearance. Choose View Draft Preview above to experiment."
+                  : !workflowView.ready
+                    ? "Local appearance preview only. Private drafting is unavailable; saving is disabled until the workflow can be loaded."
+                    : workflowView.document?.status === "approved"
+                      ? "Appearance preview only. This approved draft is locked. Discard local preview changes, then choose Return to Draft above before saving. Publication remains a separate action."
+                      : workflowView.document?.status === "in_review"
+                        ? "Appearance preview only. This saved draft is in review and cannot be changed. Discard local preview changes before using the review controls above."
+                        : undefined
+            }
+            previewLabel={section === "hero" && publishedPreview && workflowView?.ready
+              ? "Published appearance"
+              : savedPreviewLabel}
             suggestedMediaId={pendingMediaId}
             onMediaClose={() => setPendingMediaId(undefined)}
             onPreviewSelect={previewSelect}
@@ -488,6 +527,9 @@ export function HomepageEditor({
 }
 
 type SectionProps = {
+  appearancePreviewAllowed: boolean;
+  appearanceNotice?: string;
+  previewLabel: string;
   onPreviewSelect: (identity: string) => void;
   suggestedMediaId?: string;
   onMediaClose: () => void;
@@ -500,6 +542,9 @@ type SectionProps = {
   onSaved: (snapshot: HomepageSnapshot) => void;
 };
 function SectionEditor({
+  appearancePreviewAllowed,
+  appearanceNotice,
+  previewLabel,
   data,
   section,
   target,
@@ -674,12 +719,6 @@ function SectionEditor({
       ...Object.fromEntries(
         HERO_PRESENTATION_KEYS.map((key) => [key, values[key]]),
       ),
-      textMode:
-        isNew ||
-        sourceSlide.textMode ||
-        values.textMode !== initialValues.textMode
-          ? values.textMode
-          : undefined,
       src: values.imageUrl,
       alt: values.imageAlt,
       line: values.line,
@@ -881,7 +920,7 @@ function SectionEditor({
               Add new slide
             </button>
           )}
-          {!canSave && (
+          {!canSave && !(isSlide && appearanceNotice) && (
             <p className="hp-help">
               {!data.available
                 ? "Saving is disabled until saved content can be loaded."
@@ -989,66 +1028,12 @@ function SectionEditor({
           })}
           {isSlide && (
             <>
-              <fieldset
-                disabled={locked}
-                className="space-y-3 rounded-xl border p-3"
-              >
-                <legend className="px-1 font-semibold">
-                  Image and text appearance
-                </legend>
-                <label className="block text-sm">
-                  Text colour
-                  <select
-                    className="mt-1 w-full rounded border p-2"
-                    value={values.textMode}
-                    onChange={(e) => change("textMode", e.target.value)}
-                  >
-                    <option value="dark">Dark</option>
-                    <option value="light">Light</option>
-                    <option value="custom">Custom</option>
-                  </select>
-                </label>
-                {values.textMode === "custom" && (
-                  <label className="block text-sm">
-                    Custom text colour
-                    <input
-                      type="color"
-                      value={values.textColor}
-                      onChange={(e) => change("textColor", e.target.value)}
-                    />
-                  </label>
-                )}
-                <label className="block text-sm">
-                  Overlay colour
-                  <input
-                    type="color"
-                    value={values.overlayColor}
-                    onChange={(e) => change("overlayColor", e.target.value)}
-                  />
-                </label>
-                {[
-                  ["overlayOpacity", "Overlay opacity", 0, 100],
-                  ["brightness", "Image brightness", 50, 150],
-                  ["contrast", "Image contrast", 50, 150],
-                ].map(([key, label, min, max]) => (
-                  <label key={String(key)} className="block text-sm">
-                    {label}: {values[String(key)]}%
-                    <input
-                      className="block w-full"
-                      type="range"
-                      min={Number(min)}
-                      max={Number(max)}
-                      value={values[String(key)]}
-                      onChange={(e) => change(String(key), e.target.value)}
-                    />
-                  </label>
-                ))}
-                <p className="text-xs text-zinc-600">
-                  Image adjustments affect the photograph only. Local text
-                  backing keeps the selected text readable; buttons retain their
-                  own contrast.
-                </p>
-              </fieldset>
+              <HeroAppearanceControls
+                values={values}
+                disabled={pending || !appearancePreviewAllowed}
+                notice={appearanceNotice}
+                onChange={change}
+              />
               <div className="hp-field hp-image-field">
                 <p className="hp-field-label">
                   <ImageIcon size={16} aria-hidden />
@@ -1204,7 +1189,7 @@ function SectionEditor({
             <button
               className="cms-button-secondary"
               type="button"
-              disabled={locked || !dirty}
+              disabled={pending || (!canSave && !appearancePreviewAllowed) || !dirty}
               onClick={() => {
                 if (
                   window.confirm(
@@ -1256,6 +1241,7 @@ function SectionEditor({
       )}
       <HomepagePreview
         dirty={dirty || isNew}
+        savedLabel={previewLabel}
         hidden={isSlide && !visible}
         onSelectItem={onPreviewSelect}
       >

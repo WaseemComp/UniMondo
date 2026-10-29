@@ -3,6 +3,7 @@ import { isPlanning } from "@/lib/publishing/planning";
 
 import { revalidateContentPath as revalidatePath } from "@/lib/publishing/planning";
 import { record, english } from "@/lib/homepage/content";
+import { HERO_PRESENTATION_KEYS, presentationError } from "@/lib/homepage/hero-presentation";
 import { getMediaAccess } from "@/lib/media/access";
 import { validateManagedMediaSelection } from "@/lib/media/operations";
 import { safeImage, safeDestination } from "@/lib/homepage/validation";
@@ -32,6 +33,12 @@ const heroSlideSchema = z.object({
   eyebrow: localeTextSchema,
   primaryHref: localeTextSchema,
   secondaryHref: localeTextSchema,
+  textMode: localeTextSchema,
+  textColor: localeTextSchema,
+  overlayColor: localeTextSchema,
+  overlayOpacity: localeTextSchema,
+  brightness: localeTextSchema,
+  contrast: localeTextSchema,
 });
 
 export type HeroSlideInput = z.infer<typeof heroSlideSchema>;
@@ -66,6 +73,11 @@ export async function saveHomeHeroSlide(
       };
 
     const s = parsed.data;
+    for (const key of HERO_PRESENTATION_KEYS) {
+      if (s[key] === undefined) continue;
+      const error = presentationError(key, english(s[key]) ?? "");
+      if (error) return { ok: false, error };
+    }
     if (!s.id && !(await hasAdminPermission(me, "home.hero_slider.create")))
       return { ok: false, error: "Forbidden" };
     const { data: existing, error: readError } = s.id
@@ -128,6 +140,11 @@ export async function saveHomeHeroSlide(
         ...(s.secondaryHref !== undefined
           ? { secondaryHref: s.secondaryHref }
           : {}),
+        ...Object.fromEntries(
+          HERO_PRESENTATION_KEYS.filter((key) => s[key] !== undefined).map(
+            (key) => [key, s[key]],
+          ),
+        ),
       },
       media: { ...media, imageUrl: s.imageUrl, imageAlt: s.imageAlt },
     };
