@@ -1,6 +1,7 @@
 "use server";
 import { planDraft } from "@/lib/publishing/planning";
 import { resourceSchema } from "@/lib/publishing/model";
+import { HERO_PRESENTATION_KEYS } from "@/lib/homepage/hero-presentation";
 
 import { z } from "zod";
 import { revalidateContentPath as revalidatePath } from "@/lib/publishing/planning";
@@ -368,6 +369,11 @@ async function applysaveHomepageEditor(
           eyebrow: content.eyebrow as string,
           primaryHref: content.primaryHref as string,
           secondaryHref: content.secondaryHref as string,
+          ...Object.fromEntries(
+            HERO_PRESENTATION_KEYS.filter((key) => key in value.patch).map(
+              (key) => [key, content[key]],
+            ),
+          ),
         });
         if (!result.ok) return result;
       }

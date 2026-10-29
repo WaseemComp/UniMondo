@@ -14,7 +14,7 @@ import {
 } from "@/lib/homepage/content";
 export type { HeroCopy, HeroSlide } from "@/lib/homepage/content";
 
-import { heroTextStyle } from "@/lib/homepage/hero-presentation";
+import { HERO_PRESENTATION_DEFAULTS, heroTextStyle } from "@/lib/homepage/hero-presentation";
 
 const INTERVAL_MS = 6500;
 
@@ -54,7 +54,7 @@ export function HeroCarousel({
   }, [next, preview]);
 
   const slide = normalizedSlides[index % normalizedSlides.length];
-  const textStyle = slide.textMode ? heroTextStyle(slide) : undefined;
+  const textStyle = heroTextStyle(slide);
   const effectiveCopy: HeroCopy = {
     title: slide.title ?? copy.title,
     subtitle: slide.subtitle ?? copy.subtitle,
@@ -67,6 +67,7 @@ export function HeroCarousel({
       <AnimatePresence mode="wait">
         <motion.div
           key={slide.src}
+          data-hero-image
           className="absolute inset-0"
           initial={{ opacity: 0, scale: 1.05 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -80,7 +81,7 @@ export function HeroCarousel({
             priority={index === 0}
             className="object-cover"
             style={{
-              filter: `brightness(${slide.brightness ?? 100}%) contrast(${slide.contrast ?? 100}%)`,
+              filter: `brightness(${slide.brightness ?? HERO_PRESENTATION_DEFAULTS.brightness}%) contrast(${slide.contrast ?? HERO_PRESENTATION_DEFAULTS.contrast}%)`,
             }}
             sizes="100vw"
             quality={75}
@@ -90,10 +91,12 @@ export function HeroCarousel({
 
       {/* Gradient overlays */}
       <div
-        className="absolute inset-0"
+        className="pointer-events-none absolute inset-0"
+        data-hero-overlay
+        aria-hidden="true"
         style={{
-          backgroundColor: slide.overlayColor ?? "#244B50",
-          opacity: Number(slide.overlayOpacity ?? 15) / 100,
+          backgroundColor: slide.overlayColor ?? HERO_PRESENTATION_DEFAULTS.overlayColor,
+          opacity: Number(slide.overlayOpacity ?? HERO_PRESENTATION_DEFAULTS.overlayOpacity) / 100,
         }}
       />
       <div className="absolute inset-0 bg-gradient-to-t from-[#F4F3EF]/40 via-transparent to-transparent" />
@@ -102,6 +105,7 @@ export function HeroCarousel({
       <div className="relative z-10 flex min-h-[100svh] min-h-[100dvh] flex-col justify-end pb-24 pt-24 sm:pb-32 sm:justify-center sm:pb-0">
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
           <motion.div
+            data-hero-copy-motion
             initial={{ opacity: 0, y: 32 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.15 }}

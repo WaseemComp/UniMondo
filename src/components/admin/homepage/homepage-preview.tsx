@@ -47,7 +47,8 @@ function PreviewFrame({ mode, children, onSelectItem, selectedItem, label = "hom
           clone.setAttribute("data-preview-style", ""); doc.head.appendChild(clone);
         }
         const style = doc.createElement("style");
-        style.textContent = 'a,button,input,select,textarea{pointer-events:none!important}[data-home-item]{cursor:pointer}[data-home-item][data-preview-selected]{outline:3px solid #2c786d;outline-offset:-3px}body{margin:0;background:#F8F7F3;background-image:none}*{scroll-behavior:auto!important;animation:none!important;transition:none!important}[style*="opacity: 0"]{opacity:1!important;transform:none!important}';
+        // Freeze motion wrappers without overriding the overlay, including intentional zero opacity.
+        style.textContent = 'a,button,input,select,textarea{pointer-events:none!important}[data-home-item]{cursor:pointer}[data-home-item][data-preview-selected]{outline:3px solid #2c786d;outline-offset:-3px}body{margin:0;background:#F8F7F3;background-image:none}*{scroll-behavior:auto!important;animation:none!important;transition:none!important}[data-hero-image],[data-hero-copy-motion],[style*="opacity: 0;"]:not([data-hero-overlay]){opacity:1!important;transform:none!important}';
         style.setAttribute("data-preview-style", ""); doc.head.appendChild(style);
         setFrameDocument(doc);
       }} />
@@ -61,16 +62,16 @@ export function HomepageSectionRendering({section,data,slide,selectedItem}:{sect
   return <HomepageSection section={section} data={renderData} slide={section==="hero"?slide:undefined} selectedItem={selectedItem} preview/>;
 }
 
-export function HomepagePreview({ children, dirty, hidden, onSelectItem, selectedItem, label = "homepage section", hiddenMessage }: { label?: string; hiddenMessage?: string; children: ReactNode; dirty: boolean; hidden: boolean; onSelectItem?:(id:string)=>void; selectedItem?:string }) {
+export function HomepagePreview({ children, dirty, hidden, onSelectItem, selectedItem, label = "homepage section", hiddenMessage, savedLabel = "Current content" }: { label?: string; hiddenMessage?: string; savedLabel?: string; children: ReactNode; dirty: boolean; hidden: boolean; onSelectItem?:(id:string)=>void; selectedItem?:string }) {
   const [mode, setMode] = useState<"desktop" | "mobile">("desktop");
   const dialog = useRef<HTMLDialogElement>(null);
   const modes = <div className="hp-preview-modes" role="group" aria-label="Preview device"><button type="button" aria-pressed={mode === "desktop"} onClick={() => setMode("desktop")}><Monitor size={15} aria-hidden />Desktop</button><button type="button" aria-pressed={mode === "mobile"} onClick={() => setMode("mobile")}><Smartphone size={15} aria-hidden />Mobile</button></div>;
   return <aside className="hp-preview-panel" aria-label="Live section preview"><div className="hp-panel-heading"><div><p className="cms-eyebrow">LIVE PREVIEW</p><h2>Your website, as you edit</h2></div><button type="button" className="cms-icon-button" aria-label="Expand preview" onClick={() => dialog.current?.showModal()}><Expand size={17} /></button></div>
-    <div className="hp-preview-toolbar">{modes}<span className={`hp-preview-state ${dirty ? "is-unsaved" : ""}`}>{dirty ? "Unsaved preview" : "Current content"}</span></div>
+    <div className="hp-preview-toolbar">{modes}<span className={`hp-preview-state ${dirty ? "is-unsaved" : ""}`}>{dirty ? "Unsaved preview" : savedLabel}</span></div>
     {hidden && <p className="hp-preview-note">{hiddenMessage ?? "This slide is hidden. Preview shows how it would look if made visible."}</p>}
     <PreviewFrame label={label} mode={mode} onSelectItem={onSelectItem} selectedItem={selectedItem}>{children}</PreviewFrame>
     <button type="button" className="hp-edit-jump" onClick={() => document.querySelector(".hp-fields-panel")?.scrollIntoView({ behavior: "smooth", block: "start" })}>Back to editing</button>
     <p className="hp-preview-footnote">Actual website components · {mode === "desktop" ? "1120 × 800" : "390 × 844"} viewport. Links and forms are disabled. Select an editable item or use the item list.</p>
-    <dialog ref={dialog} className="hp-expanded-preview" aria-labelledby="hp-expanded-title"><div className="hp-panel-heading"><h2 id="hp-expanded-title">{label === "homepage section" ? "Homepage section" : label} preview</h2><button type="button" className="cms-icon-button" onClick={() => dialog.current?.close()} aria-label="Close expanded preview"><X size={20} /></button></div><div className="hp-preview-toolbar">{modes}<span className="hp-preview-state">{dirty ? "Unsaved preview" : "Current content"}</span></div><PreviewFrame label={label} mode={mode} onSelectItem={onSelectItem} selectedItem={selectedItem}>{children}</PreviewFrame></dialog>
+    <dialog ref={dialog} className="hp-expanded-preview" aria-labelledby="hp-expanded-title"><div className="hp-panel-heading"><h2 id="hp-expanded-title">{label === "homepage section" ? "Homepage section" : label} preview</h2><button type="button" className="cms-icon-button" onClick={() => dialog.current?.close()} aria-label="Close expanded preview"><X size={20} /></button></div><div className="hp-preview-toolbar">{modes}<span className="hp-preview-state">{dirty ? "Unsaved preview" : savedLabel}</span></div><PreviewFrame label={label} mode={mode} onSelectItem={onSelectItem} selectedItem={selectedItem}>{children}</PreviewFrame></dialog>
   </aside>;
 }
